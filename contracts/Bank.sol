@@ -753,8 +753,6 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
     }
 
     struct Production {
-        address coinToken;
-        address currencyToken;
         address borrowToken;
         bool isOpen;
         bool canBorrow;
@@ -862,7 +860,11 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
     }
 
     function opPosition(uint256 posId, uint256 pid, uint256 borrow, bytes calldata data)
-    external payable onlyEOA nonReentrant {
+        external 
+        payable 
+        onlyEOA 
+        nonReentrant 
+    {
         if (posId == 0) {
             posId = currentPos;
             currentPos ++;
@@ -1019,9 +1021,19 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         bank.canWithdraw = canWithdraw;
     }
 
-    function opProduction(uint256 pid, bool isOpen, bool canBorrow,
-        address coinToken, address currencyToken, address borrowToken, address goblin,
-        uint256 minDebt, uint256 openFactor, uint256 liquidateFactor) external onlyOwner {
+    function opProduction(
+        uint256 pid, 
+        bool isOpen, 
+        bool canBorrow, 
+        address borrowToken, 
+        address goblin,
+        uint256 minDebt, 
+        uint256 openFactor, 
+        uint256 liquidateFactor
+    ) 
+        external 
+        onlyOwner 
+    {
 
         if(pid == 0){
             pid = currentPid;
@@ -1034,8 +1046,6 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         production.isOpen = isOpen;
         production.canBorrow = canBorrow;
         // 地址一旦设置, 就不要再改, 可以添加新币对!
-        production.coinToken = coinToken;
-        production.currencyToken = currencyToken;
         production.borrowToken = borrowToken;
         production.goblin = goblin;
 
@@ -1063,7 +1073,11 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         }
     }
 
-    function withdrawReserve(address token, address to, uint256 value) external onlyOwner nonReentrant {
+    function withdrawReserve(address token, address to, uint256 value) 
+        external 
+        onlyOwner 
+        nonReentrant 
+    {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
 
