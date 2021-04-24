@@ -1,0 +1,38 @@
+{
+  "name": "ofy-contracts",
+  "version": "1.0.0",
+  "description": "Smart Contract of Pilot finance lab",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "migratebsc": "truffle migrate --network bsctest",
+    "bankinit": "truffle exec ./scripts/bank_init.js",
+    "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
+    "console": "truffle console",
+    "consolebsc": "truffle console --network bsctest",
+    "test": "truffle test",
+    "testbsc": "truffle test --network bsctest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/P-TD/contract.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/P-TD/contract/issues"
+  },
+  "homepage": "https://github.com/P-TD/contract#readme",
+  "dependencies": {
+    "@truffle/hdwallet-provider": "^1.2.6",
+    "bignumber.js": "^9.0.1",
+    "bn.js": "^5.2.0",
+    "dotenv": "^8.2.0",
+    "install": "^0.13.0",
+    "npm": "^7.10.0"
+  }
+}
