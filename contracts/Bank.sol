@@ -1,3 +1,4 @@
+// Bank: 0xD42Ef222d33E3cB771DdA783f48885e15c9D5CeD
 // File: openzeppelin-solidity-2.3.0/contracts/utils/ReentrancyGuard.sol
 
 pragma solidity ^0.5.0;
@@ -644,7 +645,7 @@ interface InterestModel {
     function getInterestRate(uint256 debt, uint256 floating) external view returns (uint256);
 }
 
-contract TripleSlopeModel {
+contract TripleSlopeModel is InterestModel {
     using SafeMath for uint256;
 
     function getInterestRate(uint256 debt, uint256 floating) external pure returns (uint256) {
@@ -758,8 +759,8 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         bool canBorrow;
         address goblin;
         uint256 minDebt;
-        uint256 openFactor;
-        uint256 liquidateFactor;
+        uint256 openFactor;         // When open: leftAmount * openFactor/10000 should > debt
+        uint256 liquidateFactor;    // When liquidate: leftAmount * liquidateFactor/10000 should < debt
     }
 
     struct Position {
@@ -785,7 +786,8 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
 
     constructor() public {}
 
-    // read
+    /* ========== Read ========== */
+
     function positionInfo(uint256 posId) public view returns (uint256, uint256, uint256, address) {
         Position storage pos = positions[posId];
         Production storage prod = productions[pos.productionId];
@@ -820,8 +822,8 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         return debtVal.mul(bank.totalDebtShare).div(bank.totalDebt);
     }
 
+    /* ========== Write ========== */
 
-    /// write
     function deposit(address token, uint256 amount) public nonReentrant {
         TokenBank storage bank = banks[token];
         require(bank.isOpen && bank.canDeposit, 'Token not exist or cannot deposit');
@@ -960,6 +962,8 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         emit Liquidate(posId, msg.sender, prize, left);
     }
 
+    /* ========== Internal ========== */
+
     function _addDebt(Position storage pos, Production storage production, uint256 debtVal) internal {
         if (debtVal == 0) {
             return;
@@ -991,6 +995,27 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
             return 0;
         }
     }
+
+    function calInterest(address token) public {
+        TokenBank storage bank = banks[token];
+        require(bank.isOpen, 'token not exists');
+
+        if (now > bank.lastInterestTime) {
+            uint256 timePast = now.sub(bank.lastInterestTime);
+            uint256 totalDebt = bank.totalDebt;
+            uint256 totalBalance = totalToken(token);
+
+            uint256 ratePerSec = config.getInterestRate(totalDebt, totalBalance);
+            uint256 interest = ratePerSec.mul(timePast).mul(totalDebt).div(1e18);
+
+            uint256 toReserve = interest.mul(config.getReserveBps()).div(10000);
+            bank.totalReserve = bank.totalReserve.add(toReserve);
+            bank.totalDebt = bank.totalDebt.add(interest);
+            bank.lastInterestTime = now;
+        }
+    }
+
+    /* ========== Only owner ========== */
 
     function updateConfig(IBankConfig _config) external onlyOwner {
         config = _config;
@@ -1034,7 +1059,6 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         external 
         onlyOwner 
     {
-
         if(pid == 0){
             pid = currentPid;
             currentPid ++;
@@ -1052,25 +1076,6 @@ contract Bank is PTokenFactory, Ownable, ReentrancyGuard {
         production.minDebt = minDebt;
         production.openFactor = openFactor;
         production.liquidateFactor = liquidateFactor;
-    }
-
-    function calInterest(address token) public {
-        TokenBank storage bank = banks[token];
-        require(bank.isOpen, 'token not exists');
-
-        if (now > bank.lastInterestTime) {
-            uint256 timePast = now.sub(bank.lastInterestTime);
-            uint256 totalDebt = bank.totalDebt;
-            uint256 totalBalance = totalToken(token);
-
-            uint256 ratePerSec = config.getInterestRate(totalDebt, totalBalance);
-            uint256 interest = ratePerSec.mul(timePast).mul(totalDebt).div(1e18);
-
-            uint256 toReserve = interest.mul(config.getReserveBps()).div(10000);
-            bank.totalReserve = bank.totalReserve.add(toReserve);
-            bank.totalDebt = bank.totalDebt.add(interest);
-            bank.lastInterestTime = now;
-        }
     }
 
     function withdrawReserve(address token, address to, uint256 value) 

@@ -615,12 +615,6 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
         }
     }
 
-    function burn(uint256 amount) external onlyRewardsDistribution {
-        leftRewardTimes = 0;
-        rewardsNext = 0;
-        rewardsToken.burn(address(this), amount);
-    }
-
     /* ========== MODIFIERS ========== */
 
     modifier updateReward(address account) {
@@ -653,6 +647,12 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
+
+    function burn(uint256 amount) external onlyRewardsDistribution {
+        leftRewardTimes = 0;
+        rewardsNext = 0;
+        rewardsToken.burn(address(this), amount);
+    }
 
     function notifyRewardAmount(uint256 reward) external onlyRewardsDistribution updateReward(address(0)) {
         require(rewardsed == 0, "reward already inited");
