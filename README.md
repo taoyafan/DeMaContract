@@ -1,2 +1,2 @@
 # contract
-Smart Contract of Pilot finance lab
+Smart Contract of ofy-one
