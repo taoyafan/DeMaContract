@@ -1,7 +1,7 @@
-// StakingRewards: HT: 0x15F342232657208a17d09C99Bb7A758165145D7B
-// StakingRewardsFactory: 0x2b5Fa4d7BDDE20227Fb5094973DbC67962D226C7
+// LpStakingRewards: 0xFe11eaBe3eF9255c9c894cd2aE74D88E44bFC166
+// LpStakingRewardsFactory: 0x79c6d0502c4fc203301bee4136d9e32e3460c38c
 
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP. Does not include
@@ -66,7 +66,7 @@ interface IERC20 {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 
     function burn(address account, uint256 amount) external;
-
+    
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).
@@ -491,9 +491,9 @@ interface IStakingRewards {
 
     // Mutative
 
-    function stake(uint256 amount) external;
+    function stake(uint256 amount, address user) external;
 
-    function withdraw(uint256 amount) external;
+    function withdraw(uint256 amount, address user) external;
 
     function getReward() external;
 }
@@ -509,7 +509,13 @@ contract RewardsDistributionRecipient {
     }
 }
 
-contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, ReentrancyGuard {
+interface IHecoPool {
+    function deposit(uint256 pid, uint256 amount) external;
+
+    function withdraw(uint256 pid, uint256 amount) external;
+}
+
+contract LpStakingRewards is IStakingRewards, RewardsDistributionRecipient, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -520,7 +526,7 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
     uint256 public startTime = 0;
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
-    uint256 public rewardsDuration = 7 days;
+    uint256 public rewardsDuration;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
     uint256 public rewardsPaid = 0;
@@ -532,10 +538,11 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
 
-    // Different with LP staking rewards
-    uint256 public totalRewards = 0;
-    uint256 private rewardsNext = 0;
-    uint256 private leftRewardTimes = 12;
+    // Different with staking rewards
+    address public operator;
+    int public poolId;
+    IHecoPool public pool;
+    IERC20 public earnToken;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -543,14 +550,19 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
         address _rewardsDistribution,
         address _rewardsToken,
         address _stakingToken,
-        uint256 _rewardAmount,
-        uint256 _startTime
+        address _pool,
+        int _poolId,
+        address _earnToken,
+        uint256 _period
     ) public {
+        operator = address(0);
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
         rewardsDistribution = _rewardsDistribution;
-        totalRewards = _rewardAmount;
-        startTime = _startTime;
+        pool = IHecoPool(_pool);
+        poolId = _poolId;
+        earnToken = IERC20(_earnToken);
+        rewardsDuration = _period;
     }
 
     /* ========== VIEWS ========== */
@@ -587,34 +599,53 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stake(uint256 amount) external nonReentrant updateReward(msg.sender) checkhalve checkStart {
+    function stake(uint256 amount, address user) external nonReentrant updateReward(user) checkStart checkOperator(user, msg.sender) {
         require(amount > 0, "Cannot stake 0");
+        require(user != address(0), "user cannot be 0");
+        address from = operator != address(0) ? operator : user;
         _totalSupply = _totalSupply.add(amount);
-        _balances[msg.sender] = _balances[msg.sender].add(amount);
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount);
+        _balances[user] = _balances[user].add(amount);
+        stakingToken.safeTransferFrom(from, address(this), amount);
+        if (address(pool) != address(0) && poolId >= 0) {
+            stakingToken.safeApprove(address(pool), 0);
+            stakingToken.safeApprove(address(pool), uint256(-1));
+            pool.deposit(uint256(poolId), amount);
+            emit StakedHecoPool(from, amount);
+        }
+        emit Staked(from, amount);
     }
 
-    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) checkhalve checkStart {
+    function withdraw(uint256 amount, address user) public nonReentrant updateReward(user) checkStart checkOperator(user, msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
-        require(_balances[msg.sender] >= amount, "not enough");
+        require(user != address(0), "user cannot be 0");
+        require(_balances[user] >= amount, "not enough");
 
+        address to = operator != address(0) ? operator : user;
+        if (address(pool) != address(0) && poolId >= 0) {
+            // withdraw lp token back
+            pool.withdraw(uint256(poolId), amount);
+            emit WithdrawnHecoPool(to, amount);
+        }
         _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = _balances[msg.sender].sub(amount);
-        stakingToken.safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount);
+        _balances[user] = _balances[user].sub(amount);
+        stakingToken.safeTransfer(to, amount);
+        emit Withdrawn(to, amount);
     }
 
-    function getReward() public nonReentrant updateReward(msg.sender) checkhalve checkStart {
+    function getReward() public nonReentrant updateReward(msg.sender) checkStart {
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            rewardsToken.safeTransfer(msg.sender, reward);
             rewardsPaid = rewardsPaid.add(reward);
+            rewardsToken.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
 
+    function burn(uint256 amount) external onlyRewardsDistribution {
+        rewardsToken.burn(address(this), amount);
+    }
+    
     /* ========== MODIFIERS ========== */
 
     modifier updateReward(address account) {
@@ -627,49 +658,63 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
         _;
     }
 
-    modifier checkhalve(){
-        if (block.timestamp >= periodFinish && leftRewardTimes > 0) {
-            leftRewardTimes = leftRewardTimes.sub(1);
-            uint256 reward = leftRewardTimes == 0 ? totalRewards.sub(rewardsed) : rewardsNext;
-            rewardsToken.mint(address(this), reward);
-            rewardsed = rewardsed.add(reward);
-            rewardRate = reward.div(rewardsDuration);
-            periodFinish = block.timestamp.add(rewardsDuration);
-            rewardsNext = leftRewardTimes > 0 ? rewardsNext.mul(70).div(100) : 0;
-            emit RewardAdded(reward);
-        }
+    modifier checkStart(){
+        require(block.timestamp > startTime && startTime != 0,"not start");
         _;
     }
 
-    modifier checkStart(){
-        require(block.timestamp > startTime,"not start");
+    modifier checkOperator(address user, address sender) {
+        require((operator == address(0) && user == sender) || (operator != address(0) && operator == sender));
         _;
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
-    function burn(uint256 amount) external onlyRewardsDistribution {
-        leftRewardTimes = 0;
-        rewardsNext = 0;
-        rewardsToken.burn(address(this), amount);
-    }
-
     function notifyRewardAmount(uint256 reward) external onlyRewardsDistribution updateReward(address(0)) {
-        require(rewardsed == 0, "reward already inited");
-        if (block.timestamp >= periodFinish) {
-            rewardRate = reward.div(rewardsDuration);
-        } else {
-            uint256 remaining = periodFinish.sub(block.timestamp);
-            uint256 leftover = remaining.mul(rewardRate);
-            rewardRate = reward.add(leftover).div(rewardsDuration);
-        }
-        rewardsToken.mint(address(this), reward);
-        rewardsed = reward;
-        rewardsNext = rewardsed.mul(70).div(100);
-        leftRewardTimes = leftRewardTimes.sub(1);
+        require(block.timestamp >= periodFinish, "time isn't up");
+        rewardRate = reward.div(rewardsDuration);
+        rewardsToken.mint(address(this),reward);
+        rewardsed = rewardsed.add(reward);
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp.add(rewardsDuration);
         emit RewardAdded(reward);
+    }
+
+    function setOperator(address _operator) external onlyRewardsDistribution {
+        operator = _operator;
+    }
+
+    function setStartTime(uint _startTime) external onlyRewardsDistribution {
+        require(startTime == 0, 'setted');
+        startTime = _startTime;
+    }
+
+    function setPool(address _pool) external onlyRewardsDistribution {
+        require(_pool != address(0) && address(pool) == address(0), 'pool can not be update');
+        pool = IHecoPool(_pool);
+        if (poolId >= 0) {
+            stakingToken.safeApprove(address(pool), 0);
+            stakingToken.safeApprove(address(pool), uint256(-1));
+            pool.deposit(uint256(poolId), _totalSupply);
+            emit StakedHecoPool(address(this), _totalSupply);
+        }
+    }
+
+    function setPoolId(int _poolId) external onlyRewardsDistribution {
+        require(_poolId >= 0 && poolId < 0, 'pool id can not be update');
+        poolId = _poolId;
+        if (address(pool) != address(0)) {
+            stakingToken.safeApprove(address(pool), 0);
+            stakingToken.safeApprove(address(pool), uint256(-1));
+            pool.deposit(uint256(poolId), _totalSupply);
+            emit StakedHecoPool(address(this), _totalSupply);
+        }
+    }
+
+    function claim(address to) external onlyRewardsDistribution {
+        uint256 amount = earnToken.balanceOf(address(this));
+        earnToken.transfer(to, amount);
+        emit Claim(to, amount);
     }
 
     /* ========== EVENTS ========== */
@@ -678,10 +723,12 @@ contract StakingRewards is IStakingRewards, RewardsDistributionRecipient, Reentr
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
-    event Burn(uint256 amount);
+    event StakedHecoPool(address indexed user, uint256 amount);
+    event WithdrawnHecoPool(address indexed user, uint256 amount);
+    event Claim(address indexed to, uint256 amount);
 }
 
-contract StakingRewardsFactory is Ownable {
+contract LpStakingRewardsFactory is Ownable {
     // immutables
     address public rewardsToken;
 
@@ -689,13 +736,13 @@ contract StakingRewardsFactory is Ownable {
     address[] public stakingTokens;
 
     // info about rewards for a particular staking token
-    struct StakingRewardsInfo {
-        address stakingRewards;
+    struct LpStakingRewardsInfo {
+        address lpStakingRewards;
         uint rewardAmount;
     }
 
     // rewards info by staking token
-    mapping(address => StakingRewardsInfo) public stakingRewardsInfoByStakingToken;
+    mapping(address => LpStakingRewardsInfo) public lpStakingRewardsInfoByStakingToken;
 
     constructor(
         address _rewardsToken
@@ -706,29 +753,56 @@ contract StakingRewardsFactory is Ownable {
     ///// permissioned functions
 
     // deploy a staking reward contract for the staking token, and store the total reward amount
-    function deploy(address stakingToken, uint rewardAmount, uint256 startTime) public onlyOwner {
-        StakingRewardsInfo storage info = stakingRewardsInfoByStakingToken[stakingToken];
-        require(info.stakingRewards == address(0), 'StakingRewardsFactory::deploy: already deployed');
-        info.stakingRewards = address(new StakingRewards(/*_rewardsDistribution=*/ address(this),
-            rewardsToken, stakingToken, rewardAmount, startTime));
+    // hecoPoolId: set -1 if not stake lpToken to Heco
+    function deploy(address stakingToken, address pool, int poolId, address earnToken, uint period) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards == address(0), 'LpStakingRewardsFactory::deploy: already deployed');
+        info.lpStakingRewards = address(new LpStakingRewards(/*_rewardsDistribution=*/ address(this), rewardsToken, stakingToken, pool, poolId, earnToken, period));
         stakingTokens.push(stakingToken);
     }
 
     // notify initial reward amount for an individual staking token.
     function notifyRewardAmount(address stakingToken, uint256 rewardAmount) public onlyOwner {
         require(rewardAmount > 0, 'amount should > 0');
-        StakingRewardsInfo storage info = stakingRewardsInfoByStakingToken[stakingToken];
-        require(info.stakingRewards != address(0), 'StakingRewardsFactory::notifyRewardAmount: not deployed');
-        if (info.rewardAmount <= 0) {
-            info.rewardAmount = rewardAmount;
-            StakingRewards(info.stakingRewards).notifyRewardAmount(rewardAmount);
-        }
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::notifyRewardAmount: not deployed');
+        info.rewardAmount = rewardAmount;
+        LpStakingRewards(info.lpStakingRewards).notifyRewardAmount(rewardAmount);
+    }
+
+    function setOperator(address stakingToken, address operator) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::setOperator: not deployed');
+        LpStakingRewards(info.lpStakingRewards).setOperator(operator);
+    }
+
+    function setPool(address stakingToken, address pool) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::setOperator: not deployed');
+        LpStakingRewards(info.lpStakingRewards).setPool(pool);
+    }
+
+    function setPoolId(address stakingToken, int poolId) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::setOperator: not deployed');
+        LpStakingRewards(info.lpStakingRewards).setPoolId(poolId);
+    }
+
+    function setStartTime(address stakingToken, uint startTime) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::setOperator: not deployed');
+        LpStakingRewards(info.lpStakingRewards).setStartTime(startTime);
+    }
+
+    function claim(address stakingToken, address to) public onlyOwner {
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::claim: not deployed');
+        LpStakingRewards(info.lpStakingRewards).claim(to);
     }
 
     function burn(address stakingToken, uint256 amount) public onlyOwner {
-        StakingRewardsInfo storage info = stakingRewardsInfoByStakingToken[stakingToken];
-        require(info.stakingRewards != address(0), 'StakingRewardsFactory::burn: not deployed');
-        StakingRewards(info.stakingRewards).burn(amount);
+        LpStakingRewardsInfo storage info = lpStakingRewardsInfoByStakingToken[stakingToken];
+        require(info.lpStakingRewards != address(0), 'LpStakingRewardsFactory::burn: not deployed');
+        LpStakingRewards(info.lpStakingRewards).burn(amount);
     }
-
 }
