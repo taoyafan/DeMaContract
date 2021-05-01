@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/P-TD/contract#readme",
   "dependencies": {
+    "@openzeppelin/contracts": "^3.3.0",
     "@truffle/hdwallet-provider": "^1.2.6",
     "bignumber.js": "^9.0.1",
     "bn.js": "^5.2.0",
