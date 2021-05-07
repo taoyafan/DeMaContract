@@ -788,6 +788,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, Goblin {
             borrowToken.safeApprove(address(strategy), uint256(-1));
         }
 
+        // strategy will send back all token and LP.
         Strategy(strategy).execute.value(msg.value)(user, borrowToken, borrow, debt, ext);
 
         // 3. Add LP tokens back to the farming pool.
