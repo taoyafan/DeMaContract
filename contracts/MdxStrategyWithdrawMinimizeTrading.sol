@@ -285,11 +285,11 @@ interface Strategy {
 
 }
 
-// File: contracts/interfaces/IWHT.sol
+// File: contracts/interfaces/IWBNB.sol
 
 pragma solidity ^0.5.16;
 
-interface IWHT {
+interface IWBNB {
     function balanceOf(address user) external returns (uint);
 
     function approve(address to, uint value) external returns (bool);
@@ -385,7 +385,7 @@ pragma solidity ^0.5.16;
 interface IMdexRouter {
     function factory() external pure returns (address);
 
-    function WHT() external pure returns (address);
+    function WBNB() external pure returns (address);
 
     function swapMining() external pure returns (address);
 
@@ -607,14 +607,14 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, Strateg
 
     IMdexFactory public factory;
     IMdexRouter public router;
-    address public wht;
+    address public wBNB;
 
     /// @dev Create a new withdraw minimize trading strategy instance for mdx.
     /// @param _router The mdx router smart contract.
     constructor(IMdexRouter _router) public {
         factory = IMdexFactory(_router.factory());
         router = _router;
-        wht = _router.WHT();
+        wBNB = _router.WBNB();
     }
 
     /// @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
@@ -628,22 +628,28 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, Strateg
         nonReentrant
     {
         // 1. Find out lpToken and liquidity.
-        // whichWantBack: 0:token0;1:token1;2:token what surplus.
-        (address token0, address token1, uint whichWantBack) = abi.decode(data, (address, address, uint));
+        // rate will divide 10000. 10000 means all token will be withdrawn.
+        // whichWantBack: 
+        // 0: token0;
+        // 1: token1;
+        // 2: token what surplus; 
+        // 3: don't back(all repay);
+        (address token0, address token1, uint256 rate, uint256 whichWantBack) = 
+            abi.decode(data, (address, address, uint256, uint256));
 
-        // is borrowToken is ht.
-        bool isBorrowHt = borrowToken == address(0);
-        require(borrowToken == token0 || borrowToken == token1 || isBorrowHt, "borrowToken not token0 and token1");
-        // the relative token when token0 or token1 is ht.
-        address htRelative = address(0);
+        // is borrowToken is BNB.
+        bool isBorrowBNB = borrowToken == address(0);
+        require(borrowToken == token0 || borrowToken == token1 || isBorrowBNB, "borrowToken not token0 and token1");
+        // the relative token when token0 or token1 is BNB.
+        address BNBRelative = address(0);
         {
             if (token0 == address(0)){
-                token0 = wht;
-                htRelative = token1;
+                token0 = wBNB;
+                BNBRelative = token1;
             }
             if (token1 == address(0)){
-                token1 = wht;
-                htRelative = token0;
+                token1 = wBNB;
+                BNBRelative = token0;
             }
         }
         address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
@@ -662,8 +668,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, Strateg
 
             swapIfNeed(borrowToken, tokenRelative, debt);
 
-            if (isBorrowHt) {
-                IWHT(wht).withdraw(debt);
+            if (isBorrowBNB) {
+                IWBNB(wBNB).withdraw(debt);
                 SafeToken.safeTransferETH(msg.sender, debt);
             } else {
                 SafeToken.safeTransfer(borrowToken, msg.sender, debt);
@@ -686,17 +692,18 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, Strateg
         }
 
         // 3. send all tokens back.
-        if (htRelative == address(0)) {
+        if (BNBRelative == address(0)) {
             token0.safeTransfer(user, token0.myBalance());
             token1.safeTransfer(user, token1.myBalance());
         } else {
-            safeUnWrapperAndAllSend(wht, user);
-            safeUnWrapperAndAllSend(htRelative, user);
+            safeUnWrapperAndAllSend(wBNB, user);
+            safeUnWrapperAndAllSend(BNBRelative, user);
         }
     }
 
-    /// swap if need.
-    function swapIfNeed(address borrowToken, address tokenRelative, uint256 debt) internal {
+    // swap if need.
+    // tokenRelative must left at least leftMin amount.
+    function swapIfNeed(address borrowToken, address tokenRelative, uint256 debt, uint256 leftMin) internal {
         uint256 borrowTokenAmount = borrowToken.myBalance();
         if (debt > borrowTokenAmount) {
             tokenRelative.safeApprove(address(router), 0);
@@ -706,16 +713,18 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, Strateg
             address[] memory path = new address[](2);
             path[0] = tokenRelative;
             path[1] = borrowToken;
+            // If there are not enough token, it will raise error. This position could only be liquidate.
             router.swapTokensForExactTokens(remainingDebt, tokenRelative.myBalance(), path, address(this), now);
+            require(tokenRelative.myBalance() >= leftMin);
         }
     }
 
-    /// get token balance, if is WHT un wrapper to HT and send to 'to'
+    /// get token balance, if is WBNB un wrapper to BNB and send to 'to'
     function safeUnWrapperAndAllSend(address token, address to) internal {
         uint256 total = SafeToken.myBalance(token);
         if (total > 0) {
-            if (token == wht) {
-                IWHT(wht).withdraw(total);
+            if (token == wBNB) {
+                IWBNB(wBNB).withdraw(total);
                 SafeToken.safeTransferETH(to, total);
             } else {
                 SafeToken.safeTransfer(token, to, total);
