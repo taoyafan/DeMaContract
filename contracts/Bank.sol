@@ -51,7 +51,7 @@ library SafeToken {
     }
 
     function safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call.value(value)(new bytes(0));
+        (bool success, ) = to.call{value: value}(new bytes(0));
         require(success, "!safeTransferETH");
     }
 }
@@ -60,8 +60,8 @@ contract Bank is Ownable, ReentrancyGuard {
     using SafeToken for address;
     using SafeMath for uint256;
 
-    event OpPosition(uint256 indexed id, uint256 debt, uint back);
-    event Liquidate(uint256 indexed id, address indexed killer, uint256 prize, uint256 left);
+    event OpPosition(uint256 indexed id, uint256[2] debt, uint[2] back);
+    event Liquidate(uint256 indexed id, address indexed killer, uint256[2] prize, uint256[2] left);
 
     struct TokenBank {
         address tokenAddr;
@@ -85,8 +85,8 @@ contract Bank is Ownable, ReentrancyGuard {
         
         IGoblin goblin;
         uint256[2] minDebt;
-        uint256 openFactor;         // When open: leftAmount * openFactor/10000 should > debt
-        uint256 liquidateFactor;    // When liquidate: leftAmount * liquidateFactor/10000 should < debt
+        uint256 openFactor;         // When open: (debt / total) should < (openFactor / 10000)
+        uint256 liquidateFactor;    // When liquidate: (debt / total) should > (liquidateFactor / 10000)
     }
 
     struct Position {
@@ -95,6 +95,16 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256[2] debtShare;
     }
 
+    // Used in opProduction
+    struct WorkAmount {
+        uint256 sendBSC;
+        uint256[2] beforeToken;      // How many token in the pool after borrow before goblin work
+        uint256[2] debt;
+        bool[2] isBorrowBSC;
+        uint256[2] backToken;
+        bool borrowed;
+    }
+    
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -132,12 +142,19 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ==================================== Read ==================================== */
 
-    function positionInfo(uint256 posId) public view returns (uint256, uint256, uint256, address) {
+    function positionInfo(uint256 posId) 
+        public 
+        view 
+        returns (uint256, uint256[2] memory, uint256[2] memory, address) 
+    {
         Position storage pos = positions[posId];
         Production storage prod = productions[pos.productionId];
 
-        return (pos.productionId, prod.goblin.health(posId, prod.borrowToken),
-            debtShareToVal(prod.borrowToken, pos.debtShare), pos.owner);
+        uint256 debt0 = debtShareToVal(prod.borrowToken[0], pos.debtShare[0]);
+        uint256 debt1 = debtShareToVal(prod.borrowToken[1], pos.debtShare[1]);
+
+        return (pos.productionId, prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
+            [debt0, debt1], pos.owner);
     }
 
     function totalToken(address token) public view returns (uint256) {
@@ -200,7 +217,7 @@ contract Bank is Ownable, ReentrancyGuard {
         require(userInfo[msg.sender].inviter == address(0), "Inviter already exists");
         
         userInfo[msg.sender].inviter = inviterAccount;                                  // Add inviter
-        EnumerableSet.AddressSet.add(userInfo[inviterAccount].invitees, msg.sender);    // Add invitees for inviter
+        EnumerableSet.add(userInfo[inviterAccount].invitees, msg.sender);    // Add invitees for inviter
     }
 
     function deposit(address token, uint256 amount) public nonReentrant {
@@ -252,25 +269,27 @@ contract Bank is Ownable, ReentrancyGuard {
         }
     }
 
-    ///@dev Create position: 
-    // opPosition(0, productionId, [borrow0, borrow1], 
-    //     [addLpStrategyAddress, _token0, _token1, token0Amount, token1Amount, _minLPAmount] )
-    // @note: if token is BSC, token address should be address(0);
-
-    ///@dev Replenishment:
-    // opPosition(posId, productionId, [0, 0], 
-    //     [addLpStrategyAddress, _token0, _token1, token0Amount, token1Amount, _minLPAmount] )
-
-    ///@dev Withdraw:
-    // opPosition(posId, productionId, [0, 0], [withdrawStrategyAddress, token0, token1, rate, whichWantBack] )
-    // @note: rate means how many LP will be removed liquidity. max rate is 10000 means 100%.
-    //        The amount of repaid debt is the same rate of total debt.
-    //        whichWantBack = 0(token0), 1(token1), 2(token what surplus).
-
-    ///@dev Repay:
-    // opPosition(posId, productionId, [0, 0], [withdrawStrategyAddress, token0, token1, rate, 3] )
-    // @note: rate means how many LP will be removed liquidity. max rate is 10000 means 100%.
-    //        All withdrawn LP will used to repay debt.
+    /**
+     * @dev Create position: 
+     * opPosition(0, productionId, [borrow0, borrow1], 
+     *     [addLpStrategyAddress, _token0, _token1, token0Amount, token1Amount, _minLPAmount] )
+     * note: if token is BSC, token address should be address(0);
+     * 
+     * @dev Replenishment:
+     * opPosition(posId, productionId, [0, 0], 
+     *     [addLpStrategyAddress, _token0, _token1, token0Amount, token1Amount, _minLPAmount] )
+     * 
+     * @dev Withdraw:
+     * opPosition(posId, productionId, [0, 0], [withdrawStrategyAddress, token0, token1, rate, whichWantBack] )
+     * note: rate means how many LP will be removed liquidity. max rate is 10000 means 100%.
+     *        The amount of repaid debt is the same rate of total debt.
+     *        whichWantBack = 0(token0), 1(token1), 2(token what surplus).
+     * 
+     * @dev Repay:
+     * opPosition(posId, productionId, [0, 0], [withdrawStrategyAddress, token0, token1, rate, 3] )
+     * note: rate means how many LP will be removed liquidity. max rate is 10000 means 100%.
+     *       All withdrawn LP will used to repay debt.
+     */
     function opPosition(uint256 posId, uint256 pid, uint256[2] calldata borrow, bytes calldata data)
         external 
         payable 
@@ -284,7 +303,7 @@ contract Bank is Ownable, ReentrancyGuard {
             positions[posId].owner = msg.sender;
             positions[posId].productionId = pid;
 
-            EnumerableSet.UintSet.add(userInfo[msg.sender], posId);
+            EnumerableSet.add(userInfo[msg.sender].posId, posId);
         } else {
             require(posId < currentPos, "bad position id");
             require(positions[posId].owner == msg.sender, "not position owner");
@@ -293,6 +312,8 @@ contract Bank is Ownable, ReentrancyGuard {
         }
 
         Production storage production = productions[pid];
+        UserInfo storage user = userInfo[msg.sender];
+
         require(production.isOpen, 'Production not exists');
 
         require((borrow[0] == 0 || production.canBorrow[0]) && 
@@ -301,103 +322,139 @@ contract Bank is Ownable, ReentrancyGuard {
         _calInterest(production.borrowToken[0]);
         _calInterest(production.borrowToken[1]);
 
-        uint256 sendBSC = msg.value;
-        uint256[2] memory beforeToken;      // How many token in the pool after borrow before goblin work
-        uint256[2] memory debt = _removeDebt(positions[posId], production);
-        bool[2] memory isBorrowBSC;
+        WorkAmount memory amount;
+        amount.sendBSC = msg.value;
+        amount.debt = _removeDebt(positions[posId], production);
+        uint256 i;
 
-        for (uint256 i = 0; i < 2; ++i) {
-            debt[i] = debt[i].add(borrow[i]);  
-            isBorrowBSC[i] = production.borrowToken[i] == address(0);
+        for (i = 0; i < 2; ++i) {
+            amount.debt[i] = amount.debt[i].add(borrow[i]);  
+            amount.isBorrowBSC[i] = production.borrowToken[i] == address(0);
 
             // Save the amount of borrow token after borrowing before goblin work.
-            if (isBorrowBSC) {
-                sendBSC = sendBSC.add(borrow[i]);
-                require(sendBSC <= address(this).balance && debt <= banks[production.borrowToken[i]].totalVal,
+            if (amount.isBorrowBSC[i]) {
+                amount.sendBSC = amount.sendBSC.add(borrow[i]);
+                require(amount.sendBSC <= address(this).balance && amount.debt[i] <= banks[production.borrowToken[i]].totalVal,
                     "insufficient BSC in the bank");
-                beforeToken[i] = address(this).balance.sub(sendBSC);
+                amount.beforeToken[i] = address(this).balance.sub(amount.sendBSC);
 
             } else {
-                beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
-                require(borrow[i] <= beforeToken[i] && debt <= banks[production.borrowToken].totalVal,
+                amount.beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
+                require(borrow[i] <= amount.beforeToken[i] && amount.debt[i] <= banks[production.borrowToken[i]].totalVal,
                     "insufficient borrowToken in the bank");
-                beforeToken[i] = beforeToken[i].sub(borrow[i]);
-                SafeToken.safeApprove(production.borrowToken[i], production.goblin, borrow[i]);
+                amount.beforeToken[i] = amount.beforeToken[i].sub(borrow[i]);
+                SafeToken.safeApprove(production.borrowToken[i], address(production.goblin), borrow[i]);
             }
         }
 
-        production.goblin.work.value(sendBSC)(posId, msg.sender, production.borrowToken, borrow, debt, data);
+        production.goblin.work{value: amount.sendBSC}(
+            posId, 
+            msg.sender, 
+            user.inviter, 
+            canInvite, 
+            production.borrowToken, 
+            borrow, 
+            amount.debt, 
+            data
+        );
         
-        uint256[2] memory backToken;
-        bool borrowed = false;
+        amount.borrowed = false;
 
         // Calculate the back token amount
-        for (uint256 i = 0; i < 2; ++i) {
-            backToken[i] = isBorrowBSC? (address(this).balance.sub(beforeToken[i])) :
-                SafeToken.myBalance(production.borrowToken[i]).sub(beforeToken[i]);
+        for (i = 0; i < 2; ++i) {
+            amount.backToken[i] = amount.isBorrowBSC[i] ? (address(this).balance.sub(amount.beforeToken[i])) :
+                SafeToken.myBalance(production.borrowToken[i]).sub(amount.beforeToken[i]);
 
-            if(backToken[i] > debt[i]) { 
+            if(amount.backToken[i] > amount.debt[i]) { 
                 // backToken are much more than debt, so send back backToken-debt.
-                backToken[i] = backToken[i].sub(debt[i]);
-                debt[i] = 0;
+                amount.backToken[i] = amount.backToken[i].sub(amount.debt[i]);
+                amount.debt[i] = 0;
 
-                isBorrowBSC? SafeToken.safeTransferETH(msg.sender, backToken[i]):
-                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, backToken[i]);
+                amount.isBorrowBSC[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
+                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, amount.backToken[i]);
 
-            } else if (debt[i] > backToken[i]) {
+            } else if (amount.debt[i] > amount.backToken[i]) {
                 // There are some borrow token
-                borrowed = true;
-                debt[i] = debt[i].sub(backToken[i]);
-                backToken[i] = 0;
+                amount.borrowed = true;
+                amount.debt[i] = amount.debt[i].sub(amount.backToken[i]);
+                amount.backToken[i] = 0;
 
-                require(debt[i] >= production.minDebt, "too small debt size");
+                require(amount.debt[i] >= production.minDebt[i], "too small debt size");
             }
         }
 
-        if (borrowed) {
+        if (amount.borrowed) {
             // Return the amount of each borrow token can be withdrawn with the given borrow amount rate.
-            uint256[2] memory health = production.goblin.health(posId, production.borrowToken);
+            uint256[2] memory health = production.goblin.health(posId, production.borrowToken, amount.debt);
             
-            require(health[0].mul(production.openFactor) >= debt[0].mul(10000), "bad work factor");
-            require(health[1].mul(production.openFactor) >= debt[1].mul(10000), "bad work factor");
+            require(health[0].mul(production.openFactor) >= amount.debt[0].mul(10000), "bad work factor");
+            require(health[1].mul(production.openFactor) >= amount.debt[1].mul(10000), "bad work factor");
             
-            _addDebt(positions[posId], production, debt);
+            _addDebt(positions[posId], production, amount.debt);
         }
 
-        emit OpPosition(posId, debt[0], debt[1], backToken[0], backToken[1]);
+        emit OpPosition(posId, amount.debt, amount.backToken);
     }
 
     function liquidate(uint256 posId) external payable onlyEOA nonReentrant {
         Position storage pos = positions[posId];
-        require(pos.debtShare > 0, "no debt");
+        UserInfo storage user = userInfo[pos.owner];
+
+        require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debt");
         Production storage production = productions[pos.productionId];
 
-        uint256 debt = _removeDebt(pos, production);
+        uint256[2] memory debt = _removeDebt(pos, production);
 
-        uint256 health = production.goblin.health(posId, production.borrowToken);
-        require(health.mul(production.liquidateFactor) < debt.mul(10000), "can't liquidate");
+        uint256[2] memory health = production.goblin.health(posId, production.borrowToken, debt);
 
-        bool isBSC = production.borrowToken == address(0);
-        uint256 before = isBSC? address(this).balance: SafeToken.myBalance(production.borrowToken);
-
-        production.goblin.liquidate(posId, pos.owner, production.borrowToken);
-
-        uint256 back = isBSC? address(this).balance: SafeToken.myBalance(production.borrowToken);
-        back = back.sub(before);
-
-        uint256 prize = back.mul(config.getLiquidateBps()).div(10000);
-        uint256 rest = back.sub(prize);
-        uint256 left = 0;
-
-        if (prize > 0) {
-            isBSC? SafeToken.safeTransferETH(msg.sender, prize): SafeToken.safeTransfer(production.borrowToken, msg.sender, prize);
+        require((health[0].mul(production.liquidateFactor) < debt[0].mul(10000)) &&
+                (health[1].mul(production.liquidateFactor) < debt[1].mul(10000)), "can't liquidate");
+        
+        bool[2] memory isBSC;
+        uint256[2] memory before;
+        
+        // Save before amount
+        uint256 i;
+        for (i = 0; i < 2; ++i) {
+            isBSC[i] = production.borrowToken[i] == address(0);
+            before[i] = isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
         }
-        if (rest > debt) {
-            left = rest.sub(debt);
-            isBSC? SafeToken.safeTransferETH(pos.owner, left): SafeToken.safeTransfer(production.borrowToken, pos.owner, left);
-        } else {
-            banks[production.borrowToken].totalVal = banks[production.borrowToken].totalVal.sub(debt).add(rest);
+
+        production.goblin.liquidate(posId, pos.owner, user.inviter, production.borrowToken);
+
+        // Check back amount. Send reward to sender, and send rest token back to pos.owner.
+        uint256 back;   // To save memory.
+        uint256 rest;   // To save memory.
+
+        uint256[2] memory prize;
+        uint256[2] memory left;
+
+        for (i = 0; i < 2; ++i) {
+            back = isBSC[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
+            back = back.sub(before[i]);
+
+            prize[i] = back.mul(config.getLiquidateBps()).div(10000);
+            rest = back.sub(prize[i]);
+            left[i] = 0;
+
+            // Send reward to sender
+            if (prize[i] > 0) {
+                isBSC[i] ? 
+                    SafeToken.safeTransferETH(msg.sender, prize[i]) : 
+                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, prize[i]);
+            }
+
+            // Send rest token to pos.owner.
+            if (rest > debt[i]) {
+                left[i] = rest.sub(debt[i]);
+                isBSC[i] ? 
+                    SafeToken.safeTransferETH(pos.owner, left[i]) : 
+                    SafeToken.safeTransfer(production.borrowToken[i], pos.owner, left[i]);
+            } else {
+                banks[production.borrowToken[i]].totalVal = banks[production.borrowToken[i]].totalVal.sub(debt[i]).add(rest);
+            }
         }
+
         emit Liquidate(posId, msg.sender, prize, left);
     }
 
@@ -412,7 +469,7 @@ contract Bank is Ownable, ReentrancyGuard {
             TokenBank storage bank = banks[production.borrowToken[i]];
 
             uint256 debtShare = debtValToShare(production.borrowToken[i], debtVal[i]);
-            pos.debtShare = pos.debtShare.add(debtShare);
+            pos.debtShare[i] = pos.debtShare[i].add(debtShare);
 
             bank.totalVal = bank.totalVal.sub(debtVal[i]);
             bank.totalDebtShares = bank.totalDebtShares.add(debtShare);
@@ -432,9 +489,9 @@ contract Bank is Ownable, ReentrancyGuard {
                 debtVal[i] = debtShareToVal(production.borrowToken[i], debtShare);
                 pos.debtShare[i] = 0;
 
-                bank.totalVal = bank.totalVal.add(debtVal);
+                bank.totalVal = bank.totalVal.add(debtVal[i]);
                 bank.totalDebtShares = bank.totalDebtShares.sub(debtShare);
-                bank.totalDebt = bank.totalDebt.sub(debtVal);
+                bank.totalDebt = bank.totalDebt.sub(debtVal[i]);
             } else {
                 debtVal[i] = 0;
             }
@@ -443,7 +500,7 @@ contract Bank is Ownable, ReentrancyGuard {
         return debtVal;
     }
 
-    function _calInterest(address token) public {
+    function _calInterest(address token) internal {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
 
@@ -472,7 +529,7 @@ contract Bank is Ownable, ReentrancyGuard {
         config = _config;
     }
 
-    function addToken(address token, address poolId) external onlyOwner {
+    function addToken(address token, uint256 poolId) external onlyOwner {
         TokenBank storage bank = banks[token];
         require(!bank.isOpen, 'token already exists');
 
@@ -526,7 +583,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         // Don't change it once set it. We can add new production.
         production.borrowToken = borrowToken;
-        production.goblin = goblin;
+        production.goblin = IGoblin(goblin);
 
         production.minDebt = minDebt;
         production.openFactor = openFactor;
