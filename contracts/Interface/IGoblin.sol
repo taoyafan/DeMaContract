@@ -20,8 +20,12 @@ interface IGoblin {
         uint256 id, 
         address[2] calldata borrowToken, 
         uint256[2] calldata amount
-    ) external view returns (uint256);
+    ) external view returns (uint256[2] memory);
 
     /// @dev Liquidate the given position to token need. Send all borrow token back to Bank.
-    function liquidate(uint256 id, address user, address inviter, address[2] calldata borrowToken) external;
+    function liquidate(
+        uint256 id, 
+        address user, 
+        address inviter, 
+        address[2] calldata borrowToken) external;
 }
