@@ -144,7 +144,7 @@ contract StakingRewards is IStakingRewards, Ownable, ReentrancyGuard {
         return EnumerableSet.at(userStakedPools[account], index);
     }
 
-    // Safe Token transfer function, just in case if rounding error causes pool to not have enough MDXs.
+    // Safe Token transfer function, just in case if rounding error causes pool to not have enough token.
     function _safeRewardsTransfer(address _to, uint256 _amount) internal {
         uint256 rewardsBal = OFY.balanceOf(address(this));
         if (_amount > rewardsBal) {
