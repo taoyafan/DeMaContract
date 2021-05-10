@@ -1,60 +1,16 @@
 // Bank: 0xD42Ef222d33E3cB771DdA783f48885e15c9D5CeD
-// File: openzeppelin-solidity-2.3.0/contracts/utils/ReentrancyGuard.sol
 
 pragma solidity ^0.6.0;
 
-// import "@openzeppelin/contracts/access/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-// import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/IBankConfig.sol";
-import "./Interface/IStakingRewards.sol";
-import "./Interface/IGoblin.sol";
-
-
-interface ERC20Interface {
-    function balanceOf(address user) external view returns (uint256);
-}
-
-library SafeToken {
-    function myBalance(address token) internal view returns (uint256) {
-        return ERC20Interface(token).balanceOf(address(this));
-    }
-
-    function balanceOf(address token, address user) internal view returns (uint256) {
-        return ERC20Interface(token).balanceOf(user);
-    }
-
-    function safeApprove(address token, address to, uint256 value) internal {
-        // bytes4(keccak256(bytes('approve(address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x095ea7b3, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "!safeApprove");
-    }
-
-    function safeTransfer(address token, address to, uint256 value) internal {
-        // bytes4(keccak256(bytes('transfer(address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0xa9059cbb, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "!safeTransfer");
-    }
-
-    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "!safeTransferFrom");
-    }
-
-    function safeTransferETH(address to, uint256 value) internal {
-        (bool success, ) = to.call{value: value}(new bytes(0));
-        require(success, "!safeTransferETH");
-    }
-}
+import "./interface/IBankConfig.sol";
+import "./interface/IStakingRewards.sol";
+import "./interface/IGoblin.sol";
+import "./utils/SafeToken.sol";
 
 contract Bank is Ownable, ReentrancyGuard {
     using SafeToken for address;
@@ -613,8 +569,8 @@ contract Bank is Ownable, ReentrancyGuard {
         }
     }
 
-    fallback() external payable {
-        deposit(address(0), msg.value);
+    fallback() external {
+        require(false, "Error call");
     }
 
     receive() external payable {
