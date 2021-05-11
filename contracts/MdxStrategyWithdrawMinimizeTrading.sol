@@ -75,7 +75,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
                     (borrowTokens[0] == token1 && borrowTokens[1] == token0), "borrowToken not token0 and token1");
         }
 
-        // 2. Find out lpToken and liquidity.
+        // 2. Find out lpToken and remove liquidity with the target rate.
         {
             // Take a note of what user want in case the order of token0 and token1 switched.
             address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
@@ -86,7 +86,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             token1 = lpToken.token1();
 
             lpToken.approve(address(router), uint256(-1));
-            router.removeLiquidity(token0, token1, lpToken.balanceOf(address(this)), 0, 0, address(this), now);
+            router.removeLiquidity(
+                token0, 
+                token1, 
+                rate.mul(lpToken.balanceOf(address(this))).div(10000), 
+                0, 
+                0, 
+                address(this), 
+                now
+            );
         }
 
         // 3. Repay debts.
