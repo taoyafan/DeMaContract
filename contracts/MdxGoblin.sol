@@ -16,6 +16,7 @@ import "./Interface/IMdexFactory.sol";
 import "./Interface/IMdexPair.sol";
 import "./Interface/IGoblin.sol";
 import "./Interface/IStrategy.sol";
+import "./Interface/IBSCPool.sol";
 import "./utils/SafeToken.sol";
 
 
@@ -28,12 +29,15 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     event AddPosition(uint256 indexed id, uint256 lpAmount);
     event RemovePosition(uint256 indexed id, uint256 lpAmount);
     event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount, address debtToken, uint256 liqAmount);
-    event StakedMdxPool(address indexed user, uint256 amount);
-    event WithdrawnMdxPool(address indexed user, uint256 amount);
+    event StakedbscPool(address indexed user, uint256 amount);
+    event WithdrawnbscPool(address indexed user, uint256 amount);
 
     /// @notice Immutable variables
     IStakingRewards public staking;
     uint256 public poolId;
+
+    IBSCPool public bscPool;
+    uint256 public bscPoolId;
 
     IMdexPair public lpToken;
     address public wBNB;
@@ -45,7 +49,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     mapping(uint256 => uint256) public posLPAmount;
     mapping(address => bool) public strategiesOk;
     uint256 public totalLPAmount;
-    Strategy public liqStrategy;
+    IStrategy public liqStrategy;
 
     constructor(
         address _operator,
@@ -54,7 +58,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         IMdexRouter _router,
         address _token0,
         address _token1,
-        Strategy _liqStrategy
+        IStrategy _liqStrategy
     ) public {
         operator = _operator;
         wBNB = _router.WBNB();
@@ -171,7 +175,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         onlyOperator
         nonReentrant
     {
-        require(borrowTokens[0] != borrowTkoens[1]);
+        require(borrowTokens[0] != borrowTokens[1]);
         require(borrowTokens[0] == token0 || borrowTokens[0] == token1 || borrowTokens[0] == address(0), "borrowTokens not token0 and token1");
         require(borrowTokens[1] == token0 || borrowTokens[1] == token1 || borrowTokens[1] == address(0), "borrowTokens not token0 and token1");
 
@@ -196,7 +200,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
         }
         // strategy will send back all token and LP.
-        Strategy(strategy).execute.value(msg.value)(user, borrowTokens, borrowAmounts, debts, ext);
+        IStrategy(strategy).execute{value: msg.value}(user, borrowTokens, borrowAmounts, debts, ext);
 
         // 3. Add LP tokens back to the farming pool.
         _addPosition(id, user);
@@ -212,12 +216,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
 
         for (i = 0; i < 2; ++i) {
-            if (borrowTokens == address(0)) {
+            if (borrowTokens[i] == address(0)) {
                 SafeToken.safeTransferETH(msg.sender, address(this).balance);
             } else {
-                uint256 borrowTokenAmount = borrowTokens.myBalance();
+                uint256 borrowTokenAmount = borrowTokens[i].myBalance();
                 if(borrowTokenAmount > 0){
-                    SafeToken.safeTransfer(borrowTokens, msg.sender, borrowTokenAmount);
+                    SafeToken.safeTransfer(borrowTokens[i], msg.sender, borrowTokenAmount);
                 }
             }
         }
@@ -268,20 +272,20 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     /// @dev Stake to MDX pool.
     function _stake(uint256 amount, address user) internal {
-        if (address(mdxPool) != address(0) && mdxPoolId >= 0) {
-            lpToken.safeApprove(address(mdxPool), 0);
-            lpToken.safeApprove(address(mdxPool), uint256(-1));
-            mdxPool.deposit(uint256(mdxPoolId), amount);
-            emit StakedMdxPool(user, amount);
+        if (address(bscPool) != address(0) && bscPoolId >= 0) {
+            lpToken.safeApprove(address(bscPool), 0);
+            lpToken.safeApprove(address(bscPool), uint256(-1));
+            bscPool.deposit(uint256(bscPoolId), amount);
+            emit StakedbscPool(user, amount);
         }
     }
 
     /// @dev Withdraw from MDX pool.
     function _withdraw(uint256 amount, address user) internal {
-        if (address(mdxPool) != address(0) && mdxPoolId >= 0) {
+        if (address(bscPool) != address(0) && bscPoolId >= 0) {
             // withdraw lp token back
-            mdxPool.withdraw(uint256(mdxPoolId), amount);
-            emit WithdrawnMdxPool(user, amount);
+            bscPool.withdraw(uint256(bscPoolId), amount);
+            emit WithdrawnbscPool(user, amount);
         }
     }
 
