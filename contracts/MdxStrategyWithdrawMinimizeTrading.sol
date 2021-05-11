@@ -44,7 +44,6 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         payable
         nonReentrant
     {
-        // 1. Find out lpToken and liquidity.
         // rate will divide 10000. 10000 means all token will be withdrawn.
         // whichWantBack:
         // 0: token0;
@@ -54,31 +53,44 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         (address token0, address token1, uint256 rate, uint256 whichWantBack) =
             abi.decode(data, (address, address, uint256, uint256));
 
-        // is borrowToken is BNB.
-        bool isBorrowBNB = borrowToken == address(0);
-        require(borrowToken == token0 || borrowToken == token1 || isBorrowBNB, "borrowToken not token0 and token1");
-        // the relative token when token0 or token1 is BNB.
-        address BNBRelative = address(0);
+        // 1. Replace BNB by WBNB for all tokens.
         {
-            if (token0 == address(0)){
+            require(token0 != token1, "token0 and token1 cannot be same.");
+
+            if (token0 == address(0)) {
                 token0 = wBNB;
-                BNBRelative = token1;
-            }
-            if (token1 == address(0)){
+            } else if (token1 == address(0)) {
                 token1 = wBNB;
-                BNBRelative = token0;
             }
+
+            if (borrowTokens[0] == address(0)) {
+                borrowTokens[0] = wBNB;
+            } else if (borrowTokens[1] == address(0)) {
+                borrowTokens[1] = wBNB;
+            }
+
+            // Now all tokens are all ERC20. BNB is repalced by WBNB
+
+            require((borrowTokens[0] == token0 && borrowTokens[1] == token1) ||
+                    (borrowTokens[0] == token1 && borrowTokens[1] == token0), "borrowToken not token0 and token1");
         }
-        address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
 
-        IMdexPair lpToken = IMdexPair(factory.getPair(token0, token1));
-        token0 = lpToken.token0();
-        token1 = lpToken.token1();
-
+        // 2. Find out lpToken and liquidity.
         {
+            // Take a note of what user want in case the order of token0 and token1 switched.
+            address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
+
+            IMdexPair lpToken = IMdexPair(factory.getPair(token0, token1));
+            // note that token0 and token1 from lpToken may be switched the order.
+            token0 = lpToken.token0();
+            token1 = lpToken.token1();
+
             lpToken.approve(address(router), uint256(-1));
             router.removeLiquidity(token0, token1, lpToken.balanceOf(address(this)), 0, 0, address(this), now);
         }
+
+        // 3. Repay debts.
+        // TODO need to be rewritten.
         {
             borrowToken = isBorrowBNB ? wBNB : borrowToken;
             address tokenRelative = borrowToken == token0 ? token1 : token0;
@@ -93,8 +105,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
         }
 
-        // 2. swap remaining token to what user want.
-        if (whichWantBack != uint(2)) {
+        // 4. swap remaining token to what user want.
+        if (whichWantBack == uint256(0) || whichWantBack == uint256(1)) {
             address tokenAnother = tokenUserWant == token0 ? token1 : token0;
             uint256 anotherAmount = tokenAnother.myBalance();
             if(anotherAmount > 0){
@@ -108,14 +120,9 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
         }
 
-        // 3. send all tokens back.
-        if (BNBRelative == address(0)) {
-            token0.safeTransfer(user, token0.myBalance());
-            token1.safeTransfer(user, token1.myBalance());
-        } else {
-            safeUnWrapperAndAllSend(wBNB, user);
-            safeUnWrapperAndAllSend(BNBRelative, user);
-        }
+        // 5. send all tokens back.
+        safeUnWrapperAndAllSend(token0, user);
+        safeUnWrapperAndAllSend(token1, user);
     }
 
     // swap if need.
