@@ -34,10 +34,10 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     /// @param debts User's debt amount.
     /// @param data Extra calldata information passed along to this strategy.
     function execute(
-        address user, 
-        address borrowTokens, 
-        uint256 /* borrow */, 
-        uint256 debts, 
+        address user,
+        address[2] calldata borrowTokens,
+        uint256[2] calldata /* borrow */,
+        uint256[2] calldata debts,
         bytes calldata data
     )
         external
@@ -46,12 +46,12 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     {
         // 1. Find out lpToken and liquidity.
         // rate will divide 10000. 10000 means all token will be withdrawn.
-        // whichWantBack: 
+        // whichWantBack:
         // 0: token0;
         // 1: token1;
-        // 2: token what surplus; 
+        // 2: token what surplus;
         // 3: don't back(all repay);
-        (address token0, address token1, uint256 rate, uint256 whichWantBack) = 
+        (address token0, address token1, uint256 rate, uint256 whichWantBack) =
             abi.decode(data, (address, address, uint256, uint256));
 
         // is borrowToken is BNB.
