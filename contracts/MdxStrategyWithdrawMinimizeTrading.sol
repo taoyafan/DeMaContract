@@ -10,6 +10,7 @@ import "./Interface/IMdexPair.sol";
 import "./Interface/IWBNB.sol";
 import "./Interface/IStrategy.sol";
 import "./utils/SafeToken.sol";
+import "./utils/Math.sol";
 
 
 contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrategy {
@@ -28,6 +29,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         wBNB = _router.WBNB();
     }
 
+    /* ==================================== Write ==================================== */
+
     /// @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
     /// @param user User address to withdraw liquidity.
     /// @param borrowTokens The token user borrow from bank.
@@ -42,6 +45,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     )
         external
         payable
+        override
         nonReentrant
     {
         // rate will divide 10000. 10000 means all token will be withdrawn.
@@ -53,6 +57,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         (address token0, address token1, uint256 rate, uint256 whichWantBack) =
             abi.decode(data, (address, address, uint256, uint256));
 
+        require((borrowTokens[0] == token0 || borrowTokens[0] == token1) || borrowTokens[0] == address(0), 
+                "borrowTokens[0] not token0 and token1");
+        
+        require((borrowTokens[1] == token0 || borrowTokens[1] == token1) || borrowTokens[1] == address(0), 
+                "borrowTokens[1] not token0 and token1");
+        
+        require(borrowTokens[0] != borrowTokens[1] || 
+                debts[1] == 0, "borrowTokens should be different, or debts[1] should be 0");
+
         // 1. Replace BNB by WBNB for all tokens.
         {
             require(token0 != token1, "token0 and token1 cannot be same.");
@@ -63,24 +76,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
                 token1 = wBNB;
             }
 
-            if (borrowTokens[0] == address(0)) {
-                borrowTokens[0] = wBNB;
-            } else if (borrowTokens[1] == address(0)) {
-                borrowTokens[1] = wBNB;
-            }
-
             // Now all tokens are all ERC20. BNB is repalced by WBNB
-
-            require((borrowTokens[0] == token0 && borrowTokens[1] == token1) ||
-                    (borrowTokens[0] == token1 && borrowTokens[1] == token0), "borrowToken not token0 and token1");
         }
 
         // 2. Find out lpToken and remove liquidity with the target rate.
-        {
-            // Take a note of what user want in case the order of token0 and token1 switched.
-            address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
 
-            IMdexPair lpToken = IMdexPair(factory.getPair(token0, token1));
+        // Take a note of what user want in case the order of token0 and token1 switched.
+        address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
+        IMdexPair lpToken = IMdexPair(factory.getPair(token0, token1));
+        {
             // note that token0 and token1 from lpToken may be switched the order.
             token0 = lpToken.token0();
             token1 = lpToken.token1();
@@ -98,71 +102,184 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         }
 
         // 3. Repay debts.
-        // TODO need to be rewritten.
         {
-            borrowToken = isBorrowBNB ? wBNB : borrowToken;
-            address tokenRelative = borrowToken == token0 ? token1 : token0;
-
-            swapIfNeed(borrowToken, tokenRelative, debt);
-
-            if (isBorrowBNB) {
-                IWBNB(wBNB).withdraw(debt);
-                SafeToken.safeTransferETH(msg.sender, debt);
+            uint256 da;
+            uint256 db;
+            if (borrowTokens[0] == token0 || 
+                (borrowTokens[0] == address(0) && token0 == wBNB)) 
+            {
+                da = debts[0];
+                db = debts[1];
             } else {
-                SafeToken.safeTransfer(borrowToken, msg.sender, debt);
+                da = debts[1];
+                db = debts[0];
             }
+
+            // If want token back, only repay debts with the given rate.
+            // Otherwise, use all withdrawn money to repay debts.
+            if (whichWantBack != 3) {
+                da = da.mul(rate).div(10000);
+                db = db.mul(rate).div(10000);
+            }
+
+            _repayDebts(da, db, lpToken);
         }
 
-        // 4. swap remaining token to what user want.
-        if (whichWantBack == uint256(0) || whichWantBack == uint256(1)) {
-            address tokenAnother = tokenUserWant == token0 ? token1 : token0;
-            uint256 anotherAmount = tokenAnother.myBalance();
-            if(anotherAmount > 0){
-                tokenAnother.safeApprove(address(router), 0);
-                tokenAnother.safeApprove(address(router), uint256(-1));
+        // If there are some tokens left here, send back to user.
+        if (token0.myBalance() > 0 && token1.myBalance() > 0) {
 
-                address[] memory path = new address[](2);
-                path[0] = tokenAnother;
-                path[1] = tokenUserWant;
-                router.swapExactTokensForTokens(anotherAmount, 0, path, address(this), now);
+            // 4. swap remaining token to what user want.
+            if (whichWantBack == uint256(0) || whichWantBack == uint256(1)) {
+                address tokenAnother = tokenUserWant == token0 ? token1 : token0;
+                uint256 anotherAmount = tokenAnother.myBalance();
+                if(anotherAmount > 0){
+                    _swapExactTokensForTokens(anotherAmount, tokenAnother, tokenUserWant);
+                }
             }
-        }
 
-        // 5. send all tokens back.
-        safeUnWrapperAndAllSend(token0, user);
-        safeUnWrapperAndAllSend(token1, user);
+            // 5. send all tokens back.
+            _safeUnWrapperAndSend(token0, user, token0.myBalance());
+            _safeUnWrapperAndSend(token1, user, token1.myBalance());
+        }
+    }
+    
+    /* ==================================== Internal ==================================== */
+
+    function _swapTokensForExactTokens(uint256 amount, address token0, address token1) internal {
+        token0.safeApprove(address(router), 0);
+        token0.safeApprove(address(router), uint256(-1));
+
+        address[] memory path = new address[](2);
+        path[0] = token0;
+        path[1] = token1;
+
+        router.swapTokensForExactTokens(amount, path[0].myBalance(), path, address(this), now);
     }
 
-    // swap if need.
-    // tokenRelative must left at least leftMin amount.
-    function swapIfNeed(address borrowToken, address tokenRelative, uint256 debt, uint256 leftMin) internal {
-        uint256 borrowTokenAmount = borrowToken.myBalance();
-        if (debt > borrowTokenAmount) {
-            tokenRelative.safeApprove(address(router), 0);
-            tokenRelative.safeApprove(address(router), uint256(-1));
+    function _swapExactTokensForTokens(uint256 amount, address token0, address token1) internal {
+        token0.safeApprove(address(router), 0);
+        token0.safeApprove(address(router), uint256(-1));
 
-            uint256 remainingDebt = debt.sub(borrowTokenAmount);
-            address[] memory path = new address[](2);
-            path[0] = tokenRelative;
-            path[1] = borrowToken;
-            // If there are not enough token, it will raise error. This position could only be liquidate.
-            router.swapTokensForExactTokens(remainingDebt, tokenRelative.myBalance(), path, address(this), now);
-            require(tokenRelative.myBalance() >= leftMin);
+        address[] memory path = new address[](2);
+        path[0] = token0;
+        path[1] = token1;
+
+        router.swapExactTokensForTokens(amount, path[0].myBalance(), path, address(this), now);
+    }
+
+    function _getMktSellAmount(uint256 aIn, uint256 rIn, uint256 rOut) internal pure returns (uint256) {
+        if (aIn == 0) return 0;
+        require(rIn > 0 && rOut > 0, "bad reserve values");
+        uint256 aInWithFee = aIn.mul(997);
+        uint256 numerator = aInWithFee.mul(rOut);
+        uint256 denominator = rIn.mul(1000).add(aInWithFee);
+        return numerator.div(denominator);
+    }
+
+    function _swapAToBWithDebtsRatio(
+        uint256 ra, 
+        uint256 rb, 
+        uint256 da, 
+        uint256 db, 
+        uint256 na, 
+        uint256 nb
+    ) internal pure returns (uint256) {
+        // This can also help to make sure db != 0 
+        require(na.mul(db) > nb.mul(da), "na/da should lager than nb/db");
+
+        if (da == 0) {
+            return na;
+        }
+
+        uint256 part1 = nb.mul(da).div(db).sub(na);
+        uint256 part2 = ra.mul(1000).div(997);
+        uint256 part3 = da.mul(rb).div(db);
+        
+        uint256 b = part1.add(part2).add(part3);
+        uint256 c = part1.mul(part2);
+
+        // (-b + math.sqrt(b * b - 4 * c)) / 2
+        return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
+    }
+
+    function _repayDebts(
+        uint256 da, 
+        uint256 db, 
+        IMdexPair lpToken
+    ) internal {
+
+        address tokenA = lpToken.token0();
+        address tokenB = lpToken.token1();
+        (uint256 ra, uint256 rb, ) = lpToken.getReserves();
+        uint256 na = tokenA.myBalance();
+        uint256 nb = tokenB.myBalance();
+
+        // Swap first if needed
+
+        // Can repay debts without swap
+        if (na >= da && nb >= db) {
+            // Do nothing
+        }
+
+        // Directly swaped A to (db - nb) B can repay debts
+        else if (na > da && nb <= db && _getMktSellAmount(na-da, ra, rb) > (db.sub(nb))) {
+            _swapTokensForExactTokens(db.sub(nb), tokenA, tokenB);
+        }
+
+        // Directly swaped B to (da - na) A can repay debts
+        else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da.sub(na))){
+            _swapTokensForExactTokens(da.sub(na), tokenB, tokenA);
+        }
+        
+        // Otherwise, exchange tokens according to two debts amount ratio
+        else {
+
+            // na/da > nb/db, swap A to B
+            if (na.mul(db) > nb.mul(da)) {
+                uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
+                amount = amount > na ? na : amount;
+                _swapExactTokensForTokens(amount, tokenA, tokenB);
+            }
+
+            // na/da < nb/db, swap B to A
+            else if (na.mul(db) < nb.mul(da)) {
+                uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
+                amount = amount > nb ? nb : amount;
+                _swapExactTokensForTokens(amount, tokenB, tokenA);
+            }
+        }
+
+        // Repay debts
+
+        na = tokenA.myBalance();
+        nb = tokenB.myBalance();
+
+        if (na >= da) {
+            _safeUnWrapperAndSend(tokenA, msg.sender, da);
+        } else {
+            _safeUnWrapperAndSend(tokenA, msg.sender, na);
+        }
+
+        if (nb >= db) {
+            _safeUnWrapperAndSend(tokenB, msg.sender, db);
+        } else {
+            _safeUnWrapperAndSend(tokenB, msg.sender, nb);
         }
     }
 
     /// get token balance, if is WBNB un wrapper to BNB and send to 'to'
-    function safeUnWrapperAndAllSend(address token, address to) internal {
-        uint256 total = SafeToken.myBalance(token);
-        if (total > 0) {
+    function _safeUnWrapperAndSend(address token, address to, uint256 amount) internal {
+        if (amount > 0) {
             if (token == wBNB) {
-                IWBNB(wBNB).withdraw(total);
-                SafeToken.safeTransferETH(to, total);
+                IWBNB(wBNB).withdraw(amount);
+                SafeToken.safeTransferETH(to, amount);
             } else {
-                SafeToken.safeTransfer(token, to, total);
+                SafeToken.safeTransfer(token, to, amount);
             }
         }
     }
+    
+    /* ==================================== Only Owner ==================================== */
 
     /// @dev Recover ERC20 tokens that were accidentally sent to this smart contract.
     /// @param token The token contract. Can be anything. This contract should not hold ERC20 tokens.
@@ -171,6 +288,4 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
         token.safeTransfer(to, value);
     }
-
-    function() external payable {}
 }
