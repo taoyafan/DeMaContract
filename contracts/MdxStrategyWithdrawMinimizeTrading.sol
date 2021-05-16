@@ -31,11 +31,13 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
     /* ==================================== Write ==================================== */
 
-    /// @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
-    /// @param user User address to withdraw liquidity.
-    /// @param borrowTokens The token user borrow from bank.
-    /// @param debts User's debt amount.
-    /// @param data Extra calldata information passed along to this strategy.
+    /**
+     * @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
+     * @param user User address to withdraw liquidity.
+     * @param borrowTokens The token user borrow from bank.
+     * @param debts User's debt amount.
+     * @param data Extra calldata information passed along to this strategy.
+     */
     function execute(
         address user,
         address[2] calldata borrowTokens,
@@ -82,7 +84,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         // 2. Find out lpToken and remove liquidity with the target rate.
 
         // Take a note of what user want in case the order of token0 and token1 switched.
-        address tokenUserWant = whichWantBack == uint(0) ? token0 : token1;
+        address tokenUserWant = whichWantBack == uint256(0) ? token0 : token1;
         IMdexPair lpToken = IMdexPair(factory.getPair(token0, token1));
         {
             // note that token0 and token1 from lpToken may be switched the order.
@@ -176,6 +178,19 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         return numerator.div(denominator);
     }
 
+    /**
+     * @dev Swap A to B with the input debts ratio
+     * @notice na/da should lager than nb/db
+     *
+     * @param ra Reserved token A in LP pair.
+     * @param rb Reserved token B in LP pair.
+     * @param da Debts of token A.
+     * @param db Debts of token B.
+     * @param na Current available balance of token A.
+     * @param nb Current available balance of token B.
+     *
+     * @return uint256 How many A should be swaped to B.
+     */
     function _swapAToBWithDebtsRatio(
         uint256 ra, 
         uint256 rb, 
@@ -202,6 +217,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
     }
 
+    /**
+     * @dev Repay debts of both token A and B.
+     * @notice If it is not enough to repay debts, it will repay as much as possible 
+     *         according to the input debts ratio.
+     *
+     * @param da Debts of token A.
+     * @param db Debts of token B.
+     * @param lpToken LP token of token A and token B.
+     */
     function _repayDebts(
         uint256 da, 
         uint256 db, 
@@ -214,56 +238,58 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         uint256 na = tokenA.myBalance();
         uint256 nb = tokenB.myBalance();
 
-        // Swap first if needed
-
-        // Can repay debts without swap
-        if (na >= da && nb >= db) {
-            // Do nothing
-        }
-
-        // Directly swaped A to (db - nb) B can repay debts
-        else if (na > da && nb <= db && _getMktSellAmount(na-da, ra, rb) > (db.sub(nb))) {
-            _swapTokensForExactTokens(db.sub(nb), tokenA, tokenB);
-        }
-
-        // Directly swaped B to (da - na) A can repay debts
-        else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da.sub(na))){
-            _swapTokensForExactTokens(da.sub(na), tokenB, tokenA);
-        }
-        
-        // Otherwise, exchange tokens according to two debts amount ratio
-        else {
-
-            // na/da > nb/db, swap A to B
-            if (na.mul(db) > nb.mul(da)) {
-                uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
-                amount = amount > na ? na : amount;
-                _swapExactTokensForTokens(amount, tokenA, tokenB);
+        // 1. Swap first if needed
+        {
+            // Can repay debts without swap
+            if (na >= da && nb >= db) {
+                // Do nothing
             }
 
-            // na/da < nb/db, swap B to A
-            else if (na.mul(db) < nb.mul(da)) {
-                uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
-                amount = amount > nb ? nb : amount;
-                _swapExactTokensForTokens(amount, tokenB, tokenA);
+            // Directly swaped A to (db - nb) B can repay debts
+            else if (na > da && nb <= db && _getMktSellAmount(na-da, ra, rb) > (db.sub(nb))) {
+                _swapTokensForExactTokens(db.sub(nb), tokenA, tokenB);
+            }
+
+            // Directly swaped B to (da - na) A can repay debts
+            else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da.sub(na))){
+                _swapTokensForExactTokens(da.sub(na), tokenB, tokenA);
+            }
+            
+            // Otherwise, exchange tokens according to two debts amount ratio
+            else {
+
+                // na/da > nb/db, swap A to B
+                if (na.mul(db) > nb.mul(da)) {
+                    uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
+                    amount = amount > na ? na : amount;
+                    _swapExactTokensForTokens(amount, tokenA, tokenB);
+                }
+
+                // na/da < nb/db, swap B to A
+                else if (na.mul(db) < nb.mul(da)) {
+                    uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
+                    amount = amount > nb ? nb : amount;
+                    _swapExactTokensForTokens(amount, tokenB, tokenA);
+                }
             }
         }
 
-        // Repay debts
+        // 2. Repay debts
+        {
+            na = tokenA.myBalance();
+            nb = tokenB.myBalance();
 
-        na = tokenA.myBalance();
-        nb = tokenB.myBalance();
+            if (na >= da) {
+                _safeUnWrapperAndSend(tokenA, msg.sender, da);
+            } else {
+                _safeUnWrapperAndSend(tokenA, msg.sender, na);
+            }
 
-        if (na >= da) {
-            _safeUnWrapperAndSend(tokenA, msg.sender, da);
-        } else {
-            _safeUnWrapperAndSend(tokenA, msg.sender, na);
-        }
-
-        if (nb >= db) {
-            _safeUnWrapperAndSend(tokenB, msg.sender, db);
-        } else {
-            _safeUnWrapperAndSend(tokenB, msg.sender, nb);
+            if (nb >= db) {
+                _safeUnWrapperAndSend(tokenB, msg.sender, db);
+            } else {
+                _safeUnWrapperAndSend(tokenB, msg.sender, nb);
+            }
         }
     }
 
@@ -281,10 +307,12 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     
     /* ==================================== Only Owner ==================================== */
 
-    /// @dev Recover ERC20 tokens that were accidentally sent to this smart contract.
-    /// @param token The token contract. Can be anything. This contract should not hold ERC20 tokens.
-    /// @param to The address to send the tokens to.
-    /// @param value The number of tokens to transfer to `to`.
+    /**
+     * @dev Recover ERC20 tokens that were accidentally sent to this smart contract.
+     * @param token The token contract. Can be anything. This contract should not hold ERC20 tokens.
+     * @param to The address to send the tokens to.
+     * @param value The number of tokens to transfer to `to`.
+     */
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
         token.safeTransfer(to, value);
     }
