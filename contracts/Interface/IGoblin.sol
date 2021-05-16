@@ -43,10 +43,12 @@ interface IGoblin {
      * @param user The address than this position belong to.
      * @param inviter The address of inviter.
      * @param borrowTokens Two tokens address user borrow from bank.
+     * @param debts Two tokens debts.
      */
     function liquidate(
         uint256 id, 
         address user, 
         address inviter, 
-        address[2] calldata borrowTokens) external;
+        address[2] calldata borrowTokens,
+        uint256[2] calldata debts) external;
 }
