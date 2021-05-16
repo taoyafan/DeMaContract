@@ -17,7 +17,9 @@ import "./Interface/IMdexPair.sol";
 import "./Interface/IGoblin.sol";
 import "./Interface/IStrategy.sol";
 import "./Interface/IBSCPool.sol";
+
 import "./utils/SafeToken.sol";
+import "./utils/Math.sol";
 
 
 contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
@@ -28,7 +30,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     /// @notice Events
     event AddPosition(uint256 indexed id, uint256 lpAmount);
     event RemovePosition(uint256 indexed id, uint256 lpAmount);
-    event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount, address debtToken, uint256 liqAmount);
+    event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount, 
+        address[2] debtToken, uint256[2] liqAmount);
     event StakedbscPool(address indexed user, uint256 amount);
     event WithdrawnbscPool(address indexed user, uint256 amount);
 
@@ -41,8 +44,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     IMdexPair public lpToken;
     address public wBNB;
-    address public token0;
-    address public token1;
+    address public token0;      // lpToken.token0(), Won't be 0
+    address public token1;      // lpToken.token1(), Won't be 0
     address public operator;    // Bank
 
     /// @notice Mutable state variables
@@ -55,6 +58,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         address _operator,
         IStakingRewards _staking,
         uint256 _poolId,
+        address _bscPool,
+        uint256 _bscPoolId,
         IMdexRouter _router,
         address _token0,
         address _token1,
@@ -64,20 +69,25 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         wBNB = _router.WBNB();
         staking = _staking;
         poolId  = _poolId;
+
+        bscPool = IBSCPool(_bscPool);
+        bscPoolId  = _bscPoolId;
+
         IMdexFactory factory = IMdexFactory(_router.factory());
 
         _token0 = _token0 == address(0) ? wBNB : _token0;
         _token1 = _token1 == address(0) ? wBNB : _token1;
 
         lpToken = IMdexPair(factory.getPair(_token0, _token1));
+        // May switch the order of tokens
         token0 = lpToken.token0();
         token1 = lpToken.token1();
 
         liqStrategy = _liqStrategy;
         strategiesOk[address(liqStrategy)] = true;
 
-        // 100% trust in the staking pool
-        lpToken.approve(address(_staking), uint256(-1));
+        // 100% trust in the bsc pool
+        lpToken.approve(address(bscPool), uint256(-1));
     }
 
     /// @dev Require that the caller must be the operator (the bank).
@@ -115,33 +125,67 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         address[2] calldata borrowTokens, 
         uint256[2] calldata debts
     ) external view override returns (uint256[2] memory) {
-        bool isDebtBNB = borrowTokens == address(0);
-        require(borrowTokens == token0 || borrowTokens == token1 || isDebtBNB, "borrowTokens not token0 and token1");
+
+        require(borrowTokens[0] == token0 || 
+                borrowTokens[0] == token1 || 
+                borrowTokens[0] == address(0), "borrowTokens[0] not token0 and token1");
+        
+        require(borrowTokens[1] == token0 || 
+                borrowTokens[1] == token1 || 
+                borrowTokens[1] == address(0), "borrowTokens[1] not token0 and token1");
 
         // 1. Get the position's LP balance and LP total supply.
         uint256 lpBalance = posLPAmount[id];
         uint256 lpSupply = lpToken.totalSupply();
         // Ignore pending mintFee as it is insignificant
+
         // 2. Get the pool's total supply of token0 and token1.
-        (uint256 totalAmount0, uint256 totalAmount1,) = lpToken.getReserves();
+        (uint256 ra, uint256 rb,) = lpToken.getReserves();
 
         // 3. Convert the position's LP tokens to the underlying assets.
-        uint256 userToken0 = lpBalance.mul(totalAmount0).div(lpSupply);
-        uint256 userToken1 = lpBalance.mul(totalAmount1).div(lpSupply);
+        uint256 na = lpBalance.mul(ra).div(lpSupply);
+        uint256 nb = lpBalance.mul(rb).div(lpSupply);
+        ra = ra.sub(na);
+        rb = rb.sub(nb);
 
-        if (isDebtBNB) {
-            borrowTokens = token0 == wBNB ? token0 : token1;
+        // 4. Convert debts with the order of token0 and token1
+        bool reversed = false;
+        uint256 da;
+        uint256 db;
+        if (borrowTokens[0] == token0 || 
+            (borrowTokens[0] == address(0) && token0 == wBNB)) 
+        {
+            da = debts[0];
+            db = debts[1];
+        } else {
+            reversed = true;
+            da = debts[1];
+            db = debts[0];
         }
 
-        // 4. Convert all farming tokens to debtToken and return total amount.
-        if (borrowTokens == token0) {
-            return getMktSellAmount(
-                userToken1, totalAmount1.sub(userToken1), totalAmount0.sub(userToken0)
-            ).add(userToken0);
+        // 5. Get the amount after swaped
+
+        // na/da > nb/db, swap A to B
+        if (na.mul(db) > nb.mul(da)) {
+            uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
+            amount = amount > na ? na : amount;
+            na = na.sub(amount);
+            nb = nb.add(getMktSellAmount(amount, ra, rb));
+        }
+
+        // na/da < nb/db, swap B to A
+        else if (na.mul(db) < nb.mul(da)) {
+            uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
+            amount = amount > nb ? nb : amount;
+            na = na.add(getMktSellAmount(amount, rb, ra));
+            nb = nb.sub(amount);
+        }
+
+        // 6. Return the amount after swaping according to the debts ratio
+        if (reversed == false) {
+            return [na, nb];
         } else {
-            return getMktSellAmount(
-                userToken0, totalAmount0.sub(userToken0), totalAmount1.sub(userToken1)
-            ).add(userToken1);
+            return [nb, na];
         }
     }
 
@@ -189,8 +233,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         lpToken.transfer(strategy, lpToken.balanceOf(address(this)));
 
-        uint256 i;
-        for (i = 0; i < 2; ++i) {
+        for (uint256 i = 0; i < 2; ++i) {
             // transfer the borrow token.
             if (borrowAmounts[i] > 0 && borrowTokens[i] != address(0)) {
                 borrowTokens[i].safeTransferFrom(msg.sender, address(this), borrowAmounts[i]);
@@ -206,16 +249,17 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         _addPosition(id, user);
         
         // Handle stake reward.
-        if (beforeLPAmount > posLPAmount[id]) {
+        uint256 afterLPAmount = posLPAmount[id];
+        if (beforeLPAmount > afterLPAmount) {
             // Withdraw some LP
-            staking.withdraw(poolId, user, beforeLPAmount-posLPAmount[id], inviter);
-        } else if (beforeLPAmount < posLPAmount[id]) {
+            staking.withdraw(poolId, user, beforeLPAmount.sub(afterLPAmount), inviter);
+        } else if (beforeLPAmount < afterLPAmount) {
             // Depoist some LP
             inviter = canInvite ? inviter : address(0);
-            staking.stake(poolId, user, posLPAmount[id]-beforeLPAmount, inviter);
+            staking.stake(poolId, user, afterLPAmount.sub(beforeLPAmount), inviter);
         }
 
-        for (i = 0; i < 2; ++i) {
+        for (uint256 i = 0; i < 2; ++i) {
             if (borrowTokens[i] == address(0)) {
                 SafeToken.safeTransferETH(msg.sender, address(this).balance);
             } else {
@@ -233,54 +277,68 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param user The address than this position belong to.
      * @param inviter The address of inviter.
      * @param borrowTokens Two tokens address user borrow from bank.
+     * @param debts Two tokens debts.
      */
     function liquidate(
         uint256 id, 
         address user, 
         address inviter, 
-        address[2] calldata borrowTokens
+        address[2] calldata borrowTokens,
+        uint256[2] calldata debts
     )
         external
         override
         onlyOperator
         nonReentrant
     {
-        bool isBorrowBNB = borrowTokens == address(0);
-        require(borrowTokens == token0 || borrowTokens == token1 || isBorrowBNB, "borrowTokens not token0 and token1");
+        require(borrowTokens[0] == token0 || 
+                borrowTokens[0] == token1 || 
+                borrowTokens[0] == address(0), "borrowTokens[0] not token0 and token1");
+        
+        require(borrowTokens[1] == token0 || 
+                borrowTokens[1] == token1 || 
+                borrowTokens[1] == address(0), "borrowTokens[1] not token0 and token1");
+        
 
         // 1. Convert the position back to LP tokens and use liquidate strategy.
         staking.withdraw(poolId, user, posLPAmount[id], inviter);
         _removePosition(id, user);
         uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);
-        liqStrategy.execute(address(0), borrowTokens, uint256(0), uint256(0), abi.encode(address(lpToken)));
+
+        // address token0, address token1, uint256 rate, uint256 whichWantBack
+        liqStrategy.execute(address(this), borrowTokens, uint256[2]([uint256(0), uint256(0)]), debts, abi.encode(
+            lpToken.token0(), lpToken.token1(), 10000, 2));
+        // IStrategy(strategy).execute{value: msg.value}(user, borrowTokens, borrowAmounts, debts, ext);
 
         // 2. transfer borrowTokens and user want back to goblin.
-        uint256 tokenLiquidate;
-        if (isBorrowBNB){
-            tokenLiquidate = address(this).balance;
-            SafeToken.safeTransferETH(msg.sender, tokenLiquidate);
-        } else {
-            tokenLiquidate = borrowTokens.myBalance();
-            borrowTokens.safeTransfer(msg.sender, tokenLiquidate);
+        uint256[2] memory tokensLiquidate;
+        for (uint256 i = 0; i < 2; ++i) {
+            if (borrowTokens[i] == address(0)) {
+                tokensLiquidate[i] = address(this).balance;
+                SafeToken.safeTransferETH(msg.sender, tokensLiquidate[i]);
+            } else {
+                tokensLiquidate[i] = borrowTokens[i].myBalance();
+                borrowTokens[i].safeTransfer(msg.sender, tokensLiquidate[i]);
+            }
         }
 
-        emit Liquidate(id, address(lpToken), lpTokenAmount, borrowTokens, tokenLiquidate);
+        emit Liquidate(id, address(lpToken), lpTokenAmount, borrowTokens, tokensLiquidate);
     }
 
     /* ========== Internal ========== */
 
     /// @dev Stake to MDX pool.
+    /// @notice This function doesn't stake to staking reward pool.
     function _stake(uint256 amount, address user) internal {
         if (address(bscPool) != address(0) && bscPoolId >= 0) {
-            lpToken.safeApprove(address(bscPool), 0);
-            lpToken.safeApprove(address(bscPool), uint256(-1));
             bscPool.deposit(uint256(bscPoolId), amount);
             emit StakedbscPool(user, amount);
         }
     }
 
     /// @dev Withdraw from MDX pool.
+    /// @notice This function doesn't withdraw from staking reward pool.
     function _withdraw(uint256 amount, address user) internal {
         if (address(bscPool) != address(0) && bscPoolId >= 0) {
             // withdraw lp token back
@@ -294,7 +352,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 lpBalance = lpToken.balanceOf(address(this));
         if (lpBalance > 0) {
             // take lpToken to the pool2.
-            _stake(lpBalance);
+            _stake(lpBalance, user);
             posLPAmount[id] = posLPAmount[id].add(lpBalance);
             totalLPAmount = totalLPAmount.add(lpBalance);
             emit AddPosition(id, lpBalance);
@@ -310,6 +368,45 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             posLPAmount[id] = 0;
             emit RemovePosition(id, lpAmount);
         }
+    }
+
+    /**
+     * @dev Swap A to B with the input debts ratio
+     * @notice na/da should lager than nb/db
+     *
+     * @param ra Reserved token A in LP pair.
+     * @param rb Reserved token B in LP pair.
+     * @param da Debts of token A.
+     * @param db Debts of token B.
+     * @param na Current available balance of token A.
+     * @param nb Current available balance of token B.
+     *
+     * @return uint256 How many A should be swaped to B.
+     */
+    function _swapAToBWithDebtsRatio(
+        uint256 ra, 
+        uint256 rb, 
+        uint256 da, 
+        uint256 db, 
+        uint256 na, 
+        uint256 nb
+    ) internal pure returns (uint256) {
+        // This can also help to make sure db != 0 
+        require(na.mul(db) > nb.mul(da), "na/da should lager than nb/db");
+
+        if (da == 0) {
+            return na;
+        }
+
+        uint256 part1 = nb.mul(da).div(db).sub(na);
+        uint256 part2 = ra.mul(1000).div(997);
+        uint256 part3 = da.mul(rb).div(db);
+        
+        uint256 b = part1.add(part2).add(part3);
+        uint256 c = part1.mul(part2);
+
+        // (-b + math.sqrt(b * b - 4 * c)) / 2
+        return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
     }
 
     /* ========== Only owner ========== */
