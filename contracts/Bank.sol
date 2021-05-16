@@ -363,8 +363,8 @@ contract Bank is Ownable, ReentrancyGuard {
 
         uint256[2] memory health = production.goblin.health(posId, production.borrowToken, debts);
 
-        require((health[0].mul(production.liquidateFactor) < debts[0].mul(10000)) &&
-                (health[1].mul(production.liquidateFactor) < debts[1].mul(10000)), "can't liquidate");
+        require((health[0].mul(production.liquidateFactor) <= debts[0].mul(10000)) &&
+                (health[1].mul(production.liquidateFactor) <= debts[1].mul(10000)), "can't liquidate");
         
         bool[2] memory isBSC;
         uint256[2] memory before;
