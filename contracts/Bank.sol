@@ -376,7 +376,7 @@ contract Bank is Ownable, ReentrancyGuard {
             before[i] = isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
         }
 
-        production.goblin.liquidate(posId, pos.owner, user.inviter, production.borrowToken);
+        production.goblin.liquidate(posId, pos.owner, user.inviter, production.borrowToken, debts);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
         uint256 back;   // To save memory.
