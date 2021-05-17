@@ -43,15 +43,29 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     uint256 public bscPoolId;
 
     IMdexPair public lpToken;
+    address public mdx;
     address public wBNB;
     address public token0;      // lpToken.token0(), Won't be 0
     address public token1;      // lpToken.token1(), Won't be 0
     address public operator;    // Bank
 
     /// @notice Mutable state variables
+    struct BscPoolInfo {
+        uint256 totalLp;        // Total staked lp amount.
+        uint256 totalMdx;       // Total Mdx amount that already staked to board room.
+        uint256 accMdxPerLp;    // Accumulate mdx rewards amount per lp token. 
+    }
+
+    struct UserInfo {
+        uint256 totalLp;            // Total Lp amount.
+        uint256 earnedMdxStored;    // Earned mdx amount stored at the last time user info was updated.
+        uint256 accMdxPerLpStored;  // The accMdxPerLp at the last time user info was updated.
+    }
+
+    BscPoolInfo public bscPoolInfo;
+    mapping(address => UserInfo) userInfo;
     mapping(uint256 => uint256) public posLPAmount;
     mapping(address => bool) public strategiesOk;
-    uint256 public totalLPAmount;
     IStrategy public liqStrategy;
 
     constructor(
@@ -61,6 +75,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         address _bscPool,
         uint256 _bscPoolId,
         IMdexRouter _router,
+        address _mdx,
         address _token0,
         address _token1,
         IStrategy _liqStrategy
@@ -73,6 +88,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         bscPool = IBSCPool(_bscPool);
         bscPoolId  = _bscPoolId;
 
+        mdx = _mdx;
         IMdexFactory factory = IMdexFactory(_router.factory());
 
         _token0 = _token0 == address(0) ? wBNB : _token0;
@@ -188,6 +204,25 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             return [nb, na];
         }
     }
+    
+    /// @dev total Mdx rewards can be withdrawn. 
+    function totalRewards() public view returns (uint256) {
+        // TODO add bscPool pending reward and board room pending reward
+    }
+
+    function rewardPerLp() public view  returns (uint256) {
+        if (bscPoolInfo.totalLp != 0) {
+            return (totalRewards().sub(bscPoolInfo.totalMdx)).div(
+                bscPoolInfo.totalLp).add(bscPoolInfo.accMdxPerLp);
+        } else {
+            return bscPoolInfo.accMdxPerLp;
+        }
+    }
+
+    function userEarnedAmount(address account) public view  returns (uint256) {
+        UserInfo storage user = userInfo[account];
+        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored);
+    }
 
     /* ========== Write ========== */
 
@@ -222,6 +257,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         require(borrowTokens[0] != borrowTokens[1]);
         require(borrowTokens[0] == token0 || borrowTokens[0] == token1 || borrowTokens[0] == address(0), "borrowTokens not token0 and token1");
         require(borrowTokens[1] == token0 || borrowTokens[1] == token1 || borrowTokens[1] == address(0), "borrowTokens not token0 and token1");
+        
+        _updatePool(user);
 
         // 1. Convert this position back to LP tokens.
         uint256 beforeLPAmount = posLPAmount[id];
@@ -248,6 +285,11 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // 3. Add LP tokens back to the farming pool.
         _addPosition(id, user);
         
+        // TODO auto withdraw mdx rewards. and reinvest the pending mdx in boardroom to make sure
+        // bscpool.totalMdx stored mdx are all depost in boardroom.
+
+        // Remember to update bscPoolInfo.totalMdx and user.totalMdx after withdrawing rewards.
+
         // Handle stake reward.
         uint256 afterLPAmount = posLPAmount[id];
         if (beforeLPAmount > afterLPAmount) {
@@ -348,23 +390,27 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     /// @dev Internal function to stake all outstanding LP tokens to the given position ID.
-    function _addPosition(uint256 id, address user) internal {
+    function _addPosition(uint256 id, address account) internal {
         uint256 lpBalance = lpToken.balanceOf(address(this));
         if (lpBalance > 0) {
+            UserInfo storage user = userInfo[account];
             // take lpToken to the pool2.
-            _stake(lpBalance, user);
+            _stake(lpBalance, account);
             posLPAmount[id] = posLPAmount[id].add(lpBalance);
-            totalLPAmount = totalLPAmount.add(lpBalance);
+            bscPoolInfo.totalLp = bscPoolInfo.totalLp.add(lpBalance);
+            user.totalLp = user.totalLp.add(lpBalance);
             emit AddPosition(id, lpBalance);
         }
     }
 
     /// @dev Internal function to remove shares of the ID and convert to outstanding LP tokens.
-    function _removePosition(uint256 id, address user) internal {
+    function _removePosition(uint256 id, address account) internal {
         uint256 lpAmount = posLPAmount[id];
         if (lpAmount > 0) {
-            _withdraw(lpAmount, user);
-            totalLPAmount = totalLPAmount.sub(lpAmount);
+            UserInfo storage user = userInfo[account];
+            _withdraw(lpAmount, account);
+            bscPoolInfo.totalLp = bscPoolInfo.totalLp.sub(lpAmount);
+            user.totalLp = user.totalLp.sub(lpAmount);
             posLPAmount[id] = 0;
             emit RemovePosition(id, lpAmount);
         }
@@ -407,6 +453,20 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // (-b + math.sqrt(b * b - 4 * c)) / 2
         return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
+    }
+
+    /// @dev update pool info and user info.
+    function _updatePool(address account) internal {
+        /// @notice MUST update accMdxPerLp first as it will use th old totalMdx
+        bscPoolInfo.accMdxPerLp = rewardPerLp();
+        bscPoolInfo.totalMdx = totalRewards();   
+
+        if (account != address(0)) {
+            UserInfo storage user = userInfo[account];
+            user.earnedMdxStored = userEarnedAmount(account);
+            user.accMdxPerLpStored = bscPoolInfo.accMdxPerLp;
+        }
+        
     }
 
     /* ========== Only owner ========== */
