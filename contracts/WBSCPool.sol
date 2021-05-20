@@ -20,12 +20,11 @@ contract WBSCPool is Ownable, IBSCPool {
 
     mapping(address => GoblinInfo) public goblinInfo;
     IBSCPool public bscPool;
+    address public mdx;
 
-    constructor(IBSCPool _bscPool) {
+    constructor(IBSCPool _bscPool, address _mdx) {
         bscPool = _bscPool;
-
-        // 100% trust in the bsc pool
-        lpToken.approve(address(bscPool), uint256(-1));
+        mdx = _mdx;
     }
 
     function deposit(uint256 pid, uint256 amount) external override {
@@ -38,6 +37,7 @@ contract WBSCPool is Ownable, IBSCPool {
 
         // Then bsc pool may send back some pending lp reward, which will be regarded as reserved.
         goblinInfo[msg.sender].reserved = goblinInfo[msg.sender].reserved.add(token.myBalance());
+        mdx.safeTransfer(msg.sender, mdx.myBalance());
     }
 
     function withdraw(uint256 pid, uint256 amount) external override {
@@ -47,6 +47,7 @@ contract WBSCPool is Ownable, IBSCPool {
         address token = goblinInfo[msg.sender].token;
         bscPool.withdraw(pid, amount);
         token.safeTransfer(msg.sender, amount);
+        mdx.safeTransfer(msg.sender, mdx.myBalance());
         goblinInfo[msg.sender].amount = goblinInfo[msg.sender].amount.sub(amount);
 
         // The left token are lp rewards, which will be regarded as reserved.
@@ -56,6 +57,8 @@ contract WBSCPool is Ownable, IBSCPool {
     function setGoblinInfo(address _goblin, uint256 _pid, address _token) external onlyOwner {
         require(goblinInfo[_goblin].token == address(0), "Goblin already set.");
         require(_token != address(0), "Token cannot be BNB, replace it with WBNB address");
+        // 100% trust in the bsc pool
+        _token.approve(address(bscPool), uint256(-1));
 
         goblinInfo[_goblin].token = _token;
         goblinInfo[_goblin].pid = _pid;
