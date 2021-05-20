@@ -22,9 +22,13 @@ contract WBSCPool is Ownable, IBSCPool {
     IBSCPool public bscPool;
     address public mdx;
 
-    constructor(IBSCPool _bscPool, address _mdx) {
+    constructor(IBSCPool _bscPool, address _mdx) public {
         bscPool = _bscPool;
         mdx = _mdx;
+    }
+
+    function pending(uint256 _pid, address /* _user */) external view override returns (uint256, uint256) {
+        return bscPool.pending(_pid, address(this));
     }
 
     function deposit(uint256 pid, uint256 amount) external override {
@@ -45,7 +49,7 @@ contract WBSCPool is Ownable, IBSCPool {
         require(goblinInfo[msg.sender].amount >= amount, "Goblin don't have enough amount");
 
         address token = goblinInfo[msg.sender].token;
-        bscPool.withdraw(pid, amount);
+        bscPool.withdraw(pid, amount); 
         token.safeTransfer(msg.sender, amount);
         mdx.safeTransfer(msg.sender, mdx.myBalance());
         goblinInfo[msg.sender].amount = goblinInfo[msg.sender].amount.sub(amount);
@@ -58,7 +62,7 @@ contract WBSCPool is Ownable, IBSCPool {
         require(goblinInfo[_goblin].token == address(0), "Goblin already set.");
         require(_token != address(0), "Token cannot be BNB, replace it with WBNB address");
         // 100% trust in the bsc pool
-        _token.approve(address(bscPool), uint256(-1));
+        _token.safeApprove(address(bscPool), uint256(-1));
 
         goblinInfo[_goblin].token = _token;
         goblinInfo[_goblin].pid = _pid;
