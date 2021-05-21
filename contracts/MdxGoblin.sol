@@ -31,7 +31,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     /// @notice Events
     event AddPosition(uint256 indexed id, uint256 lpAmount);
     event RemovePosition(uint256 indexed id, uint256 lpAmount);
-    event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount, 
+    event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount,
         address[2] debtToken, uint256[2] liqAmount);
     event StakedbscPool(address indexed user, uint256 amount);
     event WithdrawnbscPool(address indexed user, uint256 amount);
@@ -55,7 +55,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     struct GlobalInfo {
         uint256 totalLp;        // Total staked lp amount.
         uint256 totalMdx;       // Total Mdx amount that already staked to board room.
-        uint256 accMdxPerLp;    // Accumulate mdx rewards amount per lp token. 
+        uint256 accMdxPerLp;    // Accumulate mdx rewards amount per lp token.
+        uint256 lastUpdateTime;
     }
 
     struct UserInfo {
@@ -75,7 +76,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 beforeLPAmount;
         uint256 afterLPAmount;
         uint256 deltaAmount;
-        uint256 rewardsAmount;
     }
 
     constructor(
@@ -83,7 +83,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         IStakingRewards _staking,       // Staking rewards
         uint256 _poolId,                // Staking rewards pool id
         IReinvestment _reinvestment,    // Mdx reinvestment
-        IBSCPool _bscPool,              
+        IBSCPool _bscPool,
         uint256 _bscPoolId,
         IMdexRouter _router,
         address _mdx,
@@ -142,7 +142,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         return numerator / denominator;
     }
 
-    
+
     /**
      * @dev Return the amount of each borrow token can be withdrawn with the given borrow amount rate.
      * @param id The position ID to perform health check.
@@ -150,17 +150,17 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param debts Debts of two tokens.
      */
     function health(
-        uint256 id, 
-        address[2] calldata borrowTokens, 
+        uint256 id,
+        address[2] calldata borrowTokens,
         uint256[2] calldata debts
     ) external view override returns (uint256[2] memory) {
 
-        require(borrowTokens[0] == token0 || 
-                borrowTokens[0] == token1 || 
+        require(borrowTokens[0] == token0 ||
+                borrowTokens[0] == token1 ||
                 borrowTokens[0] == address(0), "borrowTokens[0] not token0 and token1");
-        
-        require(borrowTokens[1] == token0 || 
-                borrowTokens[1] == token1 || 
+
+        require(borrowTokens[1] == token0 ||
+                borrowTokens[1] == token1 ||
                 borrowTokens[1] == address(0), "borrowTokens[1] not token0 and token1");
 
         // 1. Get the position's LP balance and LP total supply.
@@ -181,8 +181,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         bool reversed = false;
         uint256 da;
         uint256 db;
-        if (borrowTokens[0] == token0 || 
-            (borrowTokens[0] == address(0) && token0 == wBNB)) 
+        if (borrowTokens[0] == token0 ||
+            (borrowTokens[0] == address(0) && token0 == wBNB))
         {
             da = debts[0];
             db = debts[1];
@@ -217,10 +217,16 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             return [nb, na];
         }
     }
-    
-    /// @dev total Mdx rewards can be withdrawn. 
+
+    /// @dev total Mdx rewards can be withdrawn.
     function totalRewards() public view returns (uint256) {
         (uint256 poolPendingMdx, /* poolPendingLp */) = bscPool.pending(bscPoolId, address(this));
+
+        // Pending rewards will sub the reserved amount.
+        poolPendingMdx.sub(poolPendingMdx.mul(reinvestment.reservedAmountRatio()).div(10000));
+
+        // And then div the left share ratio.
+        poolPendingMdx.mul(uint256(10000).sub(reinvestment.reservedShareRatio())).div(10000);
 
         return poolPendingMdx.add(reinvestment.userRewards(address(this)));
     }
@@ -242,6 +248,14 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     /* ==================================== Write ==================================== */
 
+    function getAllRewards(address account) public override {
+        _updatePool(account);
+        reinvestment.withdraw(user.earnedMdxStored);
+        mdx.safeTransfer(account, user.earnedMdxStored);
+        globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
+        user.earnedMdxStored = 0;
+    }
+
 
     /**
      * @dev Work on the given position. Must be called by the operator.
@@ -255,13 +269,13 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param data The encoded data, consisting of strategy address and bytes to strategy.
      */
     function work(
-        uint256 id, 
-        address account, 
+        uint256 id,
+        address account,
         address inviter,
         bool canInvite,
-        address[2] calldata borrowTokens, 
-        uint256[2] calldata borrowAmounts, 
-        uint256[2] calldata debts, 
+        address[2] calldata borrowTokens,
+        uint256[2] calldata borrowAmounts,
+        uint256[2] calldata debts,
         bytes calldata data
     )
         external
@@ -273,7 +287,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         require(borrowTokens[0] != borrowTokens[1]);
         require(borrowTokens[0] == token0 || borrowTokens[0] == token1 || borrowTokens[0] == address(0), "borrowTokens not token0 and token1");
         require(borrowTokens[1] == token0 || borrowTokens[1] == token1 || borrowTokens[1] == address(0), "borrowTokens not token0 and token1");
-        
+
         TempParams memory temp;
 
         _updatePool(account);
@@ -281,7 +295,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // 1. Convert this position back to LP tokens.
         temp.beforeLPAmount = posLPAmount[id];
         _removePosition(id, account);
-        temp.rewardsAmount = mdx.myBalance();   // rewards in LP pool.
 
         // 2. Perform the worker strategy; sending LP tokens + borrowTokens; expecting LP tokens.
         (address strategy, bytes memory ext) = abi.decode(data, (address, bytes));
@@ -303,9 +316,9 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // 3. Add LP tokens back to the bsc pool.
         _addPosition(id, account);
-        
-        // TODO auto withdraw mdx rewards. and reinvest the pending mdx in boardroom to make sure
-        // bscpool.totalMdx stored mdx are all depost in boardroom.
+
+        // Send mdx to reinvestment.
+        reinvestment.deposit(mdx.myBalance());
 
         // Handle stake reward.
         temp.afterLPAmount = posLPAmount[id];
@@ -315,7 +328,10 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
 
             staking.withdraw(poolId, account, temp.deltaAmount, inviter);
-        
+
+            // Withdraw mdx rewards and send it to user.
+            UserInfo storage user = userInfo[account];
+
         // If depoist some LP.
         } else if (temp.beforeLPAmount < temp.afterLPAmount) {
             temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
@@ -323,9 +339,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             inviter = canInvite ? inviter : address(0);
             staking.stake(poolId, account, temp.deltaAmount, inviter);
         }
-
-        // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance());
 
         // Send tokens back.
         for (uint256 i = 0; i < 2; ++i) {
@@ -349,9 +362,9 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param debts Two tokens debts.
      */
     function liquidate(
-        uint256 id, 
-        address account, 
-        address inviter, 
+        uint256 id,
+        address account,
+        address inviter,
         address[2] calldata borrowTokens,
         uint256[2] calldata debts
     )
@@ -360,14 +373,14 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         onlyOperator
         nonReentrant
     {
-        require(borrowTokens[0] == token0 || 
-                borrowTokens[0] == token1 || 
+        require(borrowTokens[0] == token0 ||
+                borrowTokens[0] == token1 ||
                 borrowTokens[0] == address(0), "borrowTokens[0] not token0 and token1");
-        
-        require(borrowTokens[1] == token0 || 
-                borrowTokens[1] == token1 || 
+
+        require(borrowTokens[1] == token0 ||
+                borrowTokens[1] == token1 ||
                 borrowTokens[1] == address(0), "borrowTokens[1] not token0 and token1");
-        
+
 
         _updatePool(account);
 
@@ -381,7 +394,10 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         liqStrategy.execute(address(this), borrowTokens, uint256[2]([uint256(0), uint256(0)]), debts, abi.encode(
             lpToken.token0(), lpToken.token1(), 10000, 2));
 
-        // 2. transfer borrowTokens and user want back to goblin.
+        // Send mdx to reinvestment.
+        reinvestment.deposit(mdx.myBalance());
+
+        // 2. transfer borrowTokens and user want back to bank.
         uint256[2] memory tokensLiquidate;
         for (uint256 i = 0; i < 2; ++i) {
             if (borrowTokens[i] == address(0)) {
@@ -439,14 +455,14 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @return uint256 How many A should be swaped to B.
      */
     function _swapAToBWithDebtsRatio(
-        uint256 ra, 
-        uint256 rb, 
-        uint256 da, 
-        uint256 db, 
-        uint256 na, 
+        uint256 ra,
+        uint256 rb,
+        uint256 da,
+        uint256 db,
+        uint256 na,
         uint256 nb
     ) internal pure returns (uint256) {
-        // This can also help to make sure db != 0 
+        // This can also help to make sure db != 0
         require(na.mul(db) > nb.mul(da), "na/da should lager than nb/db");
 
         if (da == 0) {
@@ -456,7 +472,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 part1 = nb.mul(da).div(db).sub(na);
         uint256 part2 = ra.mul(1000).div(997);
         uint256 part3 = da.mul(rb).div(db);
-        
+
         uint256 b = part1.add(part2).add(part3);
         uint256 c = part1.mul(part2);
 
@@ -466,16 +482,19 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     /// @dev update pool info and user info.
     function _updatePool(address account) internal {
-        /// @notice MUST update accMdxPerLp first as it will use the old totalMdx
-        globalInfo.accMdxPerLp = rewardPerLp();
-        globalInfo.totalMdx = totalRewards();   
+        // Check last update first.
+        if (globalInfo.lastUpdateTime != block.timestamp) {
+            /// @notice MUST update accMdxPerLp first as it will use the old totalMdx
+            globalInfo.accMdxPerLp = rewardPerLp();
+            globalInfo.totalMdx = totalRewards();
+            globalInfo.lastUpdateTime = block.timestamp;
 
-        if (account != address(0)) {
-            UserInfo storage user = userInfo[account];
-            user.earnedMdxStored = userEarnedAmount(account);
-            user.accMdxPerLpStored = globalInfo.accMdxPerLp;
+            if (account != address(0)) {
+                UserInfo storage user = userInfo[account];
+                user.earnedMdxStored = userEarnedAmount(account);
+                user.accMdxPerLpStored = globalInfo.accMdxPerLp;
+            }
         }
-        
     }
 
     /* ==================================== Only owner ==================================== */
