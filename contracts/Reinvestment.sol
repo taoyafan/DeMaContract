@@ -37,8 +37,7 @@ contract Reinvestment is Ownable, IReinvestment {
 
     mapping(address => UserInfo) public userInfo;
     GlobalInfo public globalInfo;
-    uint256 public override reservedAmountRatio;      // Reserved amount ratio. Will divide by 10000, 0 means not reserved.
-    uint256 public override reservedShareRatio;       // Reserved share ratio. will divide by 10000, 0 means not reserved.
+    uint256 public override reservedRatio;       // Reserved share ratio. will divide by 10000, 0 means not reserved.
 
     constructor(
         IBoardRoomMDX _boardRoom,

@@ -222,11 +222,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     function totalRewards() public view returns (uint256) {
         (uint256 poolPendingMdx, /* poolPendingLp */) = bscPool.pending(bscPoolId, address(this));
 
-        // Pending rewards will sub the reserved amount.
-        poolPendingMdx.sub(poolPendingMdx.mul(reinvestment.reservedAmountRatio()).div(10000));
-
-        // And then div the left share ratio.
-        poolPendingMdx.mul(uint256(10000).sub(reinvestment.reservedShareRatio())).div(10000);
+        uint256 reservedRatio = reinvestment.reservedRatio();
+        // If reserved some rewards
+        if (reservedRatio != 0) {
+            // And then div the left share ratio.
+            poolPendingMdx.mul(uint256(10000).sub(reservedRatio)).div(10000);
+        }
 
         return poolPendingMdx.add(reinvestment.userRewards(address(this)));
     }
