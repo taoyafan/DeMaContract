@@ -69,11 +69,18 @@ contract UserProfile is IUserProfile, Ownable {
         name[msg.sender] = setName;
     }
 
-    function extended(address account, bytes calldata data) external payable {
+    function extendWrite(bytes calldata data) external payable override {
         (address plugin, bytes memory ext) = abi.decode(data, (address, bytes));
         require(pluginsOk[plugin], "Unapproved work plugin");
-        IPlugin(plugin).execute{value: msg.value}(account, ext);
+        IPlugin(plugin).write{value: msg.value}(ext);
     } 
+
+    function extendRead(bytes calldata data) external payable override returns (bytes memory) {
+        (address plugin, bytes memory ext) = abi.decode(data, (address, bytes));
+        require(pluginsOk[plugin], "Unapproved work plugin");
+        return IPlugin(plugin).read{value: msg.value}(ext);
+    } 
+
 
     /* ==================================== Only Owner ==================================== */
 

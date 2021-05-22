@@ -25,4 +25,8 @@ interface IUserProfile {
     function register(bytes calldata setName, uint256 setId, uint256 inviterId) external;
 
     function changeName(bytes calldata setName) external;
+
+    function extendWrite(bytes calldata data) external payable;
+    
+    function extendRead(bytes calldata data) external payable returns (bytes memory);
 }
