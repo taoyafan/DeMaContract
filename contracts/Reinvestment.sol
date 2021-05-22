@@ -27,6 +27,7 @@ contract Reinvestment is Ownable, IReinvestment {
         uint256 totalShares;        // Total staked lp amount.
         uint256 totalMdx;           // Total Mdx amount that already staked to board room.
         uint256 accMdxPerShare;     // Accumulate mdx rewards amount per lp token.
+        uint256 lastUpdateTime;
     }
 
     struct UserInfo {
@@ -48,7 +49,7 @@ contract Reinvestment is Ownable, IReinvestment {
         boardRoom = _boardRoom;
         boardRoomPid = _boardRoomPid;
         mdx = _mdx;
-        reserveRatio = _reserveRatio;
+        reservedRatio = _reserveRatio;
 
         mdx.safeApprove(address(boardRoom), uint256(-1));
     }
@@ -71,7 +72,7 @@ contract Reinvestment is Ownable, IReinvestment {
     }
 
     /// @notice Goblin is the user.
-    function userEarnedAmount(address account) public view  returns (uint256) {
+    function userEarnedAmount(address account) public view override returns (uint256) {
         UserInfo storage user = userInfo[account];
         return user.totalShares.mul(rewardsPerShare().sub(user.accMdxPerShareStored)).add(user.earnedMdxStored);
     }
@@ -86,28 +87,50 @@ contract Reinvestment is Ownable, IReinvestment {
 
             // TODO add reserved amount and change these param.
 
+            UserInfo storage user = userInfo[msg.sender]; 
             uint256 shares = _amountToShare(amount);
-            user.shares = user.shares.add(shares);
+
+            // Update global info first
             globalInfo.totalMdx = globalInfo.totalMdx.add(amount);
             globalInfo.totalShares = globalInfo.totalShares.add(shares);
+
+            // If there are some reserved shares
+            if (reservedRatio != 0) {
+                UserInfo storage owner = userInfo[owner()]; 
+                uint256 ownerShares = shares.mul(reservedRatio).div(10000);
+                owner.totalShares = owner.totalShares.add(ownerShares);
+
+                // Calculate the left shares
+                shares = shares.sub(ownerShares);
+            }
+
+            user.totalShares = user.totalShares.add(shares);
         }
     }
 
     // Withdraw mdx.
     function withdraw(uint256 amount) external override {
         if (amount > 0) {
-            _updatePool(msg.sender);
             require(userInfo[msg.sender].earnedMdxStored >= amount, "User don't have enough amount");
+
+            _updatePool(msg.sender);
+            UserInfo storage user = userInfo[msg.sender]; 
 
             if (mdx.myBalance() < amount) {
                 // If balance is not enough Withdraw from board room first.
-                boardRoom.withdraw(boardRoomId, userInfo(boardRoomId, address(this)));
+                (uint256 depositedMdx, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
+                boardRoom.withdraw(boardRoomPid, depositedMdx);
             }
             mdx.safeTransfer(msg.sender, amount);
 
-            // TODO Update reserved amount
+            // Update left share and amount.
+            uint256 share = _amountToShare(amount);
+            globalInfo.totalShares = globalInfo.totalShares.sub(share);
+            globalInfo.totalMdx = globalInfo.totalMdx.sub(amount);
+            user.totalShares = user.totalShares.sub(share);
+            user.earnedMdxStored = user.earnedMdxStored.sub(amount);
 
-            boardRoom.withdraw(boardRoomId, userInfo(boardRoomId, address(this)));
+            boardRoom.deposit(boardRoomPid, mdx.myBalance());
         }
     }
 
@@ -115,22 +138,21 @@ contract Reinvestment is Ownable, IReinvestment {
 
     /// @dev update pool info and user info.
     function _updatePool(address account) internal {
-        /// @notice MUST update accMdxPerShare first as it will use the old totalMdx
-        globalInfo.accMdxPerShare = rewardsPerShare();
-        globalInfo.totalMdx = totalRewards();
+        if (globalInfo.lastUpdateTime != block.timestamp) {
+            /// @notice MUST update accMdxPerShare first as it will use the old totalMdx
+            globalInfo.accMdxPerShare = rewardsPerShare();
+            globalInfo.totalMdx = totalRewards();
+            globalInfo.lastUpdateTime = block.timestamp;
 
-        if (account != address(0)) {
-            UserInfo storage user = userInfo[account];
-            user.earnedMdxStored = userEarnedAmount(account);
-            user.accMdxPerShareStored = globalInfo.accMdxPerShare;
+            if (account != address(0)) {
+                UserInfo storage user = userInfo[account];
+                user.earnedMdxStored = userEarnedAmount(account);
+                user.accMdxPerShareStored = globalInfo.accMdxPerShare;
+            }
         }
     }
 
-    function _amountToShare(uint256 amount) internal {
+    function _amountToShare(uint256 amount) internal view returns (uint256) {
         return amount.mul(globalInfo.totalShares).div(globalInfo.totalMdx);
     }
-
-    /* ==================================== Only owner ==================================== */
-
-    ///@dev withdraw reserved rewards.
 }
