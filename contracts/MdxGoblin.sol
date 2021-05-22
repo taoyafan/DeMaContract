@@ -229,7 +229,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             poolPendingMdx.mul(uint256(10000).sub(reservedRatio)).div(10000);
         }
 
-        return poolPendingMdx.add(reinvestment.userRewards(address(this)));
+        return poolPendingMdx.add(reinvestment.userEarnedAmount(address(this)));
     }
 
     function rewardPerLp() public view  returns (uint256) {
@@ -251,6 +251,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     function getAllRewards(address account) public override {
         _updatePool(account);
+        UserInfo storage user = userInfo[account];
         reinvestment.withdraw(user.earnedMdxStored);
         mdx.safeTransfer(account, user.earnedMdxStored);
         globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
@@ -329,9 +330,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
 
             staking.withdraw(poolId, account, temp.deltaAmount, inviter);
-
-            // Withdraw mdx rewards and send it to user.
-            UserInfo storage user = userInfo[account];
 
         // If depoist some LP.
         } else if (temp.beforeLPAmount < temp.afterLPAmount) {
