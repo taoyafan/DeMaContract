@@ -38,5 +38,15 @@ contract("TestUserProfile", (accounts) => {
 
     });
 
+    describe("Register new one", async () => {
+        
+        let newUser;
+
+        before(async () => {
+            newUser = accounts[1];
+            
+        });
+    });
+
 
 })
