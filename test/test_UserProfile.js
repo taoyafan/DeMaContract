@@ -38,14 +38,18 @@ contract("TestUserProfile", (accounts) => {
 
     });
 
-    describe("Register new one", async () => {
+    describe("New user test", async () => {
         
-        let newUser;
+        let newUser = accounts[1];
 
-        before(async () => {
-            newUser = accounts[1];
+        describe("Check unregister user info", async () => {
             
-        });
+            it("Inviter should be 0", async () => {
+                let inviter = await userProfile.methods.inviter(newUser).call();
+                assert.equal(inviter, 0);
+            })
+        })
+
     });
 
 
