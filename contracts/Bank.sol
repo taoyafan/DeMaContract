@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interface/IBankConfig.sol";
 import "./interface/IStakingRewards.sol";
 import "./interface/IGoblin.sol";
+import "./interface/IUserProfile.sol";
 import "./utils/SafeToken.sol";
 
 contract Bank is Ownable, ReentrancyGuard {
@@ -67,15 +68,11 @@ contract Bank is Ownable, ReentrancyGuard {
     struct UserInfo {
         mapping(address => uint256) sharesPerToken;     // per token pool
         EnumerableSet.UintSet posId;                    // position id 
-        address inviter;                 
-        EnumerableSet.AddressSet invitees;
     }
-
-    bool canInvite = true;
 
     IBankConfig public config;
 
-    mapping(address => UserInfo) internal userInfo;
+    mapping(address => UserInfo) userInfo;
 
     mapping(address => TokenBank) public banks;
 
@@ -141,14 +138,6 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ----------------- Get user info ----------------- */
 
-    function getUserInviteeNum(address account) external view returns (uint256) {
-        return EnumerableSet.length(userInfo[account].invitees);
-    }
-
-    function getUserInvitee(address account, uint256 index) external view returns (address) {
-        return EnumerableSet.at(userInfo[account].invitees, index);
-    }
-
     function getUserPosNum(address account) external view returns (uint256) {
         return EnumerableSet.length(userInfo[account].posId);
     }
@@ -161,20 +150,7 @@ contract Bank is Ownable, ReentrancyGuard {
         return userInfo[account].sharesPerToken[token];
     }
 
-    function getUserInviter(address account) external view returns (address) {
-        return userInfo[account].inviter;
-    }
-
     /* ==================================== Write ==================================== */
-
-    function setInviter(address inviterAccount) external {
-        // require(inviterAccount != msg.sender, "Inviter can not be itself");
-        require(inviterAccount != address(0), "Inviter cannot be 0");
-        require(userInfo[msg.sender].inviter == address(0), "Inviter already exists");
-        
-        userInfo[msg.sender].inviter = inviterAccount;                                  // Add inviter
-        EnumerableSet.add(userInfo[inviterAccount].invitees, msg.sender);    // Add invitees for inviter
-    }
 
     function deposit(address token, uint256 amount) public nonReentrant {
         TokenBank storage bank = banks[token];
@@ -196,11 +172,7 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.totalShares = bank.totalShares.add(newShares);
         user.sharesPerToken[token] = user.sharesPerToken[token].add(newShares);
 
-        if(canInvite) {
-            stakingRewards.stake(bank.poolId, msg.sender, newShares, user.inviter);
-        } else {
-            stakingRewards.stake(bank.poolId, msg.sender, newShares, address(0));   // 0 means no inviter
-        }
+        stakingRewards.stake(bank.poolId, msg.sender, newShares);
     }
 
     function withdraw(address token, uint256 withdrawShares) external nonReentrant {
@@ -216,7 +188,7 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.totalShares = bank.totalShares.sub(withdrawShares);
         user.sharesPerToken[token] = user.sharesPerToken[token].sub(withdrawShares);
 
-        stakingRewards.withdraw(bank.poolId, msg.sender, withdrawShares, user.inviter);
+        stakingRewards.withdraw(bank.poolId, msg.sender, withdrawShares);
 
         if (token == address(0)) {//BSC
             SafeToken.safeTransferETH(msg.sender, amount);
@@ -268,7 +240,6 @@ contract Bank is Ownable, ReentrancyGuard {
         }
 
         Production storage production = productions[pid];
-        UserInfo storage user = userInfo[msg.sender];
 
         require(production.isOpen, 'Production not exists');
 
@@ -306,8 +277,6 @@ contract Bank is Ownable, ReentrancyGuard {
         production.goblin.work{value: amount.sendBSC}(
             posId, 
             msg.sender, 
-            user.inviter, 
-            canInvite, 
             production.borrowToken, 
             borrow, 
             amount.debts, 
@@ -354,7 +323,6 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function liquidate(uint256 posId) external payable onlyEOA nonReentrant {
         Position storage pos = positions[posId];
-        UserInfo storage user = userInfo[pos.owner];
 
         require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debts");
         Production storage production = productions[pos.productionId];
@@ -376,7 +344,7 @@ contract Bank is Ownable, ReentrancyGuard {
             before[i] = isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
         }
 
-        production.goblin.liquidate(posId, pos.owner, user.inviter, production.borrowToken, debts);
+        production.goblin.liquidate(posId, pos.owner, production.borrowToken, debts);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
         uint256 back;   // To save memory.
@@ -476,10 +444,6 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     /* ==================================== Only owner ==================================== */
-
-    function setInviteEnable(bool _canInvite) external onlyOwner {
-        canInvite = _canInvite;
-    }
 
     function updateConfig(IBankConfig _config) external onlyOwner {
         config = _config;

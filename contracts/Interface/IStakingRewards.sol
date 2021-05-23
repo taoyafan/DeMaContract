@@ -33,10 +33,10 @@ interface IStakingRewards {
     /* ==================================== Only operator ==================================== */
 
     // Inviter is address(0), when there is no inviter.
-    function stake(uint256 poolId, address account, uint256 amount, address inviter) external;
+    function stake(uint256 poolId, address account, uint256 amount) external;
 
     // Must indicate the inviter once the user have has one. 
-    function withdraw(uint256 poolId, address account, uint256 amount, address inviter) external;
+    function withdraw(uint256 poolId, address account, uint256 amount) external;
 
 
     /* ==================================== Only owner ==================================== */

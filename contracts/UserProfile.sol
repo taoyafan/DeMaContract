@@ -11,12 +11,13 @@ contract UserProfile is IUserProfile, Ownable {
     mapping(address => address) public override inviter;
     mapping(address => uint256) public override registerDate;
     mapping(address => uint256) public override userId;
-    
     mapping(address => address[]) invitees;
 
     mapping(uint256 => address) public override idToAddress;
 
     mapping(address => bool) public pluginsOk;
+
+    bool public override inviteBuffEnable = true;
 
     constructor () public { 
         name[msg.sender] = bytes("Creator");
@@ -87,7 +88,7 @@ contract UserProfile is IUserProfile, Ownable {
     
     /**
      * @dev Set the given strategies' approval status.
-     * @param plugins The strategy addresses.
+     * @param plugins The plugins addresses.
      * @param isOk Whether to approve or unapprove the given strategies.
      */
     function setPluginsOk(address[] calldata plugins, bool isOk) external onlyOwner {
@@ -95,5 +96,9 @@ contract UserProfile is IUserProfile, Ownable {
         for (uint256 idx = 0; idx < len; idx++) {
             pluginsOk[plugins[idx]] = isOk;
         }
+    }
+
+    function setInviteBuffEnable(bool enable) external onlyOwner {
+        inviteBuffEnable = enable;
     }
 }

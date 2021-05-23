@@ -263,8 +263,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @dev Work on the given position. Must be called by the operator.
      * @param id The position ID to work on.
      * @param account The original user that is interacting with the operator.
-     * @param inviter The inviter address.
-     * @param canInvite Whether user can earn the invite reward.
      * @param borrowTokens Address of two tokens user borrow from bank.
      * @param borrowAmounts The amount of two borrow tokens.
      * @param debts The user's debts amount of two tokens.
@@ -273,8 +271,6 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     function work(
         uint256 id,
         address account,
-        address inviter,
-        bool canInvite,
         address[2] calldata borrowTokens,
         uint256[2] calldata borrowAmounts,
         uint256[2] calldata debts,
@@ -290,7 +286,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         require(borrowTokens[0] == token0 || borrowTokens[0] == token1 || borrowTokens[0] == address(0), "borrowTokens not token0 and token1");
         require(borrowTokens[1] == token0 || borrowTokens[1] == token1 || borrowTokens[1] == address(0), "borrowTokens not token0 and token1");
 
-        TempParams memory temp;
+        TempParams memory temp;     // Just in case stack too deep.
 
         _updatePool(account);
 
@@ -328,15 +324,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // If withdraw some LP.
         if (temp.beforeLPAmount > temp.afterLPAmount) {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
-
-            staking.withdraw(poolId, account, temp.deltaAmount, inviter);
+            staking.withdraw(poolId, account, temp.deltaAmount);
 
         // If depoist some LP.
         } else if (temp.beforeLPAmount < temp.afterLPAmount) {
             temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
-
-            inviter = canInvite ? inviter : address(0);
-            staking.stake(poolId, account, temp.deltaAmount, inviter);
+            staking.stake(poolId, account, temp.deltaAmount);
         }
 
         // Send tokens back.
@@ -356,14 +349,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @dev Liquidate the given position by converting it to debtToken and return back to caller.
      * @param id The position ID to perform liquidation.
      * @param account The address than this position belong to.
-     * @param inviter The address of inviter.
      * @param borrowTokens Two tokens address user borrow from bank.
      * @param debts Two tokens debts.
      */
     function liquidate(
         uint256 id,
         address account,
-        address inviter,
         address[2] calldata borrowTokens,
         uint256[2] calldata debts
     )
@@ -384,7 +375,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         _updatePool(account);
 
         // 1. Convert the position back to LP tokens and use liquidate strategy.
-        staking.withdraw(poolId, account, posLPAmount[id], inviter);
+        staking.withdraw(poolId, account, posLPAmount[id]);
         _removePosition(id, account);
         uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);

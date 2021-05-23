@@ -3,6 +3,9 @@ pragma solidity ^0.6.0;
 interface IUserProfile {
 
     /* ==================================== Read ==================================== */
+    
+    // Whether the invite buff is enable 
+    function inviteBuffEnable() external view returns (bool);
 
     function name(address account) external view returns (bytes memory);
 
