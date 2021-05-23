@@ -1,21 +1,14 @@
-// Farm: HT: 0x15F342232657208a17d09C99Bb7A758165145D7B
-// StakingRewardsFactory: 0x2b5Fa4d7BDDE20227Fb5094973DbC67962D226C7
-
 pragma solidity ^0.6.0;
 
-
-// import "@openzeppelin/contracts/access/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-// import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./Interface/IFarm.sol";
 import "./Interface/IOFY.sol";
+import "./interface/IUserProfile.sol";
 
 
 contract Farm is IFarm, Ownable, ReentrancyGuard {
@@ -57,6 +50,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     IOFY OFY;
     uint256 nextPoolId = 0;
+    IUserProfile userProfile;
 
     mapping(uint256 => mapping(address => UserInfo)) public userInfoPerPool;
     mapping(uint256 => PoolInfo) public poolInfo;
@@ -67,9 +61,11 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(
-        address _rewardsToken
+        IUserProfile _userProfile,
+        IOFY _rewardsToken
     ) Ownable() public {
-        OFY = IOFY(_rewardsToken);
+        userProfile = _userProfile;
+        OFY = _rewardsToken;
     }
 
     /* ==================================== Read ==================================== */
@@ -201,7 +197,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     /* ==================================== Only operator ==================================== */
 
-    function stake(uint256 poolId, address account, uint256 amount, address inviterAccount) 
+    function stake(uint256 poolId, address account, uint256 amount) 
         external 
         override
         nonReentrant 
@@ -213,6 +209,10 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         PoolInfo storage pool = poolInfo[poolId];
         UserInfo storage user = userInfoPerPool[poolId][account];
+
+        // If user haven't been registered, inviter is address(0);
+        address inviterAccount = userProfile.inviteBuffEnable() ? 
+            userProfile.inviter(account) : address(0);
 
         if (inviterAccount == address(0)) {
             // no inviter
@@ -249,7 +249,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         emit Staked(poolId, account, amount);
     }
 
-    function withdraw(uint256 poolId, address account, uint256 amount, address inviterAccount) 
+    function withdraw(uint256 poolId, address account, uint256 amount) 
         external 
         override
         nonReentrant 
@@ -262,6 +262,9 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         UserInfo storage user = userInfoPerPool[poolId][account];
         PoolInfo storage pool = poolInfo[poolId];
 
+        // If user haven't been registered, inviter is address(0);
+        address inviterAccount = userProfile.inviter(account);
+        
         if (inviterAccount == address(0)) {
             // no inviter
             require(user.invitedShares == 0, "Should specific inviter which can not be 0");

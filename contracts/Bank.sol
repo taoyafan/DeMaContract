@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./interface/IBankConfig.sol";
 import "./interface/IFarm.sol";
 import "./interface/IGoblin.sol";
-import "./interface/IUserProfile.sol";
 import "./utils/SafeToken.sol";
 
 contract Bank is Ownable, ReentrancyGuard {
