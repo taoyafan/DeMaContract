@@ -3,9 +3,9 @@ pragma solidity ^0.6.0;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./Interface/IOFY.sol";
+import "./Interface/IDEMA.sol";
 
-contract OFY is IOFY {
+contract DEMA is IDEMA {
     using Address for address;
     using SafeMath for uint256;
 

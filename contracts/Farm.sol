@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./Interface/IFarm.sol";
-import "./Interface/IOFY.sol";
+import "./Interface/IDEMA.sol";
 import "./interface/IUserProfile.sol";
 
 
@@ -48,7 +48,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         uint256 invitedShares;       // Stake share with invite.
     }
 
-    IOFY OFY;
+    IDEMA DEMA;
     uint256 nextPoolId = 0;
     IUserProfile userProfile;
 
@@ -62,10 +62,10 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     constructor(
         IUserProfile _userProfile,
-        IOFY _rewardsToken
+        IDEMA _rewardsToken
     ) Ownable() public {
         userProfile = _userProfile;
-        OFY = _rewardsToken;
+        DEMA = _rewardsToken;
     }
 
     /* ==================================== Read ==================================== */
@@ -142,11 +142,11 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     // Safe Token transfer function, just in case if rounding error causes pool to not have enough token.
     function _safeRewardsTransfer(address _to, uint256 _amount) internal {
-        uint256 rewardsBal = OFY.balanceOf(address(this));
+        uint256 rewardsBal = DEMA.balanceOf(address(this));
         if (_amount > rewardsBal) {
-            OFY.transfer(_to, rewardsBal);
+            DEMA.transfer(_to, rewardsBal);
         } else {
-            OFY.transfer(_to, _amount);
+            DEMA.transfer(_to, _amount);
         }
     }
 
@@ -348,7 +348,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
             // Calculate new rewards and mint.
             uint256 reward = pool.leftPeriodTimes == 0 ? 0 : pool.rewardsNextPeriod;
-            OFY.mint(address(this), reward);
+            DEMA.mint(address(this), reward);
 
             // Update pool info
             pool.rewardsed =    pool.rewardsed.add(reward);
@@ -382,7 +382,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             pool.rewardRate = reward.add(leftover).div(pool.periodDuration);
         }
 
-        OFY.mint(address(this), reward);
+        DEMA.mint(address(this), reward);
         pool.rewardsed = reward;
         pool.rewardsNextPeriod = pool.rewardsed.mul(70).div(100);
         pool.leftPeriodTimes = leftPeriodTimes;
@@ -412,7 +412,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.operator = operator;
 
         // Mint reward and update related variables
-        OFY.mint(address(this), rewardFirstPeriod);
+        DEMA.mint(address(this), rewardFirstPeriod);
         pool.rewardsed = rewardFirstPeriod;
         pool.rewardsNextPeriod = pool.rewardsed.mul(70).div(100);
         pool.rewardRate = rewardFirstPeriod.div(periodDuration);
@@ -435,7 +435,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.leftPeriodTimes = 0;
         pool.rewardsNextPeriod = 0;
         pool.periodFinish = block.timestamp;
-        OFY.burn(address(this), amount);
+        DEMA.burn(address(this), amount);
     }
 
     /* ========== EVENTS ========== */
