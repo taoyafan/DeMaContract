@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 // import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/IStakingRewards.sol";
+import "./Interface/IFarm.sol";
 import "./Interface/IReinvestment.sol";
 import "./Interface/IMdexRouter.sol";
 import "./Interface/IMdexFactory.sol";
@@ -37,7 +37,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     event WithdrawnbscPool(address indexed user, uint256 amount);
 
     /// @notice Immutable variables
-    IStakingRewards public staking;
+    IFarm public farm;
     uint256 public poolId;
     IReinvestment reinvestment;
 
@@ -80,8 +80,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     constructor(
         address _operator,              // Bank
-        IStakingRewards _staking,       // Staking rewards
-        uint256 _poolId,                // Staking rewards pool id
+        IFarm _farm,                    // Farm
+        uint256 _poolId,                // Farm pool id
         IReinvestment _reinvestment,    // Mdx reinvestment
         IBSCPool _bscPool,
         uint256 _bscPoolId,
@@ -93,7 +93,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     ) public {
         operator = _operator;
         wBNB = _router.WBNB();
-        staking = _staking;
+        farm = _farm;
         poolId  = _poolId;
         reinvestment = _reinvestment;
 
@@ -324,12 +324,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // If withdraw some LP.
         if (temp.beforeLPAmount > temp.afterLPAmount) {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
-            staking.withdraw(poolId, account, temp.deltaAmount);
+            farm.withdraw(poolId, account, temp.deltaAmount);
 
         // If depoist some LP.
         } else if (temp.beforeLPAmount < temp.afterLPAmount) {
             temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
-            staking.stake(poolId, account, temp.deltaAmount);
+            farm.stake(poolId, account, temp.deltaAmount);
         }
 
         // Send tokens back.
@@ -375,7 +375,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         _updatePool(account);
 
         // 1. Convert the position back to LP tokens and use liquidate strategy.
-        staking.withdraw(poolId, account, posLPAmount[id]);
+        farm.withdraw(poolId, account, posLPAmount[id]);
         _removePosition(id, account);
         uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);

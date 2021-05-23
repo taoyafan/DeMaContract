@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interface/IBankConfig.sol";
-import "./interface/IStakingRewards.sol";
+import "./interface/IFarm.sol";
 import "./interface/IGoblin.sol";
 import "./interface/IUserProfile.sol";
 import "./utils/SafeToken.sol";
@@ -82,7 +82,7 @@ contract Bank is Ownable, ReentrancyGuard {
     mapping(uint256 => Position) public positions;
     uint256 public currentPos = 1;
 
-    IStakingRewards stakingRewards;
+    IFarm Farm;
 
     modifier onlyEOA() {
         require(msg.sender == tx.origin, "not eoa");
@@ -90,7 +90,7 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     constructor(address _stakingRewards) public {
-        stakingRewards = IStakingRewards(_stakingRewards);
+        Farm = IFarm(_stakingRewards);
     }
 
     /* ==================================== Read ==================================== */
@@ -172,7 +172,7 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.totalShares = bank.totalShares.add(newShares);
         user.sharesPerToken[token] = user.sharesPerToken[token].add(newShares);
 
-        stakingRewards.stake(bank.poolId, msg.sender, newShares);
+        Farm.stake(bank.poolId, msg.sender, newShares);
     }
 
     function withdraw(address token, uint256 withdrawShares) external nonReentrant {
@@ -188,7 +188,7 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.totalShares = bank.totalShares.sub(withdrawShares);
         user.sharesPerToken[token] = user.sharesPerToken[token].sub(withdrawShares);
 
-        stakingRewards.withdraw(bank.poolId, msg.sender, withdrawShares);
+        Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
 
         if (token == address(0)) {//BSC
             SafeToken.safeTransferETH(msg.sender, amount);
