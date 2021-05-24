@@ -191,7 +191,10 @@ contract DEMA is IDEMA {
      */
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(amount, "ERC20: transfer amount exceeds allowance"));
+        
+        // Check equal using amount to prevent the accuracy error when transfer all. ，            
+        uint256 shares = amount == balanceOf(sender) ? _shares[sender] : _amountToShare(amount);
+        _approve(sender, msg.sender, _allowances[sender][msg.sender].sub(shares, "ERC20: transfer amount exceeds allowance"));
         return true;
     }
 
@@ -251,7 +254,9 @@ contract DEMA is IDEMA {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        uint256 shares = _amountToShare(amount);
+        // Check equal using amount to prevent the accuracy error when transfer all.
+        uint256 shares = amount == balanceOf(sender) ? _shares[sender] : _amountToShare(amount);
+
         uint256 sharesBurn = shares.mul(burnRatio).div(10000);
         uint256 sharesBonuse = shares.mul(bonusRatio).div(10000);
 
@@ -301,7 +306,9 @@ contract DEMA is IDEMA {
      */
     function _burn(address account, uint256 amount) internal {
         require(account != address(0), "ERC20: burn from the zero address");
-        uint256 shares = _amountToShare(amount);
+        
+        // Check equal using amount to prevent the accuracy error when burn all.
+        uint256 shares = amount == balanceOf(account) ? _shares[account] : _amountToShare(amount);
 
         _shares[account] = _shares[account].sub(shares, "ERC20: burn amount exceeds balance");
         _totalShares = _totalSupply.sub(shares);
@@ -327,7 +334,10 @@ contract DEMA is IDEMA {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        _allowances[owner][spender] = _amountToShare(amount);
+        // Check equal using amount to prevent the accuracy error when approve all of owner.
+        uint256 shares = amount == balanceOf(owner) ? _shares[owner] : _amountToShare(amount);
+
+        _allowances[owner][spender] = shares;
         emit Approval(owner, spender, amount);
     }
 
