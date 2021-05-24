@@ -4,7 +4,10 @@ pragma solidity >=0.5.0 <0.8.0;
 interface IGoblin {
 
     /// @dev Send all mdx rewards earned in this goblin to account.
-    function getAllRewards(address account) external;
+    function getAllRewards(address account) external view;
+
+    /// @dev Get the lp amount at given posId.
+    function posLPAmount(uint256 posId) external view returns (uint256);
 
     /**
      * @dev Work on the given position. Must be called by the operator.

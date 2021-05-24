@@ -67,7 +67,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     GlobalInfo public globalInfo;
     mapping(address => UserInfo) userInfo;
-    mapping(uint256 => uint256) public posLPAmount;
+    mapping(uint256 => uint256) public override posLPAmount;
     mapping(address => bool) public strategiesOk;
     IStrategy public liqStrategy;
 
