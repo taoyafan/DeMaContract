@@ -21,11 +21,11 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         address operator;               // Who can stake and withdraw.
 
         // Auto calculated
-        uint256 rewardsNextPeriod;            
+        uint256 rewardsNextPeriod;
         uint256 lastUpdateTime;
         uint256 periodFinish;           // Current period finished time
         uint256 rewardRate;             // Rewards for a second
-        uint256 rewardPerTokenStored;   
+        uint256 rewardPerTokenStored;
 
         // States
         uint256 rewardsPaid;    // Total paided rewards.
@@ -130,44 +130,15 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return total;
     }
 
-    /* ==================================== Internal ==================================== */
-
-    function _userPoolsLength(address account) internal view returns (uint256) {
-        return EnumerableSet.length(userStakedPools[account]);
-    }
-
-    function _userPoolsId(address account, uint256 index) internal view returns (uint256) {
-        return EnumerableSet.at(userStakedPools[account], index);
-    }
-
-    // Safe Token transfer function, just in case if rounding error causes pool to not have enough token.
-    function _safeRewardsTransfer(address _to, uint256 _amount) internal {
-        uint256 rewardsBal = DEMA.balanceOf(address(this));
-        if (_amount > rewardsBal) {
-            DEMA.transfer(_to, rewardsBal);
-        } else {
-            DEMA.transfer(_to, _amount);
-        }
-    }
-
-    function _addInviterShares(
-        UserInfo storage inviter, 
-        uint256 earnedShares, 
-        uint256 earnedShareEquivalent
-    ) internal {
-        inviter.earnedShares = inviter.earnedShares.add(earnedShares);
-        inviter.totalShares = inviter.totalShares.add(earnedShareEquivalent);
-    }
-
     /* ==================================== Write ==================================== */
 
-    function getRewardsPerPool(uint256 poolId, address account) 
-        public 
+    function getRewardsPerPool(uint256 poolId, address account)
+        public
         override
-        nonReentrant 
+        nonReentrant
         checkPoolId(poolId)
-        updateRewards(poolId, account) 
-        checkhalve(poolId) 
+        updateRewards(poolId, account)
+        checkhalve(poolId)
     {
         PoolInfo storage pool = poolInfo[poolId];
         UserInfo storage user = userInfoPerPool[poolId][account];
@@ -186,9 +157,9 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     function getRewards(address account)
-        public 
+        public
         override
-        nonReentrant 
+        nonReentrant
     {
         for (uint256 index = 0; index < _userPoolsLength(account); ++index) {
             getRewardsPerPool(_userPoolsId(account, index), account);
@@ -197,12 +168,12 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     /* ==================================== Only operator ==================================== */
 
-    function stake(uint256 poolId, address account, uint256 amount) 
-        external 
+    function stake(uint256 poolId, address account, uint256 amount)
+        external
         override
-        nonReentrant 
-        updateRewards(poolId, account) 
-        checkhalve(poolId) 
+        nonReentrant
+        updateRewards(poolId, account)
+        checkhalve(poolId)
     {
         require(amount > 0, "Cannot stake 0");
         require(msg.sender == poolInfo[poolId].operator, "Not operator");
@@ -211,7 +182,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         UserInfo storage user = userInfoPerPool[poolId][account];
 
         // If user haven't been registered, inviter is address(0);
-        address inviterAccount = userProfile.inviteBuffEnable() ? 
+        address inviterAccount = userProfile.inviteBuffEnable() ?
             userProfile.inviter(account) : address(0);
 
         if (inviterAccount == address(0)) {
@@ -220,7 +191,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             // Update user info
             user.totalShares = user.totalShares.add(amount);
             user.normalShares = user.normalShares.add(amount);
-            
+
             // Update pool info
             pool.totalShares = pool.totalShares.add(amount);
         } else {
@@ -240,21 +211,21 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             emit EarnedSharesIncreased(poolId, inviterAccount, earnedShareEquivalent);
 
             // Update pool info
-            pool.totalShares = pool.totalShares.add(inviterShareEquivalent).add(earnedShareEquivalent); 
+            pool.totalShares = pool.totalShares.add(inviterShareEquivalent).add(earnedShareEquivalent);
 
             EnumerableSet.add(userStakedPools[account], poolId);
             EnumerableSet.add(userStakedPools[inviterAccount], poolId);
         }
-        
+
         emit Staked(poolId, account, amount);
     }
 
-    function withdraw(uint256 poolId, address account, uint256 amount) 
-        external 
+    function withdraw(uint256 poolId, address account, uint256 amount)
+        external
         override
-        nonReentrant 
-        updateRewards(poolId, account) 
-        checkhalve(poolId) 
+        nonReentrant
+        updateRewards(poolId, account)
+        checkhalve(poolId)
     {
         require(amount > 0, "Cannot withdraw 0");
         require(msg.sender == poolInfo[poolId].operator, "Not operator");
@@ -264,7 +235,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         // If user haven't been registered, inviter is address(0);
         address inviterAccount = userProfile.inviter(account);
-        
+
         if (inviterAccount == address(0)) {
             // no inviter
             require(user.invitedShares == 0, "Should specific inviter which can not be 0");
@@ -273,7 +244,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             // Update user info
             user.totalShares = user.totalShares.sub(amount);
             user.normalShares = user.normalShares.sub(amount);
-            
+
             // Update pool info
             pool.totalShares = pool.totalShares.sub(amount);
         } else {
@@ -284,7 +255,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             if (user.normalShares > 0) {
                 // How many normal shares can be withdraw
                 uint256 normalAmount = user.normalShares > amount ? amount : user.normalShares;
-                
+
                 // Withdraw normal shares
                 user.totalShares = user.totalShares.sub(normalAmount);
                 user.normalShares = user.normalShares.sub(normalAmount);
@@ -310,10 +281,39 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
                 emit EarnedSharesDecreased(poolId, inviterAccount, earnedShareEquivalent);
 
                 // Update pool info
-                pool.totalShares = pool.totalShares.sub(inviterShareEquivalent).sub(earnedShareEquivalent); 
+                pool.totalShares = pool.totalShares.sub(inviterShareEquivalent).sub(earnedShareEquivalent);
             }
         }
         emit Withdrawn(poolId, account, amount);
+    }
+
+    /* ==================================== Internal ==================================== */
+
+    function _userPoolsLength(address account) internal view returns (uint256) {
+        return EnumerableSet.length(userStakedPools[account]);
+    }
+
+    function _userPoolsId(address account, uint256 index) internal view returns (uint256) {
+        return EnumerableSet.at(userStakedPools[account], index);
+    }
+
+    // Safe Token transfer function, just in case if rounding error causes pool to not have enough token.
+    function _safeRewardsTransfer(address _to, uint256 _amount) internal {
+        uint256 rewardsBal = DEMA.balanceOf(address(this));
+        if (_amount > rewardsBal) {
+            DEMA.transfer(_to, rewardsBal);
+        } else {
+            DEMA.transfer(_to, _amount);
+        }
+    }
+
+    function _addInviterShares(
+        UserInfo storage inviter,
+        uint256 earnedShares,
+        uint256 earnedShareEquivalent
+    ) internal {
+        inviter.earnedShares = inviter.earnedShares.add(earnedShares);
+        inviter.totalShares = inviter.totalShares.add(earnedShareEquivalent);
     }
 
     /* ==================================== MODIFIERS ==================================== */
@@ -364,11 +364,11 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     /* ==================================== Only owner ==================================== */
 
     function notifyRewardsAmount(uint256 poolId, uint256 reward, uint256 leftPeriodTimes)
-        external 
+        external
         override
         onlyOwner
         checkPoolId(poolId)
-        updateRewards(poolId, address(0)) 
+        updateRewards(poolId, address(0))
     {
         PoolInfo storage pool = poolInfo[poolId];
 
@@ -393,16 +393,16 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     function addPool(
-        uint256 rewardFirstPeriod, 
-        uint256 leftPeriodTimes, 
+        uint256 rewardFirstPeriod,
+        uint256 leftPeriodTimes,
         uint256 periodDuration,
         uint256 earnedFactor,
         uint256 invitedFactor,
         address operator
-    ) 
-        external 
+    )
+        external
         override
-        onlyOwner 
+        onlyOwner
     {
         PoolInfo storage pool = poolInfo[nextPoolId];
         nextPoolId += 1;
@@ -420,13 +420,13 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.periodFinish = block.timestamp.add(periodDuration);
 
         // Init variables
-        pool.rewardPerTokenStored = 0;   
+        pool.rewardPerTokenStored = 0;
         pool.rewardsPaid = 0;
         pool.totalShares = 0;
 
         // For inviting
-        pool.earnedFactor = earnedFactor;   
-        pool.invitedFactor = invitedFactor;  
+        pool.earnedFactor = earnedFactor;
+        pool.invitedFactor = invitedFactor;
     }
 
     function burn(uint256 poolId, uint256 amount) external override onlyOwner {
