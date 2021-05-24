@@ -85,8 +85,6 @@ contract Reinvestment is Ownable, IReinvestment {
             _updatePool(msg.sender);
             mdx.safeTransferFrom(msg.sender, address(this), amount);
 
-            // TODO add reserved amount and change these param.
-
             UserInfo storage user = userInfo[msg.sender]; 
             uint256 shares = _amountToShare(amount);
 
