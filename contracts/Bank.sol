@@ -197,7 +197,9 @@ contract Bank is Ownable, ReentrancyGuard {
         user.sharesPerToken[token] = user.sharesPerToken[token].sub(withdrawShares);
 
         Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
-        // TODO get DEMA rewards
+        
+        // get DEMA rewards
+        getBankRewards();
 
         if (token == address(0)) {//BSC
             SafeToken.safeTransferETH(msg.sender, amount);
@@ -233,6 +235,7 @@ contract Bank is Ownable, ReentrancyGuard {
         onlyEOA
         nonReentrant
     {
+        UserInfo storage user = userInfo[msg.sender];
         if (posId == 0) {
             // Create a new position
             posId = currentPos;
@@ -240,8 +243,10 @@ contract Bank is Ownable, ReentrancyGuard {
             positions[posId].owner = msg.sender;
             positions[posId].productionId = pid;
 
-            EnumerableSet.add(userInfo[msg.sender].posId, posId);
-            EnumerableSet.add(userInfo[msg.sender].prodId, pid);
+            EnumerableSet.add(user.posId, posId);
+            EnumerableSet.add(user.prodId, pid);
+            user.posNum[pid] = user.posNum[pid].add(1);
+
         } else {
             require(posId < currentPos, "bad position id");
             require(positions[posId].owner == msg.sender, "not position owner");
@@ -329,8 +334,13 @@ contract Bank is Ownable, ReentrancyGuard {
         }
         // Then user may withdraw some or repay. get rewards of all pos.
         else {
-            // TODO Get all rewards.
-            // TODO If the lp amount in current pos is 0, delete the pos.
+            // Get all rewards.
+            getRewardsAllProd();
+            // If the lp amount in current pos is 0, delete the pos.
+            if (production.goblin.posLPAmount(posId) == 0) {
+                EnumerableSet.remove(user.posId, posId);
+                user.posNum[pid] = user.posNum[pid].add(1);
+            }
         }
 
         emit OpPosition(posId, amount.debts, amount.backToken);
@@ -361,7 +371,11 @@ contract Bank is Ownable, ReentrancyGuard {
 
         production.goblin.liquidate(posId, pos.owner, production.borrowToken, debts);
 
-        // TODO Delete the pos from owner.
+        // TODO move it to a function to prevent stack too deep
+        // Delete the pos from owner, posNum -= 1.
+        UserInfo storage owner = userInfo[pos.owner];
+        EnumerableSet.remove(owner.posId, posId);
+        owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
         uint256 back;   // To save memory.
@@ -402,20 +416,19 @@ contract Bank is Ownable, ReentrancyGuard {
     /* ----------------- Get rewards ----------------- */
 
     // Send earned DEMA per token to user.
-    function getBankRewardsPerToken(address token) external {
+    function getBankRewardsPerToken(address token) public {
         TokenBank storage bank = banks[token];
         Farm.getRewardsPerPool(bank.poolId, msg.sender);
     }
 
     // Send earned DEMA from all tokens to user.
     // TODO Move dynamic staked bool info update from farm to bank.
-    function getBankRewards(address token) external {
-        TokenBank storage bank = banks[token];
+    function getBankRewards() public {
         Farm.getRewards(msg.sender);
     }
 
     // Get MDX and DEMA rewards of per production
-    function getRewardsPerProd(uint256 prodId) external {
+    function getRewardsPerProd(uint256 prodId) public {
         productions[prodId].goblin.getAllRewards(msg.sender);
 
         UserInfo storage user = userInfo[msg.sender];
@@ -426,7 +439,7 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     // Get MDX and DEMA rewards of all productions
-    function getRewardsAllProd() external {
+    function getRewardsAllProd() public {
         for (uint256 i = 0; i < userProdNum(msg.sender); ++i) {
             getRewardsPerProd(userProdId(msg.sender, i));
         }
