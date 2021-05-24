@@ -289,6 +289,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     /* ==================================== Internal ==================================== */
 
+    // TODO Remove these function to Bank. And it should be public.
+
     function _userPoolsLength(address account) internal view returns (uint256) {
         return EnumerableSet.length(userStakedPools[account]);
     }
