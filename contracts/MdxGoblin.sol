@@ -242,20 +242,30 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
     }
 
-    function userEarnedAmount(address account) public view  returns (uint256) {
+    /// @return Earned MDX amount and DEMA amount.
+    function userEarnedAmount(address account) public view  returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
-        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored);
+        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored),
+               farm.earnedPerPool(poolId, account);
     }
 
     /* ==================================== Write ==================================== */
 
+    /// @dev Send both MDX and DEMA rewards to user.
     function getAllRewards(address account) public override {
         _updatePool(account);
         UserInfo storage user = userInfo[account];
-        reinvestment.withdraw(user.earnedMdxStored);
-        mdx.safeTransfer(account, user.earnedMdxStored);
-        globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
-        user.earnedMdxStored = 0;
+
+        // Send MDX
+        if (user.earnedMdxStored > 0) {
+            reinvestment.withdraw(user.earnedMdxStored);
+            mdx.safeTransfer(account, user.earnedMdxStored);
+            globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
+            user.earnedMdxStored = 0;
+        }
+
+        // Send DEMA
+        farm.getRewardsPerPool(poolId, account);
     }
 
 
