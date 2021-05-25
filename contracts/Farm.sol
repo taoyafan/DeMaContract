@@ -75,6 +75,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return Math.min(block.timestamp, poolInfo[poolId].periodFinish);
     }
 
+    // Total rewards already mint in one pool including unwithdrawn rewards.
     function rewardPerToken(uint256 poolId) public view override checkPoolId(poolId) returns (uint256) {
         PoolInfo storage pool = poolInfo[poolId];
 
@@ -92,11 +93,13 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return pool.rewardRate.mul(pool.periodDuration);
     }
 
+    // Rewards amount for user in one pool.
     function earnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
         UserInfo storage user = userInfoPerPool[poolId][account];
         return user.totalShares.mul(rewardPerToken(poolId).sub(user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
     }
 
+    // Rewards amount for user in all pools.
     function earned(address account) public view override returns (uint256) {
         uint256 totalEarned = 0;
         for (uint256 index = 0; index < _userPoolsLength(account); ++index) {
