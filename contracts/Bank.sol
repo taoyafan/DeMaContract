@@ -30,7 +30,7 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 totalShares;        // Stake shares
         uint256 totalDebt;          // Debts balance
         uint256 totalDebtShares;    // Debts shares
-        uint256 totalReserve;
+        uint256 totalReserve;       // TODO Need to check this part of codes.
         uint256 lastInterestTime;
     }
 
