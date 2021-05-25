@@ -30,6 +30,7 @@ contract Reinvestment is Ownable, IReinvestment {
         uint256 lastUpdateTime;
     }
 
+    // TODO Add last update time, and check it when update pool.
     struct UserInfo {
         uint256 totalShares;            // Total Lp amount.
         uint256 earnedMdxStored;        // Earned mdx amount stored at the last time user info was updated.
