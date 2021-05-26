@@ -10,7 +10,7 @@ import "./Interface/IFarm.sol";
 import "./Interface/IDEMA.sol";
 import "./interface/IUserProfile.sol";
 
-
+// Check all the div params MUST not be 0;
 contract Farm is IFarm, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -33,25 +33,10 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         uint256 totalShares;    // Total staked shares, include equivalent share.
     }
 
-    struct UserStakeInfo {
+    struct UserInfo {
         uint256 rewards;                    // Earned rewards.
         uint256 userRewardPerTokenPaid;     // Rewards per token paid.
         uint256 shares;                     // Stake shares.
-        uint256 lastUpdateTime;
-    }
-
-    struct InviterBonus {
-        uint256 rewards;                    // Earned rewards.
-        uint256 userRewardPerTokenPaid;     // Rewards per token paid.
-        uint256 shares;                     // Earned bounse share as an inviter.
-        uint256 lastUpdateTime;
-    }
-
-    // Bouns earned as a invitee.
-    struct Bouns {
-        uint256 rewards;                    // Earned rewards.
-        uint256 userRewardPerTokenPaid;     // Rewards per token paid.
-        uint256 shares;                     // Earned bounse share as an invitee.
         uint256 lastUpdateTime;
     }
 
@@ -61,17 +46,17 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     mapping(uint256 => PoolInfo) public poolInfo;
     uint256 nextPoolId = 0;
 
-    mapping(uint256 => mapping(address => UserStakeInfo)) public userStakeInfo; // TODO Check user
-    mapping(uint256 => mapping(address => InviterBonus)) public inviterBonus;   // TODO Check user
-    mapping(uint256 => mapping(address => Bouns)) public bonus;                 // TODO Check user
+    mapping(uint256 => mapping(address => UserInfo)) public userStakeInfo;  // TODO Check user
+    mapping(uint256 => mapping(address => UserInfo)) public inviterBonus;   // TODO Check user
+    mapping(uint256 => mapping(address => UserInfo)) public bonus;          // TODO Check user
 
     using EnumerableSet for EnumerableSet.UintSet;
-    mapping(address => EnumerableSet.UintSet) internal userStakedPools;         // TODO Check user
+    mapping(address => EnumerableSet.UintSet) internal userStakedPools;         // TODO Remove it.
     mapping(address => EnumerableSet.UintSet) internal inviterBonusPools;       // TODO Check user
     mapping(address => EnumerableSet.UintSet) internal bonusPools;         // invitee's bonus pool. TODO Check user.
 
     // For inviting
-    uint256 inviterBounseRatio; // Inviters' bonus ratio, will divide 10000, 500 means 5%
+    uint256 inviterBonusRatio; // Inviters' bonus ratio, will divide 10000, 500 means 5%
     uint256 bonusRatio;         // Invitees' bonus ratio, will divide 10000, 500 means 5%
 
     /* ========== CONSTRUCTOR ========== */
@@ -79,23 +64,24 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     constructor(
         IUserProfile _userProfile,
         IDEMA _rewardsToken,
-        uint256 _inviterBounseRatio,
+        uint256 _inviterBonusRatio,
         uint256 _bonusRatio
     ) Ownable() public {
         userProfile = _userProfile;
         DEMA = _rewardsToken;
-        inviterBounseRatio = _inviterBounseRatio;
+        inviterBonusRatio = _inviterBonusRatio;
         bonusRatio = _bonusRatio;
     }
 
     /* ==================================== Read ==================================== */
 
+    /* ----------------- Pool Info  ----------------- */
+
     // Elapsed time of the last / current period should be rewarded.
     function lastTimeRewardApplicable(uint256 poolId) public view override checkPoolId(poolId) returns (uint256) {
         return Math.min(block.timestamp, poolInfo[poolId].periodFinish);
     }
-
-    // TODO update these info for bonus.
+    
     // Total rewards already mint in one pool including unwithdrawn rewards.
     function rewardPerToken(uint256 poolId) public view override checkPoolId(poolId) returns (uint256) {
         PoolInfo storage pool = poolInfo[poolId];
@@ -114,10 +100,29 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return pool.rewardRate.mul(pool.periodDuration);
     }
 
+    function totalShares() external view override returns (uint256) {
+        uint256 total = 0;
+        for (uint256 poolId = 0; poolId < nextPoolId; ++poolId) {
+            total = total.add(poolInfo[poolId].totalShares);
+        }
+        return total;
+    }
+
+    /* ----------------- User Staked Info (Per Pool)  ----------------- */
+
     // Rewards amount for user in one pool.
-    function earnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
-        UserInfo storage user = userInfoPerPool[poolId][account];
-        return user.totalShares.mul(rewardPerToken(poolId).sub(user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
+    function stakeEarnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
+        UserInfo storage user = userStakeInfo[poolId][account];
+        return user.shares.mul(rewardPerToken(poolId).sub(user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
+    }
+
+    // TODO Update these function of bonus and inviter bonus.
+    /* ----------------- User Bonus Info  ----------------- */
+
+    // Rewards amount for user in one pool.
+    function bonusEarnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
+        UserInfo storage user = userStakeInfo[poolId][account];
+        return user.shares.mul(rewardPerToken(poolId).sub(user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
     }
 
     // Rewards amount for user in all pools.
@@ -129,30 +134,41 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return totalEarned;
     }
 
-    function totalSharesPerPool(uint256 poolId) public view override checkPoolId(poolId) returns (uint256) {
-        return poolInfo[poolId].totalShares;
-    }
-
-    function totalShares() external view override returns (uint256) {
+    // flag: 0 => staked shares; 1 => bonus shares; 2 => inviter bonus shares
+    function sharesOf(address account, uint256 flag) external view override returns (uint256) {
         uint256 total = 0;
-        for (uint256 poolId = 0; poolId < nextPoolId; ++poolId) {
-            total = total.add(totalSharesPerPool(poolId));
+        for (uint256 index = 0; index < _userPoolsLength(account, flag); ++index) {
+            total = total.add(sharesOfPerPool(_userPoolsId(account, index, flag), account, flag));
         }
         return total;
     }
 
-    function sharesOfPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
-        UserInfo storage user = userInfoPerPool[poolId][account];
-        return user.totalShares;
+    /* ----------------- Inviter Bonus Info  ----------------- */
+
+    // Rewards amount for user in one pool.
+    function bonusEarnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
+        UserInfo storage user = userStakeInfo[poolId][account];
+        return user.shares.mul(rewardPerToken(poolId).sub(user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
     }
 
-    function sharesOf(address account) external view override returns (uint256) {
-        uint256 total = 0;
+    // Rewards amount for user in all pools.
+    function earned(address account) public view override returns (uint256) {
+        uint256 totalEarned = 0;
         for (uint256 index = 0; index < _userPoolsLength(account); ++index) {
-            total = total.add(sharesOfPerPool(_userPoolsId(account, index), account));
+            totalEarned = totalEarned.add(earnedPerPool(_userPoolsId(account, index), account));
+        }
+        return totalEarned;
+    }
+
+    // flag: 0 => staked shares; 1 => bonus shares; 2 => inviter bonus shares
+    function sharesOf(address account, uint256 flag) external view override returns (uint256) {
+        uint256 total = 0;
+        for (uint256 index = 0; index < _userPoolsLength(account, flag); ++index) {
+            total = total.add(sharesOfPerPool(_userPoolsId(account, index, flag), account, flag));
         }
         return total;
     }
+
 
     /* ==================================== Write ==================================== */
 
@@ -166,7 +182,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         checkhalve(poolId)
     {
         PoolInfo storage pool = poolInfo[poolId];
-        UserInfo storage user = userInfoPerPool[poolId][account];
+        UserInfo storage user = userStakeInfo[poolId][account];
 
         if (user.rewards > 0) {
             _safeRewardsTransfer(account, user.rewards);
@@ -204,7 +220,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         require(msg.sender == poolInfo[poolId].operator, "Not operator");
 
         PoolInfo storage pool = poolInfo[poolId];
-        UserInfo storage user = userInfoPerPool[poolId][account];
+        UserInfo storage user = userStakeInfo[poolId][account];
 
         user.shares = user.shares.add(amount);
         pool.totalShares = pool.totalShares.add(amount);
@@ -216,20 +232,20 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         
         // If there is a inviter, update bonus and bonus pool info.
         if (inviterAccount != address(0)) {
-            InviterBonus storage inviter = inviterBonus[poolId][inviterAccount];
-            Bonus storage userBonus = bonus[poolId][account];
+            UserInfo storage inviter = inviterBonus[poolId][inviterAccount];
+            UserInfo storage userBonus = bonus[poolId][account];
 
             _updateInviterBonus(poolId, inviterAccount);
             _updateBonus(poolId, account);
 
-            uint256 bonusShare = amount.mul(bounseRatio).div(10000);
-            uint256 inviterBonusShare = amount.mul(inviterBounseRatio).div(10000);
+            uint256 bonusShare = amount.mul(bonusRatio).div(10000);
+            uint256 inviterBonusShare = amount.mul(inviterBonusRatio).div(10000);
 
             // Update user info
-            userBonus.shares = user.invitedShares.add(bonusShare);
+            userBonus.shares = userBonus.shares.add(bonusShare);
 
             // Update inviter info
-            inviter.shares = inviter.earnedShares.add(inviterBonusShare);
+            inviter.shares = inviter.shares.add(inviterBonusShare);
 
             emit EarnedSharesIncreased(poolId, inviterAccount, inviterBonusShare);
 
@@ -253,76 +269,45 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         require(amount > 0, "Cannot withdraw 0");
         require(msg.sender == poolInfo[poolId].operator, "Not operator");
 
-        UserInfo storage user = userInfoPerPool[poolId][account];
+        UserInfo storage user = userStakeInfo[poolId][account];
         PoolInfo storage pool = poolInfo[poolId];
 
+        // Update shares of user and pool.
+        user.totalShares = user.totalShares.sub(amount);
+        pool.totalShares = pool.totalShares.sub(amount);
+        
         // TODO update info to bonus. remember to update bonus pool.
 
         // If user haven't been registered, inviter is address(0);
         address inviterAccount = userProfile.inviter(account);
 
-        if (inviterAccount == address(0)) {
-            // no inviter
-            require(user.invitedShares == 0, "Should specific inviter which can not be 0");
-            require(user.normalShares >= amount, "Not enough share to withdraw");
+        // If there is a inviter, remove bonus if staked amount is not enough.
+        if (inviterAccount != address(0)) {
+            // User's bonus.shares must less than maxBonusShares.
+            uint256 maxBonusShares =user.totalShares.mul(bonusRatio).div(10000);
+            UserInfo storage userBonus = bonus[poolId][account];
 
-            // Update user info
-            user.totalShares = user.totalShares.sub(amount);
-            user.normalShares = user.normalShares.sub(amount);
+            // Need decrease bonus.
+            if (userBonus.shares > maxBonusShares) {
+                uint256 bonusReduction = userBonus.shares.mul(maxBonusShares);
+                uint256 inviterBonusReduction = bonusRatio == inviterBonusRatio ? 
+                    bonusReduction : bonusReduction.mul(inviterBonusRatio).div(bonusRatio);
 
-            // Update pool info
-            pool.totalShares = pool.totalShares.sub(amount);
-        } else {
-            // If there is a inviter
-            UserInfo storage inviter = userInfoPerPool[poolId][inviterAccount];
+                userBonus.shares = maxBonusShares;
 
-            // If user have normal shares, withdraw it first.
-            if (user.normalShares > 0) {
-                // How many normal shares can be withdraw
-                uint256 normalAmount = user.normalShares > amount ? amount : user.normalShares;
+                // Update inviter's bonus.
+                UserInfo storage inviter = inviterBonus[poolId][inviterAccount]; 
+                inviter.shares = inviter.shares.sub(inviterBonusReduction);
+                emit EarnedSharesDecreased(poolId, inviterAccount, inviterBonusReduction);
 
-                // Withdraw normal shares
-                user.totalShares = user.totalShares.sub(normalAmount);
-                user.normalShares = user.normalShares.sub(normalAmount);
-                pool.totalShares = pool.totalShares.sub(normalAmount);
-
-                // How many amount left
-                amount = amount.sub(normalAmount);
-            }
-
-            // If normal shares is not enough, then withdraw invited shares.
-            if (amount > 0) {
-
-                uint256 inviterShareEquivalent = amount.mul(pool.invitedFactor).div(10000);
-                uint256 earnedShareEquivalent = amount.mul(pool.earnedFactor).div(10000);
-
-                // Withdraw user invited shares
-                user.invitedShares = user.invitedShares.sub(amount);
-                user.totalShares = user.totalShares.sub(inviterShareEquivalent);
-
-                // Withdraw inviter earned shares
-                inviter.earnedShares = inviter.earnedShares.sub(amount);
-                inviter.totalShares = inviter.totalShares.sub(earnedShareEquivalent);
-                emit EarnedSharesDecreased(poolId, inviterAccount, earnedShareEquivalent);
-
-                // Update pool info
-                pool.totalShares = pool.totalShares.sub(inviterShareEquivalent).sub(earnedShareEquivalent);
+                // Update pool's total shares.
+                pool.totalShares = pool.totalShares.sub(bonusReduction).sub(inviterBonusReduction);
             }
         }
         emit Withdrawn(poolId, account, amount);
     }
 
     /* ==================================== Internal ==================================== */
-
-    // TODO Remove these function to Bank. And it should be public.
-
-    function _userPoolsLength(address account) internal view returns (uint256) {
-        return EnumerableSet.length(userStakedPools[account]);
-    }
-
-    function _userPoolsId(address account, uint256 index) internal view returns (uint256) {
-        return EnumerableSet.at(userStakedPools[account], index);
-    }
 
     // Safe Token transfer function, just in case if rounding error causes pool to not have enough token.
     function _safeRewardsTransfer(address _to, uint256 _amount) internal {
@@ -334,13 +319,50 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         }
     }
 
-    function _addInviterShares(
-        UserInfo storage inviter,
-        uint256 earnedShares,
-        uint256 earnedShareEquivalent
+    /* ----------------- Bonus ----------------- */
+
+    function _bonusPoolsLength(address account) internal view returns (uint256) {
+        return EnumerableSet.length(bonusPools[account]);
+    }
+
+    function _bonusPoolsId(address account, uint256 index) internal view returns (uint256) {
+        return EnumerableSet.at(bonusPools[account], index);
+    }
+
+    /* ----------------- Inviter Bonus ----------------- */
+
+    function _inviteBonusPoolsLength(address account) internal view returns (uint256) {
+        return EnumerableSet.length(inviterBonusPools[account]);
+    }
+
+    function _inviteBonusPoolsId(address account, uint256 index) internal view returns (uint256) {
+        return EnumerableSet.at(inviterBonusPools[account], index);
+    }
+
+    /* ----------------- Update Pool or User ----------------- */
+    
+    function _updateGlobal(uint256 time, uint256 poolId) internal {
+        PoolInfo storage pool = poolInfo[poolId];
+        if (pool.lastUpdateTime != time) {
+            pool.rewardPerTokenStored = rewardPerToken(poolId);
+            pool.lastUpdateTime = time;
+        }
+    }
+
+    // TODO check users' update time in others file. 
+    // Pool info MUST just be updated.
+    function _updateUser(
+        uint256 time, 
+        uint256 poolId, 
+        uint256 account, 
+        UserInfo storage user
     ) internal {
-        inviter.earnedShares = inviter.earnedShares.add(earnedShares);
-        inviter.totalShares = inviter.totalShares.add(earnedShareEquivalent);
+        PoolInfo storage pool = poolInfo[poolId];
+        if (account != address(0) && time != user.lastUpdateTime) {
+            user.rewards = earnedPerPool(poolId, account);
+            user.userRewardPerTokenPaid = pool.rewardPerTokenStored;
+            user.lastUpdateTime = time;
+        }
     }
 
     // TODO Check if we update these pools. When change bonus
@@ -348,38 +370,16 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     function _updateBonus(uint256 poolId, address account) internal {
         require(poolId < nextPoolId, "Don't have a pool");
         uint256 time = lastTimeRewardApplicable(poolId);
-
-        PoolInfo storage pool = poolInfo[poolId];
-        if (pool.lastUpdateTime != time) {
-            pool.rewardPerTokenStored = rewardPerToken(poolId);
-            pool.lastUpdateTime = time;
-        }
-
-        UserInfo storage invitee = bonus[poolId][account];
-        if (account != address(0) && time != invitee.lastUpdateTime) {
-            invitee.rewards = earnedPerPool(poolId, account);
-            invitee.userRewardPerTokenPaid = pool.rewardPerTokenStored;
-            invitee.lastUpdateTime = time;
-        }
+        _updateGlobal(time, poolId);
+        _updateUser(time, poolId, account, bonus[poolId][account]);
     }
 
     // Update inviters bonus rewards
     function _updateInviterBonus(uint256 poolId, address account) internal {
         require(poolId < nextPoolId, "Don't have a pool");
         uint256 time = lastTimeRewardApplicable(poolId);
-        
-        PoolInfo storage pool = poolInfo[poolId];
-        if (pool.lastUpdateTime != time) {
-            pool.rewardPerTokenStored = rewardPerToken(poolId);
-            pool.lastUpdateTime = time;
-        }
-
-        UserInfo storage inviter = inviterBonus[poolId][account];
-        if (account != address(0) && time != inviter.lastUpdateTime) {
-            inviter.rewards = earnedPerPool(poolId, account);
-            inviter.userRewardPerTokenPaid = pool.rewardPerTokenStored;
-            inviter.lastUpdateTime = time;
-        }
+        _updateGlobal(time, poolId);
+        _updateUser(time, poolId, account, inviterBonus[poolId][account]);
     }
 
     /* ==================================== MODIFIERS ==================================== */
@@ -393,20 +393,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     modifier updateRewards(uint256 poolId, address account) {
         require(poolId < nextPoolId, "Don't have a pool");
         uint256 time = lastTimeRewardApplicable(poolId);
-
-        // TODO check users' update time in others file. 
-        PoolInfo storage pool = poolInfo[poolId];
-        if (pool.lastUpdateTime != time) {
-            pool.rewardPerTokenStored = rewardPerToken(poolId);
-            pool.lastUpdateTime = time;
-        }
-
-        UserInfo storage user = userStakeInfo[poolId][account];
-        if (account != address(0) && time != user.lastUpdateTime) {
-            user.rewards = earnedPerPool(poolId, account);
-            user.userRewardPerTokenPaid = pool.rewardPerTokenStored;
-            user.lastUpdateTime = time;
-        }
+        _updateGlobal(time, poolId);
+        _updateUser(time, poolId, account, userStakeInfo[poolId][account]);
         _;
     }
 
