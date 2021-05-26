@@ -61,10 +61,15 @@ contract Bank is Ownable, ReentrancyGuard {
         bool borrowed;
     }
 
+    using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
 
-    struct UserInfo {
-        mapping(address => uint256) sharesPerToken;     // per token pool
+    struct UserBankInfo {
+        mapping(address => uint256) sharesPerToken;     // Shares per token pool
+        EnumerableSet.AddressSet banksAddress;          // Stored banks' address.
+    }
+
+    struct UserPPInfo {
         EnumerableSet.UintSet posId;                    // position id
         EnumerableSet.UintSet prodId;                   // production id
         mapping(uint256 => uint256) posNum;             // position num of each production(id)
@@ -72,9 +77,14 @@ contract Bank is Ownable, ReentrancyGuard {
 
     IBankConfig public config;
 
-    mapping(address => UserInfo) userInfo;
+    /* ----------------- Banks Info ----------------- */
 
-    mapping(address => TokenBank) public banks;
+    mapping(address => TokenBank) public banks;                     // Token address => TokenBank
+    mapping(address => EnumerableSet.AddressSet) userBankInfo;      // User account address => Bank address.
+
+    /* -------- Productions / Positions Info -------- */
+
+    mapping(address => UserPPInfo) userPPInfo;      // User Productions, Positions Info.
 
     mapping(uint256 => Production) public productions;
     uint256 public currentPid = 1;
@@ -138,6 +148,19 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ----------------- Get user info ----------------- */
 
+    /* ---- User Banks Info ---- */
+
+    function userBanksNum(address account) public view returns (uint256) {
+        return EnumerableSet.length(userBankInfo[account].banksAddress);
+    }
+
+    // Bank address is same as token address store in bank.
+    function userBankAddress(address account, uint256 index) public view returns (address) {
+        return EnumerableSet.at(userBankInfo[account].banksAddress, index);
+    }
+
+    /* ---- User Positions Info ---- */
+
     function userPosNum(address account) public view returns (uint256) {
         return EnumerableSet.length(userInfo[account].posId);
     }
@@ -145,6 +168,8 @@ contract Bank is Ownable, ReentrancyGuard {
     function userPosId(address account, uint256 index) public view returns (uint256) {
         return EnumerableSet.at(userInfo[account].posId, index);
     }
+
+    /* ---- User Productions Info ---- */
 
     function userProdNum(address account) public view returns (uint256) {
         return EnumerableSet.length(userInfo[account].prodId);
@@ -155,14 +180,14 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     function userSharesPreTokoen(address account, address token) external view returns (uint256) {
-        return userInfo[account].sharesPerToken[token];
+        return userBankInfo[account].sharesPerToken[token];
     }
 
     /* ==================================== Write ==================================== */
 
     function deposit(address token, uint256 amount) public nonReentrant {
         TokenBank storage bank = banks[token];
-        UserInfo storage user = userInfo[msg.sender];
+        UserPPInfo storage user = userBankInfo[msg.sender];
         require(bank.isOpen && bank.canDeposit, 'Token not exist or cannot deposit');
 
         _calInterest(token);
@@ -177,15 +202,19 @@ contract Bank is Ownable, ReentrancyGuard {
 
         uint256 newShares = (total == 0 || bank.totalShares == 0) ? amount: amount.mul(bank.totalShares).div(total);
 
+        // Update bank info
         bank.totalShares = bank.totalShares.add(newShares);
+
+        // Update user info
         user.sharesPerToken[token] = user.sharesPerToken[token].add(newShares);
+        EnumerableSet.add(user.banksAddress, token);
 
         Farm.stake(bank.poolId, msg.sender, newShares);
     }
 
     function withdraw(address token, uint256 withdrawShares) external nonReentrant {
         TokenBank storage bank = banks[token];
-        UserInfo storage user = userInfo[msg.sender];
+        UserPPInfo storage user = userBankInfo[msg.sender];
         require(bank.isOpen && bank.canWithdraw, 'Token not exist or cannot withdraw');
 
         _calInterest(token);
@@ -197,7 +226,7 @@ contract Bank is Ownable, ReentrancyGuard {
         user.sharesPerToken[token] = user.sharesPerToken[token].sub(withdrawShares);
 
         Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
-        
+
         // get DEMA rewards
         getBankRewards();
 
@@ -235,7 +264,7 @@ contract Bank is Ownable, ReentrancyGuard {
         onlyEOA
         nonReentrant
     {
-        UserInfo storage user = userInfo[msg.sender];
+        UserPPInfo storage user = userInfo[msg.sender];
         if (posId == 0) {
             // Create a new position
             posId = currentPos;
@@ -373,7 +402,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         // TODO move it to a function to prevent stack too deep
         // Delete the pos from owner, posNum -= 1.
-        UserInfo storage owner = userInfo[pos.owner];
+        UserPPInfo storage owner = userInfo[pos.owner];
         EnumerableSet.remove(owner.posId, posId);
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
@@ -419,19 +448,23 @@ contract Bank is Ownable, ReentrancyGuard {
     function getBankRewardsPerToken(address token) public {
         TokenBank storage bank = banks[token];
         Farm.getRewardsPerPool(bank.poolId, msg.sender);
+        // TODO remove empty bank.
     }
 
     // Send earned DEMA from all tokens to user.
     // TODO Move dynamic staked bool info update from farm to bank.
     function getBankRewards() public {
-        Farm.getRewards(msg.sender);
+        for (uint256 index = 0; index < userBanksNum(msg.sender); ++index) {
+            getBankRewardsPerToken(userBankAddress(msg.sender, index), msg.sender);
+        }
     }
 
     // Get MDX and DEMA rewards of per production
+    // TODO separate MDX and DEMA in goblin
     function getRewardsPerProd(uint256 prodId) public {
         productions[prodId].goblin.getAllRewards(msg.sender);
 
-        UserInfo storage user = userInfo[msg.sender];
+        UserPPInfo storage user = userInfo[msg.sender];
         if (user.posNum[prodId] == 0) {
             EnumerableSet.remove(user.prodId, prodId);
         }
@@ -439,6 +472,7 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     // Get MDX and DEMA rewards of all productions
+    // TODO separate MDX and DEMA in goblin
     function getRewardsAllProd() public {
         for (uint256 i = 0; i < userProdNum(msg.sender); ++i) {
             getRewardsPerProd(userProdId(msg.sender, i));
