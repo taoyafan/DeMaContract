@@ -11,7 +11,7 @@ import "./interface/IBankConfig.sol";
 import "./interface/IFarm.sol";
 import "./interface/IGoblin.sol";
 import "./utils/SafeToken.sol";
-
+// TODO Check all div.
 contract Bank is Ownable, ReentrancyGuard {
     using SafeToken for address;
     using SafeMath for uint256;
@@ -80,7 +80,7 @@ contract Bank is Ownable, ReentrancyGuard {
     /* ----------------- Banks Info ----------------- */
 
     mapping(address => TokenBank) public banks;                     // Token address => TokenBank
-    mapping(address => EnumerableSet.AddressSet) userBankInfo;      // User account address => Bank address.
+    mapping(address => UserBankInfo) userBankInfo;      // User account address => Bank address.
 
     /* -------- Productions / Positions Info -------- */
 
@@ -162,21 +162,21 @@ contract Bank is Ownable, ReentrancyGuard {
     /* ---- User Positions Info ---- */
 
     function userPosNum(address account) public view returns (uint256) {
-        return EnumerableSet.length(userInfo[account].posId);
+        return EnumerableSet.length(userPPInfo[account].posId);
     }
 
     function userPosId(address account, uint256 index) public view returns (uint256) {
-        return EnumerableSet.at(userInfo[account].posId, index);
+        return EnumerableSet.at(userPPInfo[account].posId, index);
     }
 
     /* ---- User Productions Info ---- */
 
     function userProdNum(address account) public view returns (uint256) {
-        return EnumerableSet.length(userInfo[account].prodId);
+        return EnumerableSet.length(userPPInfo[account].prodId);
     }
 
     function userProdId(address account, uint256 index) public view returns (uint256) {
-        return EnumerableSet.at(userInfo[account].prodId, index);
+        return EnumerableSet.at(userPPInfo[account].prodId, index);
     }
 
     function userSharesPreTokoen(address account, address token) external view returns (uint256) {
@@ -187,7 +187,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function deposit(address token, uint256 amount) public nonReentrant {
         TokenBank storage bank = banks[token];
-        UserPPInfo storage user = userBankInfo[msg.sender];
+        UserBankInfo storage user = userBankInfo[msg.sender];
         require(bank.isOpen && bank.canDeposit, 'Token not exist or cannot deposit');
 
         _calInterest(token);
@@ -214,7 +214,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function withdraw(address token, uint256 withdrawShares) external nonReentrant {
         TokenBank storage bank = banks[token];
-        UserPPInfo storage user = userBankInfo[msg.sender];
+        UserBankInfo storage user = userBankInfo[msg.sender];
         require(bank.isOpen && bank.canWithdraw, 'Token not exist or cannot withdraw');
 
         _calInterest(token);
@@ -264,7 +264,7 @@ contract Bank is Ownable, ReentrancyGuard {
         onlyEOA
         nonReentrant
     {
-        UserPPInfo storage user = userInfo[msg.sender];
+        UserPPInfo storage user = userPPInfo[msg.sender];
         if (posId == 0) {
             // Create a new position
             posId = currentPos;
@@ -402,7 +402,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         // TODO move it to a function to prevent stack too deep
         // Delete the pos from owner, posNum -= 1.
-        UserPPInfo storage owner = userInfo[pos.owner];
+        UserPPInfo storage owner = userPPInfo[pos.owner];
         EnumerableSet.remove(owner.posId, posId);
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
@@ -444,27 +444,31 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ----------------- Get rewards ----------------- */
 
-    // Send earned DEMA per token to user.
+    // Send earned DEMA from per token bank to user.
     function getBankRewardsPerToken(address token) public {
         TokenBank storage bank = banks[token];
-        Farm.getRewardsPerPool(bank.poolId, msg.sender);
-        // TODO remove empty bank.
+        Farm.getStakeRewardsPerPool(bank.poolId, msg.sender);
+
+        // Delete pool if no left shares
+        UserBankInfo storage user = userBankInfo[msg.sender];
+        if (user.sharesPerToken[token] == 0) {
+            EnumerableSet.remove(user.banksAddress, token);
+        }
     }
 
     // Send earned DEMA from all tokens to user.
-    // TODO Move dynamic staked bool info update from farm to bank.
     function getBankRewards() public {
         for (uint256 index = 0; index < userBanksNum(msg.sender); ++index) {
-            getBankRewardsPerToken(userBankAddress(msg.sender, index), msg.sender);
+            getBankRewardsPerToken(userBankAddress(msg.sender, index));
         }
     }
 
     // Get MDX and DEMA rewards of per production
-    // TODO separate MDX and DEMA in goblin
     function getRewardsPerProd(uint256 prodId) public {
         productions[prodId].goblin.getAllRewards(msg.sender);
 
-        UserPPInfo storage user = userInfo[msg.sender];
+        // Delete pool if no left pos.
+        UserPPInfo storage user = userPPInfo[msg.sender];
         if (user.posNum[prodId] == 0) {
             EnumerableSet.remove(user.prodId, prodId);
         }
@@ -472,7 +476,6 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     // Get MDX and DEMA rewards of all productions
-    // TODO separate MDX and DEMA in goblin
     function getRewardsAllProd() public {
         for (uint256 i = 0; i < userProdNum(msg.sender); ++i) {
             getRewardsPerProd(userProdId(msg.sender, i));
@@ -628,10 +631,6 @@ contract Bank is Ownable, ReentrancyGuard {
         } else {
             SafeToken.safeTransfer(token, to, value);
         }
-    }
-
-    fallback() external {
-        require(false, "Error call");
     }
 
     receive() external payable {
