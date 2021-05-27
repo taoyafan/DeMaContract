@@ -12,14 +12,14 @@ contract("TestBank", (accounts) => {
     let usdt;
 
     // parameters
-    let setReserveBps; 
+    let setReserveBps;
     let setLiquidateBps;
-    let ETHAddress;
+    let BSCAddress;
     let USDTAddress;
 
     before(async () => {
-        [interestModel, bankConfig, bank, usdt, setReserveBps, 
-            setLiquidateBps, ETHAddress, USDTAddress] = await bankInit();
+        [interestModel, bankConfig, bank, usdt, setReserveBps,
+            setLiquidateBps, BSCAddress, USDTAddress] = await bankInit();
     });
 
     describe("Check config's params", async () => {
@@ -47,9 +47,9 @@ contract("TestBank", (accounts) => {
             let targetRate;
             for ([Utlz, targetRate] of ratePerUtilization) {
                 // getInterestRate(uint256 debt, uint256 floating), utilization = debt / (debt + floating)
-                let getRate = await bankConfig.getInterestRate(100*Utlz, (100 - 100*Utlz)); 
+                let getRate = await bankConfig.getInterestRate(100*Utlz, (100 - 100*Utlz));
                 // getRate = BigNumber(getRate.toString());
-                assert.equal(getRate.toNumber(), targetRate.toNumber(), `getRate is ${getRate} should equal to ${targetRate}`);  
+                assert.equal(getRate.toNumber(), targetRate.toNumber(), `getRate is ${getRate} should equal to ${targetRate}`);
             }
         });
 
@@ -62,82 +62,82 @@ contract("TestBank", (accounts) => {
             assert.equal(setConfig, bankConfig.address, 'setConfig should equal to bankConfig.address');
         })
 
-        it("Get banks[ETH] correctly", async () => {
-            let getTokenBank = await bank.banks(ETHAddress);
-            assert.equal(getTokenBank.tokenAddr, ETHAddress, `Token address should be ${ETHAddress}`);
+        it("Get banks[BSC] correctly", async () => {
+            let getTokenBank = await bank.banks(BSCAddress);
+            assert.equal(getTokenBank.tokenAddr, BSCAddress, `Token address should be ${BSCAddress}`);
             assert.equal(getTokenBank.isOpen, true, 'Token 0 should be opend');
-            assert.equal(getTokenBank.canDeposit, true, 'Token 0 should can be Deposited'); 
+            assert.equal(getTokenBank.canDeposit, true, 'Token 0 should can be Deposited');
         })
 
         it("Get banks[USDT] correctly", async () => {
             let getTokenBank = await bank.banks(USDTAddress);
-            assert.equal(getTokenBank.tokenAddr, USDTAddress, `Token address should be ${ETHAddress}`);
+            assert.equal(getTokenBank.tokenAddr, USDTAddress, `Token address should be ${BSCAddress}`);
             assert.equal(getTokenBank.isOpen, true, 'Token 0 should be opend');
-            assert.equal(getTokenBank.canDeposit, true, 'Token 0 should can be Deposited'); 
+            assert.equal(getTokenBank.canDeposit, true, 'Token 0 should can be Deposited');
         })
     })
 
-    describe("Deposit and withdraw ETH", async () => {
-        // ETH Amount of send and receive
-        let targetSendETH;
-        let targetSendETHWei;       // BigNumber
-        let actualSendETHWei;       // BigNumber   
-        let actualReceivedETHWei;   // BigNumber   
+    describe("Deposit and withdraw BSC", async () => {
+        // BSC Amount of send and receive
+        let targetSendBSC;
+        let targetSendBSCWei;       // BigNumber
+        let actualSendBSCWei;       // BigNumber
+        let actualReceivedBSCWei;   // BigNumber
 
         // related Address
         let oTokenAddress;
         let walletAddress;
 
         before("Set amount and address", async () => {
-            targetSendETH = 100;
-            targetSendETHWei = BigNumber(web3.utils.toWei(String(targetSendETH)));
+            targetSendBSC = 100;
+            targetSendBSCWei = BigNumber(web3.utils.toWei(String(targetSendBSC)));
 
-            let getTokenBank = await bank.banks(ETHAddress);
+            let getTokenBank = await bank.banks(BSCAddress);
             oTokenAddress = getTokenBank.pTokenAddr;
             walletAddress = accounts[0];
         })
 
         describe("Check deposit result", async () => {
 
-            before("Deposit 100 eth", async () => {
-                let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
-                
-                await bank.sendTransaction({value: targetSendETHWei});
-                
-                let amountAfter = BigNumber(await web3.eth.getBalance(accounts[0]));
-                actualSendETHWei = amountBefore.minus(amountAfter);
+            before("Deposit 100 BSC", async () => {
+                let amountBefore = BigNumber(await web3.BSC.getBalance(accounts[0]));
+
+                await bank.sendTransaction({value: targetSendBSCWei});
+
+                let amountAfter = BigNumber(await web3.BSC.getBalance(accounts[0]));
+                actualSendBSCWei = amountBefore.minus(amountAfter);
             })
 
-            it("Account balance decreased by 100 ETH", async () => {
-                assert.equal(actualSendETHWei.toString(), targetSendETHWei.toString(),
-                 'Account balance should be decreased by 100 ETH')
+            it("Account balance decreased by 100 BSC", async () => {
+                assert.equal(actualSendBSCWei.toString(), targetSendBSCWei.toString(),
+                 'Account balance should be decreased by 100 BSC')
             })
 
-            it("Received 100 oETH", async () => {
-                let amountOETH = await erc20TokenGetBalance(oTokenAddress, walletAddress);
-                assert.equal(amountOETH.toNumber(), targetSendETH, "Should receive 100 oETH");
+            it("Received 100 oBSC", async () => {
+                let amountOBSC = await erc20TokenGetBalance(oTokenAddress, walletAddress);
+                assert.equal(amountOBSC.toNumber(), targetSendBSC, "Should receive 100 oBSC");
             })
         })
 
         describe("Check withdraw result", async () => {
 
-            before("withdraw 100 eth", async () => {
-                let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
-                
-                await bank.withdraw(ETHAddress, targetSendETHWei);
-                
-                let amountAfter = BigNumber(await web3.eth.getBalance(accounts[0]));
-                actualReceivedETHWei = amountAfter.minus(amountBefore);
+            before("withdraw 100 BSC", async () => {
+                let amountBefore = BigNumber(await web3.BSC.getBalance(accounts[0]));
+
+                await bank.withdraw(BSCAddress, targetSendBSCWei);
+
+                let amountAfter = BigNumber(await web3.BSC.getBalance(accounts[0]));
+                actualReceivedBSCWei = amountAfter.minus(amountBefore);
             })
-            
-            it("Account balance increased by 100 ETH", async () => {
-                assert.equal(actualReceivedETHWei.toString(), targetSendETHWei.toString(), 
-                    "Account balance should increased by 100 ETH ")
+
+            it("Account balance increased by 100 BSC", async () => {
+                assert.equal(actualReceivedBSCWei.toString(), targetSendBSCWei.toString(),
+                    "Account balance should increased by 100 BSC ")
             })
-            
-            it("Burned 100 oETH", async () => {
-                let amountOETH = await erc20TokenGetBalance(oTokenAddress, walletAddress);
-                assert.equal(amountOETH.toNumber(), 0, "Should Burned 100 oETH");
+
+            it("Burned 100 oBSC", async () => {
+                let amountOBSC = await erc20TokenGetBalance(oTokenAddress, walletAddress);
+                assert.equal(amountOBSC.toNumber(), 0, "Should Burned 100 oBSC");
             })
         })
     })
@@ -146,8 +146,8 @@ contract("TestBank", (accounts) => {
         // USDT Amount of send and receive
         let targetSendUSDT;
         let targetSendUSDTWei;
-        let actualSendUSDT;       // BigNumber   
-        let actualReceivedUSDT;   // BigNumber   
+        let actualSendUSDT;       // BigNumber
+        let actualReceivedUSDT;   // BigNumber
 
         // related Address
         let oTokenAddress;
@@ -166,10 +166,10 @@ contract("TestBank", (accounts) => {
 
             before("Deposit 100 USDT", async () => {
                 let amountBefore = await erc20TokenGetBalance(USDTAddress, walletAddress);
-                // contract.methods.approve(contractAddress, web3.utils.toWei('79228162514', "ether")).send({ from: address })
+                // contract.mBSCods.approve(contractAddress, web3.utils.toWei('79228162514', "BSCer")).send({ from: address })
                 await usdt.approve(bank.address, web3.utils.toWei('79228162514'));
                 await bank.deposit(USDTAddress, targetSendUSDTWei);
-                
+
                 let amountAfter = await erc20TokenGetBalance(USDTAddress, walletAddress);
                 actualSendUSDT = amountBefore.minus(amountAfter);
             })
@@ -189,22 +189,52 @@ contract("TestBank", (accounts) => {
 
             before("withdraw 100 USDT", async () => {
                 let amountBefore = await erc20TokenGetBalance(USDTAddress, walletAddress);
-                
+
                 await bank.withdraw(usdt.address, targetSendUSDTWei);
-                
+
                 let amountAfter = await erc20TokenGetBalance(USDTAddress, walletAddress);
                 actualReceivedUSDT = amountAfter.minus(amountBefore);
             })
-            
+
             it("Account balance increased by 100 USDT", async () => {
-                assert.equal(actualReceivedUSDT.toString(), targetSendUSDT.toString(), 
+                assert.equal(actualReceivedUSDT.toString(), targetSendUSDT.toString(),
                     "Account balance should increased by 100 USDT ")
             })
-            
+
             it("Burned 100 oUSDT", async () => {
-                let amountOETH = await erc20TokenGetBalance(oTokenAddress, walletAddress);
-                assert.equal(amountOETH.toNumber(), 0, "Should Burned 100 oUSDT");
+                let amountOBSC = await erc20TokenGetBalance(oTokenAddress, walletAddress);
+                assert.equal(amountOBSC.toNumber(), 0, "Should Burned 100 oUSDT");
             })
         })
     })
+
+    async function lpTest(nameA, nameB, addressA, addressB) {
+
+        describe("BSC-USDT-LP Production Test", async () => {
+
+            before(`Deposit {nameA} and {nameB}`, async () => {
+
+            });
+
+            describe(`Borrow only {nameA}`, async () => {
+
+                before(`Open production`, async () => {
+
+                });
+
+                it("Check left amount", async () => {
+
+                });
+
+                it()
+
+            });
+
+        });
+
+    }
+
+
+    describe("BUSD-USDT-LP Test", async () => {
+    });
 });
