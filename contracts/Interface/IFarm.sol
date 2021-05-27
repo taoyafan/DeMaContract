@@ -4,6 +4,8 @@ pragma solidity >=0.5.0 <0.8.0;
 interface IFarm {
 
     /* ==================================== Read ==================================== */
+    
+    /* ----------------- Pool Info ----------------- */
 
     function lastTimeRewardApplicable(uint256 poolId) external view returns (uint256);
 
@@ -11,23 +13,55 @@ interface IFarm {
 
     function getRewardForDuration(uint256 poolId) external view returns (uint256);
 
-    // Return the user expect reward for one pool or all pools.
-    function earnedPerPool(uint256 poolId, address account) external view returns (uint256);
-    function earned(address account) external view returns (uint256);
-
-    // Include the equivalent share. For one pool or all pools.
-    function totalSharesPerPool(uint256 poolId) external view returns (uint256);
     function totalShares() external view returns (uint256);
 
-    // User share of one pool or all pools.
-    function sharesOfPerPool(uint256 poolId, address account) external view returns (uint256);
-    function sharesOf(address account) external view returns (uint256);
+    /* ----------------- User Staked Info ----------------- */
+
+    // Rewards amount for user in one pool.
+    function stakeEarnedPerPool(uint256 poolId, address account) external view returns (uint256);
+
+    /* ----------------- User Bonus Info  ----------------- */
+
+    // Rewards amount for bonus in one pool.
+    function bonusEarnedPerPool(uint256 poolId, address account) external view returns (uint256);
+
+    // Rewards amount for bonus in all pools.
+    function bonusEarned(address account) external view returns (uint256);
+
+    // Total shares of bonus.
+    function bonusShares(address account) external view returns (uint256);
+
+    /* ----------------- Inviter Bonus Info  ----------------- */
+
+    // Rewards amount for inviter bonus in one pool.
+    function inviterBonusEarnedPerPool(uint256 poolId, address account) external view returns (uint256);
+
+    // Rewards amount for inviter bonus in all pools.
+    function inviterEarned(address account) external view returns (uint256);
+
+    // Total shares of inviter shares.
+    function inviterBonusShares(address account) external view returns (uint256);
 
 
     /* ==================================== Write ==================================== */
 
-    function getRewardsPerPool(uint256 poolId, address account) external;
-    function getRewards(address account) external;                      // Get rewards of all pools.
+   
+    /* ----------------- For Staked ----------------- */
+
+    // Send rewards from the target pool directly to users' account
+    function getStakeRewardsPerPool(uint256 poolId, address account) external;
+
+    /* ----------------- For Bonus ----------------- */
+
+    function getBonusRewardsPerPool(uint256 poolId, address account) external;
+
+    function getBonusRewards(address account) external;
+
+    /* ----------------- For Inviter Bonus ----------------- */
+
+    function getInviterBonusRewardsPerPool(uint256 poolId, address account) external;
+
+    function getInviterRewards(address account) external;
 
 
     /* ==================================== Only operator ==================================== */
@@ -47,8 +81,6 @@ interface IFarm {
         uint256 rewardFirstPeriod,      // Rewards will be minted in the first period
         uint256 leftPeriodTimes,        // Left period times.
         uint256 periodDuration,         // One period duration time.
-        uint256 earnedFactor,           // Will divide 10000, should less than 10000, 500 means 5%
-        uint256 invitedFactor,          // Will divide 10000, should lager than 10000, 10500 means 105%
         address operator                // Who can stake and withdraw.
     ) external; 
 
