@@ -9,6 +9,7 @@ import "./Interface/IMdexFactory.sol";
 import "./Interface/IMdexPair.sol";
 import "./Interface/IWBNB.sol";
 import "./Interface/IStrategy.sol";
+import "./Interface/ISwapMining.sol";
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 
@@ -315,5 +316,14 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
      */
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
         token.safeTransfer(to, value);
+    }
+
+    function withdrawRewards() external onlyOwner {
+        ISwapMining _swapMining = ISwapMining(router.swapMining());
+        _swapMining.takerWithdraw();
+        
+        // Send MDX back to owner.
+        address mdx = _swapMining.mdx();
+        mdx.safeTransfer(msg.sender, mdx.myBalance());
     }
 }

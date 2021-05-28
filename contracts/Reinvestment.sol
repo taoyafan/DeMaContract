@@ -107,7 +107,7 @@ contract Reinvestment is Ownable, IReinvestment {
         }
     }
 
-    // Withdraw mdx.
+    // Withdraw mdx to sender.
     function withdraw(uint256 amount) external override {
         if (amount > 0) {
             require(userInfo[msg.sender].earnedMdxStored >= amount, "User don't have enough amount");

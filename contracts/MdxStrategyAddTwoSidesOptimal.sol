@@ -9,6 +9,7 @@ import "./Interface/IMdexFactory.sol";
 import "./Interface/IMdexPair.sol";
 import "./Interface/IWBNB.sol";
 import "./Interface/IStrategy.sol";
+import "./Interface/ISwapMining.sol";
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 
@@ -213,6 +214,8 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
             router.swapExactTokensForTokens(swapAmt, 0, path, address(this), now);
         }
     }
+    
+    /* ==================================== Only Owner ==================================== */
 
     /// @dev Recover ERC20 tokens that were accidentally sent to this smart contract.
     /// @param token The token contract. Can be anything. This contract should not hold ERC20 tokens.
@@ -220,5 +223,14 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
     /// @param value The number of tokens to transfer to `to`.
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
         token.safeTransfer(to, value);
+    }
+
+    function withdrawRewards() external onlyOwner {
+        ISwapMining _swapMining = ISwapMining(router.swapMining());
+        _swapMining.takerWithdraw();
+        
+        // Send MDX back to owner.
+        address mdx = _swapMining.mdx();
+        mdx.safeTransfer(msg.sender, mdx.myBalance());
     }
 }
