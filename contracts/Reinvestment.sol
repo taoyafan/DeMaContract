@@ -30,11 +30,11 @@ contract Reinvestment is Ownable, IReinvestment {
         uint256 lastUpdateTime;
     }
 
-    // TODO Add last update time, and check it when update pool.
     struct UserInfo {
         uint256 totalShares;            // Total Lp amount.
         uint256 earnedMdxStored;        // Earned mdx amount stored at the last time user info was updated.
         uint256 accMdxPerShareStored;   // The accMdxPerShare at the last time user info was updated.
+        uint256 lastUpdateTime;
     }
 
     mapping(address => UserInfo) public userInfo;
@@ -133,6 +133,11 @@ contract Reinvestment is Ownable, IReinvestment {
         }
     }
 
+    function reinvest() external {
+        boardRoom.withdraw(boardRoomPid, 0);
+        boardRoom.deposit(boardRoomPid, mdx.myBalance());
+    }
+
     /* ==================================== Internal ==================================== */
 
     /// @dev update pool info and user info.
@@ -142,12 +147,13 @@ contract Reinvestment is Ownable, IReinvestment {
             globalInfo.accMdxPerShare = rewardsPerShare();
             globalInfo.totalMdx = totalRewards();
             globalInfo.lastUpdateTime = block.timestamp;
+        }
 
-            if (account != address(0)) {
-                UserInfo storage user = userInfo[account];
-                user.earnedMdxStored = userEarnedAmount(account);
-                user.accMdxPerShareStored = globalInfo.accMdxPerShare;
-            }
+        UserInfo storage user = userInfo[account];
+        if (account != address(0) && user.lastUpdateTime != block.timestamp) {
+            user.earnedMdxStored = userEarnedAmount(account);
+            user.accMdxPerShareStored = globalInfo.accMdxPerShare;
+            user.lastUpdateTime = block.timestamp;
         }
     }
 

@@ -180,7 +180,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         override
         nonReentrant
         checkPoolId(poolId)
-        updateRewards(poolId, account)      // TODO Remember change to others
+        updateRewards(poolId, account)
         checkhalve(poolId)
     {
         PoolInfo storage pool = poolInfo[poolId];
@@ -368,7 +368,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         }
     }
 
-    // TODO check users' update time in others file.
     // Pool info MUST just be updated.
     function _updateUser(
         uint256 time,
@@ -386,7 +385,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         }
     }
 
-    // TODO Check if we update these pools. When change bonus
     // Update invitees bonus rewards
     function _updateBonus(uint256 poolId, address account) internal {
         require(poolId < nextPoolId, "Don't have a pool");

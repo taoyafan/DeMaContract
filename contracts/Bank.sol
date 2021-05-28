@@ -416,7 +416,6 @@ contract Bank is Ownable, ReentrancyGuard {
 
         production.goblin.liquidate(posId, pos.owner, production.borrowToken, temp.debts);
 
-        // TODO move it to a function to prevent stack too deep
         // Delete the pos from owner, posNum -= 1.
         UserPPInfo storage owner = userPPInfo[pos.owner];
         EnumerableSet.remove(owner.posId, posId);

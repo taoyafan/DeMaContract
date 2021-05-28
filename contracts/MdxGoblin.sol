@@ -63,6 +63,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 totalLp;            // Total Lp amount.
         uint256 earnedMdxStored;    // Earned mdx amount stored at the last time user info was updated.
         uint256 accMdxPerLpStored;  // The accMdxPerLp at the last time user info was updated.
+        uint256 lastUpdateTime;
     }
 
     GlobalInfo public globalInfo;
@@ -242,11 +243,10 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
     }
 
-    /// @return Earned MDX amount and DEMA amount.
-    function userEarnedAmount(address account) public view  returns (uint256, uint256) {
+    /// @return Earned MDX amount.
+    function userEarnedAmount(address account) public view  returns (uint256) {
         UserInfo storage user = userInfo[account];
-        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored),
-               farm.earnedPerPool(poolId, account);
+        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored);
     }
 
     /* ==================================== Write ==================================== */
@@ -265,7 +265,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
 
         // Send DEMA
-        farm.getRewardsPerPool(poolId, account);
+        farm.getStakeRewardsPerPool(poolId, account);
     }
 
 
@@ -488,12 +488,13 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             globalInfo.accMdxPerLp = rewardPerLp();
             globalInfo.totalMdx = totalRewards();
             globalInfo.lastUpdateTime = block.timestamp;
+        }
 
-            if (account != address(0)) {
-                UserInfo storage user = userInfo[account];
-                user.earnedMdxStored = userEarnedAmount(account);
-                user.accMdxPerLpStored = globalInfo.accMdxPerLp;
-            }
+        UserInfo storage user = userInfo[account];
+        if (account != address(0) && user.lastUpdateTime != block.timestamp) {
+            user.earnedMdxStored = userEarnedAmount(account);
+            user.accMdxPerLpStored = globalInfo.accMdxPerLp;
+            user.lastUpdateTime = block.timestamp;
         }
     }
 
