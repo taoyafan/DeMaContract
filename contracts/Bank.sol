@@ -11,7 +11,7 @@ import "./interface/IBankConfig.sol";
 import "./interface/IFarm.sol";
 import "./interface/IGoblin.sol";
 import "./utils/SafeToken.sol";
-// TODO Check all div.
+
 contract Bank is Ownable, ReentrancyGuard {
     using SafeToken for address;
     using SafeMath for uint256;
@@ -31,11 +31,11 @@ contract Bank is Ownable, ReentrancyGuard {
         bool canWithdraw;
         uint256 poolId;
 
-        uint256 totalVal;           // Left balance
+        uint256 totalVal;           // Left balance, including reserved
         uint256 totalShares;        // Stake shares
         uint256 totalDebt;          // Debts balance
         uint256 totalDebtShares;    // Debts shares
-        uint256 totalReserve;       // TODO Need to check this part of codes.
+        uint256 totalReserve;       // Reserved amount.
         uint256 lastInterestTime;
     }
 
@@ -44,7 +44,7 @@ contract Bank is Ownable, ReentrancyGuard {
         EnumerableSet.AddressSet banksAddress;          // Stored banks' address.
     }
 
-    mapping(address => TokenBank) public banks;                     // Token address => TokenBank
+    mapping(address => TokenBank) public banks;         // Token address => TokenBank
     mapping(address => UserBankInfo) userBankInfo;      // User account address => Bank address.
 
     /* -------- Productions / Positions Info -------- */
@@ -135,6 +135,7 @@ contract Bank is Ownable, ReentrancyGuard {
             [debt0, debt1], pos.owner);
     }
 
+    // Total amount, not including reserved
     function totalToken(address token) public view returns (uint256) {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
@@ -174,6 +175,10 @@ contract Bank is Ownable, ReentrancyGuard {
         return EnumerableSet.at(userBankInfo[account].banksAddress, index);
     }
 
+    function userSharesPreTokoen(address account, address token) external view returns (uint256) {
+        return userBankInfo[account].sharesPerToken[token];
+    }
+
     /* ---- User Positions Info ---- */
 
     function userPosNum(address account) public view returns (uint256) {
@@ -192,10 +197,6 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function userProdId(address account, uint256 index) public view returns (uint256) {
         return EnumerableSet.at(userPPInfo[account].prodId, index);
-    }
-
-    function userSharesPreTokoen(address account, address token) external view returns (uint256) {
-        return userBankInfo[account].sharesPerToken[token];
     }
 
     /* ==================================== Write ==================================== */
@@ -634,7 +635,7 @@ contract Bank is Ownable, ReentrancyGuard {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
 
-        uint balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
+        uint256 balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
         if(balance >= bank.totalVal.add(value)) {
             // Received not by deposit
         } else {

@@ -158,6 +158,7 @@ contract Reinvestment is Ownable, IReinvestment {
     }
 
     function _amountToShare(uint256 amount) internal view returns (uint256) {
-        return amount.mul(globalInfo.totalShares).div(globalInfo.totalMdx);
+        return globalInfo.totalMdx == 0 ? 
+            amount : amount.mul(globalInfo.totalShares).div(globalInfo.totalMdx);
     }
 }
