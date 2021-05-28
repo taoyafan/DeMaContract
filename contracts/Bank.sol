@@ -19,6 +19,11 @@ contract Bank is Ownable, ReentrancyGuard {
     event OpPosition(uint256 indexed id, uint256[2] debts, uint[2] back);
     event Liquidate(uint256 indexed id, address indexed killer, uint256[2] prize, uint256[2] left);
 
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
+
+    /* ----------------- Banks Info ----------------- */
+
     struct TokenBank {
         address tokenAddr;
         bool isOpen;
@@ -33,6 +38,16 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 totalReserve;       // TODO Need to check this part of codes.
         uint256 lastInterestTime;
     }
+
+    struct UserBankInfo {
+        mapping(address => uint256) sharesPerToken;     // Shares per token pool
+        EnumerableSet.AddressSet banksAddress;          // Stored banks' address.
+    }
+
+    mapping(address => TokenBank) public banks;                     // Token address => TokenBank
+    mapping(address => UserBankInfo) userBankInfo;      // User account address => Bank address.
+
+    /* -------- Productions / Positions Info -------- */
 
     struct Production {
         address[2] borrowToken;
@@ -51,38 +66,11 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256[2] debtShare;
     }
 
-    // Used in opProduction
-    struct WorkAmount {
-        uint256 sendBSC;
-        uint256[2] beforeToken;      // How many token in the pool after borrow before goblin work
-        uint256[2] debts;
-        bool[2] isBorrowBSC;
-        uint256[2] backToken;
-        bool borrowed;
-    }
-
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableSet for EnumerableSet.UintSet;
-
-    struct UserBankInfo {
-        mapping(address => uint256) sharesPerToken;     // Shares per token pool
-        EnumerableSet.AddressSet banksAddress;          // Stored banks' address.
-    }
-
     struct UserPPInfo {
         EnumerableSet.UintSet posId;                    // position id
         EnumerableSet.UintSet prodId;                   // production id
         mapping(uint256 => uint256) posNum;             // position num of each production(id)
     }
-
-    IBankConfig public config;
-
-    /* ----------------- Banks Info ----------------- */
-
-    mapping(address => TokenBank) public banks;                     // Token address => TokenBank
-    mapping(address => UserBankInfo) userBankInfo;      // User account address => Bank address.
-
-    /* -------- Productions / Positions Info -------- */
 
     mapping(address => UserPPInfo) userPPInfo;      // User Productions, Positions Info.
 
@@ -92,7 +80,34 @@ contract Bank is Ownable, ReentrancyGuard {
     mapping(uint256 => Position) public positions;
     uint256 public currentPos = 1;
 
+    /* ----------------- Others ----------------- */
+
+    IBankConfig public config;
     IFarm Farm;
+
+    /* ----------------- Temp ----------------- */
+
+    // Used in opProduction to prevent stack over deep
+    struct WorkAmount {
+        uint256 sendBSC;
+        uint256[2] beforeToken;      // How many token in the pool after borrow before goblin work
+        uint256[2] debts;
+        uint256[2] backToken;
+        bool[2] isBorrowBSC;
+        bool borrowed;
+    }
+
+    // Used in liquidate to prevent stack over deep
+    struct liqTemp {
+        uint256[2] debts;
+        uint256[2] health;
+        uint256[2] before;
+        uint256 back;           // Only one item is to save memory.
+        uint256 rest;           // Only one item is to save memory.
+        uint256[2] prize;
+        uint256[2] left;
+        bool[2] isBSC;
+    }
 
     modifier onlyEOA() {
         require(msg.sender == tx.origin, "not eoa");
@@ -380,25 +395,26 @@ contract Bank is Ownable, ReentrancyGuard {
 
         require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debts");
         Production storage production = productions[pos.productionId];
+        liqTemp memory temp;
 
-        uint256[2] memory debts = _removeDebt(pos, production);
+        temp.debts = _removeDebt(pos, production);
 
-        uint256[2] memory health = production.goblin.health(posId, production.borrowToken, debts);
+        temp.health = production.goblin.health(posId, production.borrowToken, temp.debts);
 
-        require((health[0].mul(production.liquidateFactor) <= debts[0].mul(10000)) &&
-                (health[1].mul(production.liquidateFactor) <= debts[1].mul(10000)), "can't liquidate");
+        require((temp.health[0].mul(production.liquidateFactor) <= temp.debts[0].mul(10000)) &&
+                (temp.health[1].mul(production.liquidateFactor) <= temp.debts[1].mul(10000)), "can't liquidate");
 
-        bool[2] memory isBSC;
-        uint256[2] memory before;
+        temp.isBSC;
+        temp.before;
 
         // Save before amount
         uint256 i;
         for (i = 0; i < 2; ++i) {
-            isBSC[i] = production.borrowToken[i] == address(0);
-            before[i] = isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
+            temp.isBSC[i] = production.borrowToken[i] == address(0);
+            temp.before[i] = temp.isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
         }
 
-        production.goblin.liquidate(posId, pos.owner, production.borrowToken, debts);
+        production.goblin.liquidate(posId, pos.owner, production.borrowToken, temp.debts);
 
         // TODO move it to a function to prevent stack too deep
         // Delete the pos from owner, posNum -= 1.
@@ -407,39 +423,40 @@ contract Bank is Ownable, ReentrancyGuard {
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
-        uint256 back;   // To save memory.
-        uint256 rest;   // To save memory.
+        temp.back;   // To save memory.
+        temp.rest;   // To save memory.
 
-        uint256[2] memory prize;
-        uint256[2] memory left;
+        temp.prize;
+        temp.left;
 
         for (i = 0; i < 2; ++i) {
-            back = isBSC[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
-            back = back.sub(before[i]);
+            temp.back = temp.isBSC[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
+            temp.back = temp.back.sub(temp.before[i]);
 
-            prize[i] = back.mul(config.getLiquidateBps()).div(10000);
-            rest = back.sub(prize[i]);
-            left[i] = 0;
+            temp.prize[i] = temp.back.mul(config.getLiquidateBps()).div(10000);
+            temp.rest = temp.back.sub(temp.prize[i]);
+            temp.left[i] = 0;
 
             // Send reward to sender
-            if (prize[i] > 0) {
-                isBSC[i] ?
-                    SafeToken.safeTransferETH(msg.sender, prize[i]) :
-                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, prize[i]);
+            if (temp.prize[i] > 0) {
+                temp.isBSC[i] ?
+                    SafeToken.safeTransferETH(msg.sender, temp.prize[i]) :
+                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, temp.prize[i]);
             }
 
             // Send rest token to pos.owner.
-            if (rest > debts[i]) {
-                left[i] = rest.sub(debts[i]);
-                isBSC[i] ?
-                    SafeToken.safeTransferETH(pos.owner, left[i]) :
-                    SafeToken.safeTransfer(production.borrowToken[i], pos.owner, left[i]);
+            if (temp.rest > temp.debts[i]) {
+                temp.left[i] = temp.rest.sub(temp.debts[i]);
+                temp.isBSC[i] ?
+                    SafeToken.safeTransferETH(pos.owner, temp.left[i]) :
+                    SafeToken.safeTransfer(production.borrowToken[i], pos.owner, temp.left[i]);
             } else {
-                banks[production.borrowToken[i]].totalVal = banks[production.borrowToken[i]].totalVal.sub(debts[i]).add(rest);
+                banks[production.borrowToken[i]].totalVal = 
+                    banks[production.borrowToken[i]].totalVal.sub(temp.debts[i]).add(temp.rest);
             }
         }
 
-        emit Liquidate(posId, msg.sender, prize, left);
+        emit Liquidate(posId, msg.sender, temp.prize, temp.left);
     }
 
     /* ----------------- Get rewards ----------------- */
@@ -620,7 +637,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         uint balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
         if(balance >= bank.totalVal.add(value)) {
-            //非deposit存入
+            // Received not by deposit
         } else {
             bank.totalReserve = bank.totalReserve.sub(value);
             bank.totalVal = bank.totalVal.sub(value);
