@@ -550,7 +550,7 @@ contract Bank is Ownable, ReentrancyGuard {
             uint256 totalDebt = bank.totalDebt;
             uint256 totalBalance = totalToken(token);
 
-            uint256 ratePerSec = config.getInterestRate(totalDebt, totalBalance);
+            uint256 ratePerSec = config.getInterestRate(totalDebt, totalBalance, token);
             uint256 interest = ratePerSec.mul(timePast).mul(totalDebt).div(1e18);
 
             uint256 toReserve = interest.mul(config.getReserveBps()).div(10000);
@@ -605,7 +605,9 @@ contract Bank is Ownable, ReentrancyGuard {
         external
         onlyOwner
     {
-        require(borrowToken[0] != borrowToken[1], "Borrow tokens cannot be same");
+        // If two borrow tokens are same, meas only borrow one token. Then debt[1] and canBorrow[1] must be 0; 
+        require(borrowToken[0] != borrowToken[1] || 
+            (minDebt[1] == 0 && canBorrow[1] == false), "Borrow tokens cannot be same or only borrow one token");
 
         if(pid == 0){
             pid = currentPid;

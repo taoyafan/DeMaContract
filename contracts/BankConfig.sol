@@ -8,17 +8,26 @@ contract BankConfig is IBankConfig, Ownable {
 
     uint256 public override getReserveBps;
     uint256 public override getLiquidateBps;
-    IInterestModel public interestModel;
+    IInterestModel public defaultModel;
+
+    mapping(address => IInterestModel) modelForToken;
 
     constructor() public {}
 
-    function setParams(uint256 _getReserveBps, uint256 _getLiquidateBps, IInterestModel _interestModel) public onlyOwner {
+    function setParams(uint256 _getReserveBps, uint256 _getLiquidateBps, IInterestModel _interestModel) external onlyOwner {
         getReserveBps = _getReserveBps;
         getLiquidateBps = _getLiquidateBps;
-        interestModel = _interestModel;
+        defaultModel = _interestModel;
     }
 
-    function getInterestRate(uint256 debt, uint256 floating) external view override returns (uint256) {
+    function setInterestModelForToken(address token, IInterestModel _interestModel) external onlyOwner {
+        modelForToken[token] = _interestModel;
+    }
+
+    function getInterestRate(uint256 debt, uint256 floating, address token) external view override returns (uint256) {
+        IInterestModel interestModel = address(modelForToken[token]) == address(0) ? 
+            defaultModel : modelForToken[token];
+
         return interestModel.getInterestRate(debt, floating);
     }
 }
