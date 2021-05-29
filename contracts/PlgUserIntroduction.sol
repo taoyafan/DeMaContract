@@ -6,6 +6,8 @@ pragma solidity ^0.6.0;
 import "./Interface/IPlugin.sol";
 
 contract PlgUserIntroduction is IPlugin{ 
+    /// @notice Events
+    event Write(address account, bytes contents);
     
     mapping(address => bytes) intro;    // Self introduction
 
@@ -14,9 +16,10 @@ contract PlgUserIntroduction is IPlugin{
         require(tx.origin == account, "Account must be the address of tx.origin");
 
         intro[account] = contents;
+        emit Write(account, contents);
     }
 
-    function read(bytes calldata data) external payable override returns (bytes memory) {
+    function read(bytes calldata data) external view override returns (bytes memory) {
         (address account) = abi.decode(data, (address));
         return intro[account];
     }

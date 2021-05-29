@@ -7,6 +7,11 @@ import "./Interface/IPlugin.sol";
 
 contract UserProfile is IUserProfile, Ownable {
 
+    /// @notice Events
+    event Register(address account, bytes setName, uint256 setId, uint256 inviterId);
+    event ChangeName(address account, bytes setName);
+
+    /// @notice Mutable state variables
     mapping(address => bytes) public override name;
     mapping(address => address) public override inviter;
     mapping(address => uint256) public override registerDate;
@@ -63,11 +68,15 @@ contract UserProfile is IUserProfile, Ownable {
 
         // Set inviter info
         invitees[inviterAccount].push(msg.sender);
+
+        emit Register(msg.sender, setName, setId, inviterId);
     }
 
     function changeName(bytes calldata setName) external override {
         require(registerDate[msg.sender] != 0, "User haven't registered.");
         name[msg.sender] = setName;
+
+        emit ChangeName(msg.sender, setName);
     }
 
     function extendWrite(bytes calldata data) external payable override {
