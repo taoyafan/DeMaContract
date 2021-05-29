@@ -1,5 +1,5 @@
 {
-  "name": "ofy-contracts",
+  "name": "demac-contracts",
   "version": "1.0.0",
   "description": "Smart Contract of Pilot finance lab",
   "main": "truffle-config.js",
@@ -14,8 +14,7 @@
     "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
-    "test": "truffle test",
-    "testbsc": "truffle test --network bsctest"
+    "test": "mocha ./test/test_UserProfile.js"
   },
   "repository": {
     "type": "git",
@@ -34,6 +33,10 @@
     "bn.js": "^5.2.0",
     "dotenv": "^8.2.0",
     "install": "^0.13.0",
-    "npm": "^7.10.0"
+    "npm": "^7.10.0",
+    "web3": "^1.3.6"
+  },
+  "devDependencies": {
+    "mocha": "^8.4.0"
   }
 }
