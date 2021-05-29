@@ -17,7 +17,7 @@ function bankInit(callback) {
         // parameters
         let setReserveBps = 10000; 
         let setLiquidateBps = 10000;
-        let ETHAddress = "0x0000000000000000000000000000000000000000";
+        let BSCAddress = "0x0000000000000000000000000000000000000000";
         let USDTAddress;
         
         interestModel = await TripleSlopeModel.deployed();
@@ -43,7 +43,7 @@ function bankInit(callback) {
 
         await bankConfig.setParams(setReserveBps, setLiquidateBps, interestModel.address);
         await bank.updateConfig(bankConfig.address);
-        await bank.addToken(ETHAddress, "oBNB");
+        await bank.addToken(BSCAddress, "oBNB");
         await bank.addToken(USDTAddress, "oUSDT");
 
         if(callback) {
@@ -51,7 +51,7 @@ function bankInit(callback) {
         }
 
         return [interestModel, bankConfig, bank, usdt,
-            setReserveBps, setLiquidateBps, ETHAddress, USDTAddress];
+            setReserveBps, setLiquidateBps, BSCAddress, USDTAddress];
     };
 
     return fun();
