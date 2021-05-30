@@ -31,5 +31,5 @@ interface IUserProfile {
 
     function extendWrite(bytes calldata data) external payable;
     
-    function extendRead(bytes calldata data) external payable returns (bytes memory);
+    function extendRead(bytes calldata data) external returns (bytes memory);
 }

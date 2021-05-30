@@ -85,10 +85,10 @@ contract UserProfile is IUserProfile, Ownable {
         IPlugin(plugin).write{value: msg.value}(ext);
     } 
 
-    function extendRead(bytes calldata data) external payable override returns (bytes memory) {
+    function extendRead(bytes calldata data) external override returns (bytes memory) {
         (address plugin, bytes memory ext) = abi.decode(data, (address, bytes));
         require(pluginsOk[plugin], "Unapproved work plugin");
-        return IPlugin(plugin).read{value: msg.value}(ext);
+        return IPlugin(plugin).read(ext);
     } 
 
 
