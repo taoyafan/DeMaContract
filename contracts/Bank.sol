@@ -211,6 +211,8 @@ contract Bank is Ownable, ReentrancyGuard {
         if (token != address(0)) {
             // Token is not eth
             SafeToken.safeTransferFrom(token, msg.sender, address(this), amount);
+        } else {
+            require(address(this).balance >= amount, "Not enough bnb sended.");
         }
 
         bank.totalVal = bank.totalVal.add(amount);
