@@ -18,6 +18,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         // Need to be set
         uint256 leftPeriodTimes;        // 0 means stop.
         uint256 periodDuration;         // Each period duration time.
+        uint256 leftRatioNextPeriod;    // Next period left rewards, will divide 100, 90 means left 90%
         address operator;               // Who can stake and withdraw.
 
         // Auto calculated
@@ -44,7 +45,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     IUserProfile userProfile;
 
     mapping(uint256 => PoolInfo) public poolInfo;
-    uint256 nextPoolId = 0;
+    uint256 public nextPoolId = 0;
 
     mapping(uint256 => mapping(address => UserInfo)) public userStakeInfo;  // User stake info per pool.
     mapping(uint256 => mapping(address => UserInfo)) public inviterBonus;   // Inviter's bonus per pool.
@@ -416,7 +417,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             pool.rewardsed =    pool.rewardsed.add(reward);
             pool.rewardRate =   reward.div(pool.periodDuration);
             pool.periodFinish = block.timestamp.add(pool.periodDuration);
-            pool.rewardsNextPeriod =  pool.leftPeriodTimes > 0 ? pool.rewardsNextPeriod.mul(70).div(100) : 0;
+            pool.rewardsNextPeriod =  pool.leftPeriodTimes > 0 ? 
+                pool.rewardsNextPeriod.mul(pool.leftRatioNextPeriod).div(100) : 0;
 
             emit RewardAdded(poolId, reward, pool.leftPeriodTimes);
         }
@@ -521,7 +523,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         DEMA.mint(address(this), reward);
         pool.rewardsed = reward;
-        pool.rewardsNextPeriod = pool.rewardsed.mul(70).div(100);
+        pool.rewardsNextPeriod = pool.rewardsed.mul(pool.leftRatioNextPeriod).div(100);
         pool.leftPeriodTimes = leftPeriodTimes;
         pool.lastUpdateTime = block.timestamp;
         pool.periodFinish = block.timestamp.add(pool.periodDuration);
@@ -531,8 +533,9 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     function addPool(
         uint256 rewardFirstPeriod,
-        uint256 leftPeriodTimes,
+        uint256 leftPeriodTimes,        // 1 means twice
         uint256 periodDuration,
+        uint256 leftRatioNextPeriod,    
         address operator
     )
         external
@@ -544,12 +547,13 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         pool.leftPeriodTimes = leftPeriodTimes;
         pool.periodDuration = periodDuration;
+        pool.leftRatioNextPeriod = leftRatioNextPeriod;
         pool.operator = operator;
 
         // Mint reward and update related variables
         DEMA.mint(address(this), rewardFirstPeriod);
         pool.rewardsed = rewardFirstPeriod;
-        pool.rewardsNextPeriod = pool.rewardsed.mul(70).div(100);
+        pool.rewardsNextPeriod = pool.rewardsed.mul(leftRatioNextPeriod).div(100);
         pool.rewardRate = rewardFirstPeriod.div(periodDuration);
         pool.lastUpdateTime = block.timestamp;
         pool.periodFinish = block.timestamp.add(periodDuration);

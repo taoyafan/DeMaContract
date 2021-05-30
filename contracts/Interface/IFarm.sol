@@ -79,8 +79,9 @@ interface IFarm {
 
     function addPool(
         uint256 rewardFirstPeriod,      // Rewards will be minted in the first period
-        uint256 leftPeriodTimes,        // Left period times.
+        uint256 leftPeriodTimes,        // Left period times, 0 means only one period.
         uint256 periodDuration,         // One period duration time.
+        uint256 leftRatioNextPeriod,    // Next period left rewards, will divide 100, 90 means left 90%
         address operator                // Who can stake and withdraw.
     ) external; 
 
