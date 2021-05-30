@@ -8,12 +8,13 @@
   },
   "scripts": {
     "compile": "truffle compile",
-    "migrate": "truffle migrate",
+    "migrate3": "truffle migrate --f 3 --to 3",
     "migratebsc": "truffle migrate --network bsctest",
     "bankinit": "truffle exec ./scripts/bank_init.js",
     "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
+    "testBank": "truffle test ./test/test_bank.js",
     "test": "mocha ./test/test_UserProfile.js"
   },
   "repository": {
