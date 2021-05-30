@@ -1,24 +1,19 @@
 'use strict'
 
-let assert = require('assert');
-const Web3 = require('web3');
-const getAbi = require('../scripts/get_abi_address')
+let UserProfile = artifacts.require("./UserProfile.sol");
+let PlgUserIntroduction = artifacts.require("./PlgUserIntroduction.sol");
 
-let web3 = new Web3('http://localhost:8545')
-const BigNumber = require("bignumber.js");
+let userProfileAddress;
+let plgAddress;
 
-const userProfileAddress = '0xd24B989F37cff03870B6C3D403304DA2498367d4';
-const plgAddress = '0xa320b71Bd6ef867f1cD421aC73E2784aeF4CA1aB';
+let userProfile;
 
-let userProfile;    // Web3 contract object
-let accounts;
-
-describe("User profile test", async () => {
+contract("Test User Profile", (accounts) => {
 
     before(async () => {
-        // userProfile = await UserProfile.deployed();
-        accounts = await web3.eth.getAccounts();
-        let abi = getAbi("UserProfile");
+        userProfile = await UserProfile.deployed();
+        let abi = userProfile.abi;
+        userProfileAddress = userProfile.address;
         userProfile = new web3.eth.Contract(abi, userProfileAddress);
     });
 
@@ -100,6 +95,7 @@ describe("User profile test", async () => {
         let contents = "This";
 
         before("Set plugins ok", async () => {
+            plgAddress = (await PlgUserIntroduction.deployed()).address
             await userProfile.methods.setPluginsOk([plgAddress], true).send({from: accounts[0]});
         })
 
