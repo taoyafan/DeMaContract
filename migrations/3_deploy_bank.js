@@ -4,28 +4,37 @@ const BankConfig = artifacts.require("BankConfig");
 const Bank = artifacts.require("Bank");
 const DEMA = artifacts.require("DEMA");
 const Farm = artifacts.require("Farm");
+const ERC20Token = artifacts.require("ERC20Token");
 
 const BigNumber = require("bignumber.js");
+let saveToJson = require('./save_address_to_json.js')
 
-module.exports = function (deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
 
-    deployer.deploy(TripleSlopeModel)
-    .then(() => {
-        return deployer.deploy(BankConfig);
-    }).then(() => {
-        return deployer.deploy(DEMA);
-    }).then(() => {
-        return deployer.deploy(
-            Farm,
-            UserProfile.address,
-            DEMA.address,
-            500,
-            500
-            );
-    }).then(() => {
-        return deployer.deploy(
-            Bank,
-            Farm.address
-            );
-    });
+    await deployer.deploy(TripleSlopeModel);
+    await deployer.deploy(BankConfig);
+    await deployer.deploy(DEMA);
+    await deployer.deploy(Farm,
+                          UserProfile.address,
+                          DEMA.address,
+                          500,
+                          500
+                          );
+    await deployer.deploy(Bank,
+                          Farm.address
+                          );
+
+    saveToJson("TripleSlopeModel", (await TripleSlopeModel.deployed()).address);
+    saveToJson("BankConfig", (await BankConfig.deployed()).address);
+    saveToJson("DEMA", (await DEMA.deployed()).address);
+    saveToJson("BankFarm", (await Farm.deployed()).address);
+    saveToJson("Bank", (await Bank.deployed()).address);
+
+    if (network == 'development') {
+        const usdt = await deployer.deploy(ERC20Token, "USDT", "USDT", BigNumber(1e23))    //1e5
+        const busd = await deployer.deploy(ERC20Token, "BUSD", "BUSD", BigNumber(1e23))    //1e5
+
+        saveToJson("USDT", usdt.address);
+        saveToJson("BUSD", busd.address);
+    }
 };
