@@ -54,7 +54,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.UintSet;
 
     // The stake pool should only be dynamic updated by operator.
-    mapping(address => EnumerableSet.UintSet) internal inviterBonusPools;       // invitee's bonus pool.
+    mapping(address => EnumerableSet.UintSet) internal inviterBonusPools;       // inviter's bonus pool.
     mapping(address => EnumerableSet.UintSet) internal bonusPools;              // invitee's bonus pool.
 
     // For inviting
@@ -417,7 +417,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
             pool.rewardsed =    pool.rewardsed.add(reward);
             pool.rewardRate =   reward.div(pool.periodDuration);
             pool.periodFinish = block.timestamp.add(pool.periodDuration);
-            pool.rewardsNextPeriod =  pool.leftPeriodTimes > 0 ? 
+            pool.rewardsNextPeriod =  pool.leftPeriodTimes > 0 ?
                 pool.rewardsNextPeriod.mul(pool.leftRatioNextPeriod).div(100) : 0;
 
             emit RewardAdded(poolId, reward, pool.leftPeriodTimes);
@@ -535,7 +535,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         uint256 rewardFirstPeriod,
         uint256 leftPeriodTimes,        // 1 means twice
         uint256 periodDuration,
-        uint256 leftRatioNextPeriod,    
+        uint256 leftRatioNextPeriod,
         address operator
     )
         external
