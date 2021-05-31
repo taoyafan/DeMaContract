@@ -1,4 +1,5 @@
 # DeMac Contract Introduction
+
 ## Features
 
 There are two main features.
@@ -30,7 +31,7 @@ The users will also earn some extra token of our project as rewards.
 
 ## Interface
 
- User will interact directly with two contract, `Bank` and `StackingRewards`.
+User will interact directly with two contracts, `Bank` and `Farm`.
 
 ### Bank
 
@@ -40,19 +41,17 @@ Lending platform user can call function `deposit` and `withdraw` to deposit mone
 
 High leverage liquitity mining will call function `opPosition` to borrow token to mining, replenishment, withdraw and repay.
 
-### StackingRewards
+### Farm
 
 This contract is used to reward the project token to user.
 
 Two features will use two independent contracts.
 
-User can call function `getRewards` to get all token reward in one feature.
-
 ## Code structure
 
 There are many other contracts including `BankConfig`, `TripleSlopeModel`, `MdxGoblin`, `MdxStrategyAddTwoSidesOptimal`, `MdxStrategyWithdrawMinimizeTrading`
 
-The whole structure can be found in `diagrams/ClassDiagram.drawio`, it can be open using a VScode plugin Draw.io Intergration.
+The whole structure can be found in `diagrams/ClassDiagram.drawio`, which can be opened using a VScode plugin Draw.io Intergration.
 
 The diagram update is lagging, the details are subject to the code.
 
