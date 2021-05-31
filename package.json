@@ -1,7 +1,7 @@
 {
   "name": "demac-contracts",
   "version": "1.0.0",
-  "description": "Smart Contract of Pilot finance lab",
+  "description": "Smart Contract of Decentralized Machine (DeMac)",
   "main": "truffle-config.js",
   "directories": {
     "test": "test"
@@ -19,14 +19,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/P-TD/contract.git"
+    "url": "git+https://github.com/DeMacFinance/contract.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/P-TD/contract/issues"
+    "url": "https://github.com/DeMacFinance/contract/issues"
   },
-  "homepage": "https://github.com/P-TD/contract#readme",
+  "homepage": "https://github.com/DeMacFinance/contract#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^3.3.0",
     "@truffle/hdwallet-provider": "^1.2.6",
