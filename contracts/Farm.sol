@@ -349,7 +349,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     function _safeRewardsTransfer(address _to, uint256 _amount) internal {
         uint256 rewardsBal = DEMA.balanceOf(address(this));
         if (_amount > rewardsBal) {
-            DEMA.transfer(_to, rewardsBal);
+            DEMA.mint(address(this), _amount.sub(rewardsBal));
+            DEMA.transfer(_to, DEMA.balanceOf(address(this)));
         } else {
             DEMA.transfer(_to, _amount);
         }
