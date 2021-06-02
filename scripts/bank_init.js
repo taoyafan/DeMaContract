@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('fs')
+const{ shouldFail, time } = require('@openzeppelin/test-helpers');
 
 const UserProfile = artifacts.require("UserProfile.sol");
 const TripleSlopeModel = artifacts.require("TripleSlopeModel");
@@ -45,20 +46,27 @@ function bankInit(callback) {
         let bnbPoolId = 0;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(19200*30, 23, 60*60*24*30, 90, bank.address);
+        bankFarm.addPool(19200*30, 23, time.duration.days(30), 90, bank.address);
 
+        await time.advanceBlock();
         let blockNum = await web3.eth.getBlockNumber();
         console.log("bnb pool added block: " + blockNum);
-        let bnbFarmTime = web3.eth.getBlock(blockNum).timestamp;
+        let bnbFarmTime = (await web3.eth.getBlock(blockNum)).timestamp;
+        console.log("Block time stamp: " + bnbFarmTime)
+        bnbFarmTime = await time.latest();
+        console.log("time.latest(): " + bnbFarmTime);
         
         let usdtPoolId = 1;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(15360*30, 23, 60*60*24*30, 90, bank.address);
+        bankFarm.addPool(15360*30, 23, time.duration.days(30), 90, bank.address);
 
         blockNum = await web3.eth.getBlockNumber();
         console.log("usdt pool added block: " + blockNum);
-        let usdtFarmTime = web3.eth.getBlock(blockNum).timestamp;
+        let usdtFarmTime = (await web3.eth.getBlock(blockNum)).timestamp;
+        console.log("Block time stamp: " + usdtFarmTime);
+        usdtFarmTime = await time.latest()
+        console.log("time.latest(): " + usdtFarmTime);
 
         // Init usdt, busd
         {

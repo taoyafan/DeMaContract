@@ -3,6 +3,7 @@
 const BigNumber = require("bignumber.js");
 const erc20TokenGetBalance = require("./lib/utils");
 const bankInit = require("../scripts/bank_init.js");
+const{ shouldFail, time } = require('@openzeppelin/test-helpers');
 
 function logObj(obj, name) {
     console.log(` ------------------ ${name}: ------------------ `)
@@ -115,6 +116,7 @@ contract("TestBank", (accounts) => {
         let actualReceivedBNBWei;   // BigNumber
 
         let bankBnbInfo;
+        let depositTime;
 
         // related Address
         let walletAddress;
@@ -132,6 +134,8 @@ contract("TestBank", (accounts) => {
                 let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
 
                 await bank.sendTransaction({value: targetSendBNBWei});
+                depositTime = await time.latest();
+                console.log("Deposit time: " + depositTime);
 
                 let amountAfter = BigNumber(await web3.eth.getBalance(accounts[0]));
                 actualSendBNBWei = amountBefore.minus(amountAfter);
@@ -152,7 +156,6 @@ contract("TestBank", (accounts) => {
                 let val = await bank.totalToken(bnbAddress);
                 assert.equal(val.toString(), targetSendBNBWei.toString());
             })
-
             
             it("Check Bank BNB balance", async () => {
                 assert.equal(bankBnbInfo.totalVal.toString(), targetSendBNBWei.toString());
@@ -175,6 +178,8 @@ contract("TestBank", (accounts) => {
                 assert.equal(userShares.toString(), targetSendBNBWei.toString());
             })
 
+            // --------------------------- Check farm global and staked info ---------------------------
+
             it("Check farm total shares", async () => {
                 let farmBnbPool = await bankFarm.poolInfo(bnbPoolId);
                 logObj(farmBnbPool, "farm bnb pool info");
@@ -183,13 +188,49 @@ contract("TestBank", (accounts) => {
                 assert.equal(farmBnbPool.totalShares.toString(), targetSendBNBWei.multipliedBy(1.1).toString());
             })
 
-            it("Check farm user shares", async () => {
+            it("Check farm user staked shares", async () => {
                 let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
                 logObj(userFarmBnbPool, "farm bnb pool user info");
 
                 assert.equal(userFarmBnbPool.shares.toString(), targetSendBNBWei.toString());
             })
+
+            // --------------------------- Check bonus ---------------------------
+
+            it("Check farm user bonus pool length", async () => {
+                let poolLen = await bankFarm.bonusPoolsLength(accounts[0]);
+                assert.equal(poolLen.toString(), '1');
+            })
+
+            it("Check farm user bonus pool id", async () => {
+                let poolId = await bankFarm.bonusPoolsId(accounts[0], 0);
+                assert.equal(poolId.toNumber(), bnbPoolId);
+            })
+
+            it("Check farm user bonus shares", async () => {
+                let bonusInfo = await bankFarm.bonus(bnbPoolId, accounts[0]);
+                assert.equal(bonusInfo.shares.toString(), targetSendBNBWei.multipliedBy(0.05).toString());
+            })
+
+            // --------------------------- Check inviter shares ---------------------------
+
+            it("Check farm inviter bonus pool length", async () => {
+                let poolLen = await bankFarm.inviterBonusPoolsLength(accounts[0]);
+                assert.equal(poolLen.toString(), '1');
+            })
+
+            it("Check farm inviter bonus pool id", async () => {
+                let poolId = await bankFarm.inviterBonusPoolsId(accounts[0], 0);
+                assert.equal(poolId.toNumber(), bnbPoolId);
+            })
+
+            it("Check farm inviter bonus shares", async () => {
+                let userFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
+                assert.equal(userFarmBnbPool.shares.toString(), targetSendBNBWei.multipliedBy(0.05).toString());
+            })
         })
+
+        // TODO Check 10 second
 
         // describe("Check withdraw result", async () => {
 
