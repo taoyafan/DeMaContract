@@ -120,6 +120,14 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     /* ----------------- User Bonus Info  ----------------- */
 
+    function bonusPoolsLength(address account) public view returns (uint256) {
+        return EnumerableSet.length(bonusPools[account]);
+    }
+
+    function bonusPoolsId(address account, uint256 index) public view returns (uint256) {
+        return EnumerableSet.at(bonusPools[account], index);
+    }
+
     // Rewards amount for bonus in one pool.
     function bonusEarnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
         UserInfo storage user = bonus[poolId][account];
@@ -129,8 +137,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     // Rewards amount for bonus in all pools.
     function bonusEarned(address account) public view override returns (uint256) {
         uint256 totalEarned = 0;
-        for (uint256 index = 0; index < _bonusPoolsLength(account); ++index) {
-            totalEarned = totalEarned.add(bonusEarnedPerPool(_bonusPoolsId(account, index), account));
+        for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
+            totalEarned = totalEarned.add(bonusEarnedPerPool(bonusPoolsId(account, index), account));
         }
         return totalEarned;
     }
@@ -138,13 +146,21 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     // Total shares of bonus.
     function bonusShares(address account) external view override returns (uint256) {
         uint256 _totalShares = 0;
-        for (uint256 index = 0; index < _bonusPoolsLength(account); ++index) {
-            _totalShares = _totalShares.add(bonus[_bonusPoolsId(account, index)][account].shares);
+        for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
+            _totalShares = _totalShares.add(bonus[bonusPoolsId(account, index)][account].shares);
         }
         return _totalShares;
     }
 
     /* ----------------- Inviter Bonus Info  ----------------- */
+
+    function inviterBonusPoolsLength(address account) public view returns (uint256) {
+        return EnumerableSet.length(inviterBonusPools[account]);
+    }
+
+    function inviterBonusPoolsId(address account, uint256 index) public view returns (uint256) {
+        return EnumerableSet.at(inviterBonusPools[account], index);
+    }
 
     // Rewards amount for inviter bonus in one pool.
     function inviterBonusEarnedPerPool(uint256 poolId, address account) public view override checkPoolId(poolId) returns (uint256) {
@@ -155,8 +171,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     // Rewards amount for inviter bonus in all pools.
     function inviterEarned(address account) public view override returns (uint256) {
         uint256 totalEarned = 0;
-        for (uint256 index = 0; index < _inviterBonusPoolsLength(account); ++index) {
-            totalEarned = totalEarned.add(inviterBonusEarnedPerPool(_inviterBonusPoolsId(account, index), account));
+        for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
+            totalEarned = totalEarned.add(inviterBonusEarnedPerPool(inviterBonusPoolsId(account, index), account));
         }
         return totalEarned;
     }
@@ -164,8 +180,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     // Total shares of inviter shares.
     function inviterBonusShares(address account) external view override returns (uint256) {
         uint256 _totalShares = 0;
-        for (uint256 index = 0; index < _inviterBonusPoolsLength(account); ++index) {
-            _totalShares = _totalShares.add(inviterBonus[_inviterBonusPoolsId(account, index)][account].shares);
+        for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
+            _totalShares = _totalShares.add(inviterBonus[inviterBonusPoolsId(account, index)][account].shares);
         }
         return _totalShares;
     }
@@ -227,8 +243,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         override
         nonReentrant
     {
-        for (uint256 index = 0; index < _bonusPoolsLength(account); ++index) {
-            getBonusRewardsPerPool(_bonusPoolsId(account, index), account);
+        for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
+            getBonusRewardsPerPool(bonusPoolsId(account, index), account);
         }
     }
 
@@ -264,8 +280,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         override
         nonReentrant
     {
-        for (uint256 index = 0; index < _inviterBonusPoolsLength(account); ++index) {
-            getInviterBonusRewardsPerPool(_inviterBonusPoolsId(account, index), account);
+        for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
+            getInviterBonusRewardsPerPool(inviterBonusPoolsId(account, index), account);
         }
     }
 
@@ -337,26 +353,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         } else {
             DEMA.transfer(_to, _amount);
         }
-    }
-
-    /* ----------------- Bonus ----------------- */
-
-    function _bonusPoolsLength(address account) internal view returns (uint256) {
-        return EnumerableSet.length(bonusPools[account]);
-    }
-
-    function _bonusPoolsId(address account, uint256 index) internal view returns (uint256) {
-        return EnumerableSet.at(bonusPools[account], index);
-    }
-
-    /* ----------------- Inviter Bonus ----------------- */
-
-    function _inviterBonusPoolsLength(address account) internal view returns (uint256) {
-        return EnumerableSet.length(inviterBonusPools[account]);
-    }
-
-    function _inviterBonusPoolsId(address account, uint256 index) internal view returns (uint256) {
-        return EnumerableSet.at(inviterBonusPools[account], index);
     }
 
     /* ----------------- Update Pool or User ----------------- */
