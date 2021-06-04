@@ -99,10 +99,10 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
     /// @param borrows The amount user borrow from bank.
     /// @param data Extra calldata information passed along to this strategy.
     function execute(
-        address user, 
-        address[2] calldata borrowTokens, 
-        uint256[2] calldata borrows, 
-        uint256[2] calldata /* debt */, 
+        address user,
+        address[2] calldata borrowTokens,
+        uint256[2] calldata borrows,
+        uint256[2] calldata /* debt */,
         bytes calldata data
     )
         external
@@ -122,9 +122,9 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
             token1 = _token1;
             minLPAmount = _minLPAmount;
 
-            require(((borrowTokens[0] == token0) && (borrowTokens[1] == token1)) || 
+            require(((borrowTokens[0] == token0) && (borrowTokens[1] == token1)) ||
                     ((borrowTokens[0] == token1) && (borrowTokens[1] == token0)), "borrowTokens not token0 and token1");
-            
+
             if (token0Amount > 0 && _token0 != address(0)) {
                 token0.safeTransferFrom(user, address(this), token0Amount);
             }
@@ -179,7 +179,7 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
 
         if (BNBRelative == address(0)) {
             token0.safeTransfer(msg.sender, token0.myBalance());
-            token1.safeTransfer(user, token1.myBalance());
+            token1.safeTransfer(msg.sender, token1.myBalance());
         } else {
             safeUnWrapperAndAllSend(token0, msg.sender);
             safeUnWrapperAndAllSend(token1, msg.sender);
@@ -214,7 +214,7 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
             router.swapExactTokensForTokens(swapAmt, 0, path, address(this), now);
         }
     }
-    
+
     /* ==================================== Only Owner ==================================== */
 
     /// @dev Recover ERC20 tokens that were accidentally sent to this smart contract.
@@ -228,9 +228,11 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
     function withdrawRewards() external onlyOwner {
         ISwapMining _swapMining = ISwapMining(router.swapMining());
         _swapMining.takerWithdraw();
-        
+
         // Send MDX back to owner.
         address mdx = _swapMining.mdx();
         mdx.safeTransfer(msg.sender, mdx.myBalance());
     }
+
+    receive() external payable {}
 }
