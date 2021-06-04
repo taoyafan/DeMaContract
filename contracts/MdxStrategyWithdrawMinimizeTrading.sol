@@ -21,16 +21,30 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     IMdexFactory public factory;
     IMdexRouter public router;
     address public wBNB;
+    address public goblin;
 
     /// @dev Create a new withdraw minimize trading strategy instance for mdx.
     /// @param _router The mdx router smart contract.
-    constructor(IMdexRouter _router) public {
+    constructor(IMdexRouter _router, address _goblin) public {
         factory = IMdexFactory(_router.factory());
         router = _router;
+
         wBNB = _router.WBNB();
+        goblin = _goblin;
     }
 
-    /* ==================================== Write ==================================== */
+    /// @dev Throws if called by any account other than the goblin.
+    modifier onlyGoblin() {
+        require(isGoblin(), "caller is not the goblin");
+        _;
+    }
+
+    /// @dev Returns true if the caller is the current goblin.
+    function isGoblin() public view returns (bool) {
+        return msg.sender == goblin;
+    }
+
+    /* ==================================== Write Only Goblin ==================================== */
 
     /**
      * @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
@@ -49,6 +63,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         external
         payable
         override
+        onlyGoblin
         nonReentrant
     {
         // rate will divide 10000. 10000 means all token will be withdrawn.
@@ -60,13 +75,13 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         (address token0, address token1, uint256 rate, uint256 whichWantBack) =
             abi.decode(data, (address, address, uint256, uint256));
 
-        require((borrowTokens[0] == token0 || borrowTokens[0] == token1) || borrowTokens[0] == address(0), 
+        require((borrowTokens[0] == token0 || borrowTokens[0] == token1) || borrowTokens[0] == address(0),
                 "borrowTokens[0] not token0 and token1");
-        
-        require((borrowTokens[1] == token0 || borrowTokens[1] == token1) || borrowTokens[1] == address(0), 
+
+        require((borrowTokens[1] == token0 || borrowTokens[1] == token1) || borrowTokens[1] == address(0),
                 "borrowTokens[1] not token0 and token1");
-        
-        require(borrowTokens[0] != borrowTokens[1] || 
+
+        require(borrowTokens[0] != borrowTokens[1] ||
                 debts[1] == 0, "borrowTokens should be different, or debts[1] should be 0");
 
         // 1. Replace BNB by WBNB for all tokens.
@@ -94,12 +109,12 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
             lpToken.approve(address(router), uint256(-1));
             router.removeLiquidity(
-                token0, 
-                token1, 
-                rate.mul(lpToken.balanceOf(address(this))).div(10000), 
-                0, 
-                0, 
-                address(this), 
+                token0,
+                token1,
+                rate.mul(lpToken.balanceOf(address(this))).div(10000),
+                0,
+                0,
+                address(this),
                 now
             );
         }
@@ -108,8 +123,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         {
             uint256 da;
             uint256 db;
-            if (borrowTokens[0] == token0 || 
-                (borrowTokens[0] == address(0) && token0 == wBNB)) 
+            if (borrowTokens[0] == token0 ||
+                (borrowTokens[0] == address(0) && token0 == wBNB))
             {
                 da = debts[0];
                 db = debts[1];
@@ -145,7 +160,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             _safeUnWrapperAndSend(token1, user, token1.myBalance());
         }
     }
-    
+
     /* ==================================== Internal ==================================== */
 
     function _swapTokensForExactTokens(uint256 amount, address token0, address token1) internal {
@@ -193,14 +208,14 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
      * @return uint256 How many A should be swaped to B.
      */
     function _swapAToBWithDebtsRatio(
-        uint256 ra, 
-        uint256 rb, 
-        uint256 da, 
-        uint256 db, 
-        uint256 na, 
+        uint256 ra,
+        uint256 rb,
+        uint256 da,
+        uint256 db,
+        uint256 na,
         uint256 nb
     ) internal pure returns (uint256) {
-        // This can also help to make sure db != 0 
+        // This can also help to make sure db != 0
         require(na.mul(db) > nb.mul(da), "na/da should lager than nb/db");
 
         if (da == 0) {
@@ -210,7 +225,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         uint256 part1 = nb.mul(da).div(db).sub(na);
         uint256 part2 = ra.mul(1000).div(997);
         uint256 part3 = da.mul(rb).div(db);
-        
+
         uint256 b = part1.add(part2).add(part3);
         uint256 c = part1.mul(part2);
 
@@ -220,7 +235,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
     /**
      * @dev Repay debts of both token A and B.
-     * @notice If it is not enough to repay debts, it will repay as much as possible 
+     * @notice If it is not enough to repay debts, it will repay as much as possible
      *         according to the input debts ratio.
      *
      * @param da Debts of token A.
@@ -228,8 +243,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
      * @param lpToken LP token of token A and token B.
      */
     function _repayDebts(
-        uint256 da, 
-        uint256 db, 
+        uint256 da,
+        uint256 db,
         IMdexPair lpToken
     ) internal {
 
@@ -255,7 +270,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da.sub(na))){
                 _swapTokensForExactTokens(da.sub(na), tokenB, tokenA);
             }
-            
+
             // Otherwise, exchange tokens according to two debts amount ratio
             else {
 
@@ -305,7 +320,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
         }
     }
-    
+
     /* ==================================== Only Owner ==================================== */
 
     /**
@@ -321,9 +336,11 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     function withdrawRewards() external onlyOwner {
         ISwapMining _swapMining = ISwapMining(router.swapMining());
         _swapMining.takerWithdraw();
-        
+
         // Send MDX back to owner.
         address mdx = _swapMining.mdx();
         mdx.safeTransfer(msg.sender, mdx.myBalance());
     }
+
+    receive() external payable {}
 }
