@@ -62,6 +62,7 @@ contract Reinvestment is Ownable, IReinvestment {
         return mdx.myBalance().add(deposited).add(boardRoom.pending(boardRoomPid, address(this)));
     }
 
+    // TODO need to mul(1e18) and div(1e18) in other place used this function.
     function rewardsPerShare() public view  returns (uint256) {
         if (globalInfo.totalShares != 0) {
             // globalInfo.totalMdx is the mdx amount at the last time update.
