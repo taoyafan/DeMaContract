@@ -65,7 +65,7 @@ contract Reinvestment is Ownable, IReinvestment {
     function rewardsPerShare() public view  returns (uint256) {
         if (globalInfo.totalShares != 0) {
             // globalInfo.totalMdx is the mdx amount at the last time update.
-            return (totalRewards().sub(globalInfo.totalMdx)).div(
+            return (totalRewards().sub(globalInfo.totalMdx)).mul(1e18).div(
                 globalInfo.totalShares).add(globalInfo.accMdxPerShare);
         } else {
             return globalInfo.accMdxPerShare;
@@ -75,7 +75,7 @@ contract Reinvestment is Ownable, IReinvestment {
     /// @notice Goblin is the user.
     function userEarnedAmount(address account) public view override returns (uint256) {
         UserInfo storage user = userInfo[account];
-        return user.totalShares.mul(rewardsPerShare().sub(user.accMdxPerShareStored)).add(user.earnedMdxStored);
+        return user.totalShares.mul(rewardsPerShare().sub(user.accMdxPerShareStored)).div(1e18).add(user.earnedMdxStored);
     }
 
     /* ==================================== Write ==================================== */
