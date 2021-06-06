@@ -1,5 +1,3 @@
-// Bank: 0xD42Ef222d33E3cB771DdA783f48885e15c9D5CeD
-
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
