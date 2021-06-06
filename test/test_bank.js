@@ -1,9 +1,10 @@
 'use strict'
 
 const BigNumber = require("bignumber.js");
+const BN = web3.utils.BN;
 const erc20TokenGetBalance = require("./lib/utils");
 const bankInit = require("../scripts/bank_init.js");
-const{ shouldFail, time } = require('@openzeppelin/test-helpers');
+const{ expectEvent, shouldFail, time } = require('@openzeppelin/test-helpers');
 
 function logObj(obj, name) {
     console.log(` ------------------ ${name}: ------------------ `)
@@ -23,6 +24,7 @@ contract("TestBank", (accounts) => {
     let usdt;
     let busd;
     let bankFarm;
+    let dema;
 
     // parameters
     let bnbPoolId;
@@ -36,7 +38,7 @@ contract("TestBank", (accounts) => {
 
     before(async () => {
         [interestModel, bankConfig, bank, usdt, busd, bnbPoolId, bnbFarmTime, usdtPoolId, usdtFarmTime, 
-            bankFarm, setReserveBps, setLiquidateBps, bnbAddress] = await bankInit();
+            bankFarm, dema, setReserveBps, setLiquidateBps, bnbAddress] = await bankInit();
     });
 
     describe("Check config's params", async () => {
@@ -110,27 +112,18 @@ contract("TestBank", (accounts) => {
 
     describe("Deposit and withdraw BNB", async () => {
         // BNB Amount of send and receive
-        let targetSendBNB;
-        let targetSendBNBWei;       // BigNumber
+        let targetSendBNB = 1;
+        let targetSendBNBWei = BigNumber(web3.utils.toWei(String(targetSendBNB)));       // BigNumber
         let actualSendBNBWei;       // BigNumber
         let actualReceivedBNBWei;   // BigNumber
 
         let bankBnbInfo;
         let depositTime;
-
-        // related Address
-        let walletAddress;
-
-        before("Set amount and address", async () => {
-            targetSendBNB = 100;
-            targetSendBNBWei = BigNumber(web3.utils.toWei(String(targetSendBNB)));
-
-            walletAddress = accounts[0];
-        })
+        let withdrawTime;
 
         describe("Check deposit result", async () => {
 
-            before("Deposit 100 BNB", async () => {
+            before(`Deposit ${targetSendBNB} BNB`, async () => {
                 let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
 
                 await bank.sendTransaction({value: targetSendBNBWei});
@@ -142,12 +135,13 @@ contract("TestBank", (accounts) => {
                 bankBnbInfo = await bank.banks(bnbAddress);
             })
 
-            it("Account balance decreased by 100 BNB", async () => {
-                assert.equal(actualSendBNBWei.toString(), targetSendBNBWei.toString(),
-                 'Account balance should be decreased by 100 BNB')
+            it(`Account balance decreased by ${targetSendBNB} BNB`, async () => {
+                let actualSendBNB = actualSendBNBWei.dividedToIntegerBy(1e18);
+                assert.equal(actualSendBNB.toString(), targetSendBNB.toString(),
+                 `Account balance should be decreased by ${targetSendBNB} BNB`)
             })
 
-            it("Bank balance Increased by 100 BNB", async () => {
+            it(`Bank balance Increased by ${targetSendBNB} BNB`, async () => {
                 let bankBalance = BigNumber(await web3.eth.getBalance(bank.address));
                 assert.equal(bankBalance.toString(), targetSendBNBWei.toString())
             })
@@ -180,12 +174,15 @@ contract("TestBank", (accounts) => {
 
             // --------------------------- Check farm global and staked info ---------------------------
 
-            it("Check farm total shares", async () => {
+            it("Check farm total shares and rewardRate", async () => {
                 let farmBnbPool = await bankFarm.poolInfo(bnbPoolId);
+                let rewardRate = BigNumber(farmBnbPool.rewardsed).dividedToIntegerBy(farmBnbPool.periodDuration);
+
                 logObj(farmBnbPool, "farm bnb pool info");
 
                 // Include invited shares.
                 assert.equal(farmBnbPool.totalShares.toString(), targetSendBNBWei.multipliedBy(1.1).toString());
+                assert.equal(farmBnbPool.rewardRate.toString(), rewardRate.toString());
             })
 
             it("Check farm user staked shares", async () => {
@@ -230,29 +227,125 @@ contract("TestBank", (accounts) => {
             })
         })
 
-        // TODO Check 10 second
+        describe("Check earn after 30 second", async () => { 
 
-        // describe("Check withdraw result", async () => {
+            let deltaT;
+            let bn1e18 = new BN(BigNumber(1e18).toString());
 
-        //     before("withdraw 100 BNB", async () => {
-        //         let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
+            before("After 30 second", async () => {
+                await time.increaseTo(depositTime.add(time.duration.seconds(30)));
+                await time.advanceBlock();
+                withdrawTime = await time.latest();
+                console.log("withdrawTime time is: " + withdrawTime);
+                deltaT = withdrawTime.sub(depositTime);
+                console.log("Delta time is: " + deltaT);
+            })
 
-        //         await bank.withdraw(bnbAddress, targetSendBNBWei);
+            it("Check reward per token", async () => {
+                let reward = await bankFarm.rewardPerToken(bnbPoolId);
+                let farmBnbPool = await bankFarm.poolInfo(bnbPoolId);
 
-        //         let amountAfter = BigNumber(await web3.eth.getBalance(accounts[0]));
-        //         actualReceivedBNBWei = amountAfter.minus(amountBefore);
-        //     })
+                logObj(farmBnbPool, `farm bnb pool info after ${deltaT} seconds.`);
 
-        //     it("Account balance increased by 100 BNB", async () => {
-        //         assert.equal(actualReceivedBNBWei.toString(), targetSendBNBWei.toString(),
-        //             "Account balance should increased by 100 BNB ")
-        //     })
+                let rewardRate = farmBnbPool.rewardRate;
+                let shares = farmBnbPool.totalShares;
 
-        //     it("Burned 100 oBNB", async () => {
-        //         let amountOBNB = await erc20TokenGetBalance(oTokenAddress, walletAddress);
-        //         assert.equal(amountOBNB.toNumber(), 0, "Should Burned 100 oBNB");
-        //     })
-        // })
+                console.log(`Reward per token is ${reward}`);
+                assert.equal(reward.toString(), rewardRate.mul(deltaT).mul(bn1e18).div(shares).toString());
+            })
+
+            it("Check stake earn", async () => {
+                let earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
+                let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
+                let shares = userFarmBnbPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+                console.log(`Stake earn is: ${earn}`);
+                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+            })
+
+            it("Check bonus earn", async () => {
+                let earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
+                let totalEarn = await bankFarm.bonusEarned(accounts[0]);
+
+                let bonusFarmBnbPool = await bankFarm.bonus(bnbPoolId, accounts[0]);
+                let shares = bonusFarmBnbPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+                console.log(`Bonus earn is: ${earn}`);
+                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+            })
+
+            it("Check inviter earn", async () => {
+                let earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
+                let totalEarn = await bankFarm.inviterBonusEarned(accounts[0]);
+
+                let inviterFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
+                let shares = inviterFarmBnbPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+                console.log(`Inviter earn is: ${earn}`);
+                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+            })
+        })
+
+        describe("Check withdraw result", async () => {
+
+            let earn;
+            let demaBefore;
+            let demaAfter;
+            
+            let tx;
+
+            before(`withdraw ${targetSendBNB} BNB`, async () => {
+                let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
+                demaBefore = await dema.balanceOf(accounts[0]);
+
+                // log info before withdraw
+                let farmBnbPool = await bankFarm.poolInfo(bnbPoolId);
+                logObj(farmBnbPool, "farm bnb pool info before withdraw");
+                let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
+                logObj(userFarmBnbPool, "farm bnb pool user info before withdraw");
+
+                await time.advanceBlock();
+                earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
+                tx = await bank.withdraw(bnbAddress, targetSendBNBWei);
+
+                // log info after withdraw
+                farmBnbPool = await bankFarm.poolInfo(bnbPoolId);
+                logObj(farmBnbPool, "farm bnb pool info after withdraw");
+                userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
+                logObj(userFarmBnbPool, "farm bnb pool user info after withdraw");
+
+                demaAfter = await dema.balanceOf(accounts[0]);
+                let amountAfter = BigNumber(await web3.eth.getBalance(accounts[0]));
+                actualReceivedBNBWei = amountAfter.minus(amountBefore);
+                console.log(`Received bnb amount is: ${web3.utils.fromWei(actualReceivedBNBWei.toString())}`)
+            })
+
+            it(`Check received DEMA`, async () => {
+
+                // const { logs } = tx;
+                // expectEvent.inLogs(logs, 'RewardPaid', {
+                //     poolId: bnbPoolId,
+                //     user: accounts[0],
+                //     reward: earn.toString(),
+                //   });
+
+                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
+            })
+
+            it("Check user bank num", async () => {
+                assert.equal(await bank.userBanksNum(accounts[0]), 0);
+            })
+
+            it("Check user shares", async () => {
+                let userShares = await bank.userSharesPreTokoen(accounts[0], bnbAddress)
+                assert.equal(userShares.toString(), '0');
+            })
+        })
     })
 
     // describe("Deposit and withdraw USDT", async () => {
