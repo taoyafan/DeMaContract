@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('fs')
+const BigNumber = require("bignumber.js");
 const{ shouldFail, time } = require('@openzeppelin/test-helpers');
 
 const UserProfile = artifacts.require("UserProfile.sol");
@@ -46,7 +47,7 @@ function bankInit(callback) {
         let bnbPoolId = 0;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(19200*30, 23, time.duration.days(30), 90, bank.address);
+        bankFarm.addPool(BigNumber(19200*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
 
         await time.advanceBlock();
         let blockNum = await web3.eth.getBlockNumber();
@@ -59,7 +60,7 @@ function bankInit(callback) {
         let usdtPoolId = 1;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(15360*30, 23, time.duration.days(30), 90, bank.address);
+        bankFarm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
 
         blockNum = await web3.eth.getBlockNumber();
         console.log("usdt pool added block: " + blockNum);
@@ -98,7 +99,7 @@ function bankInit(callback) {
         }
 
         return [interestModel, bankConfig, bank, usdt, busd, bnbPoolId, bnbFarmTime, usdtPoolId, usdtFarmTime,
-            bankFarm, setReserveBps, setLiquidateBps, bnbAddress];
+            bankFarm, dema, setReserveBps, setLiquidateBps, bnbAddress];
     };
 
     return fun();
