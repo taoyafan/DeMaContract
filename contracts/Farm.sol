@@ -169,7 +169,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     // Rewards amount for inviter bonus in all pools.
-    function inviterEarned(address account) public view override returns (uint256) {
+    function inviterBonusEarned(address account) public view override returns (uint256) {
         uint256 totalEarned = 0;
         for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
             totalEarned = totalEarned.add(inviterBonusEarnedPerPool(inviterBonusPoolsId(account, index), account));
@@ -206,8 +206,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         if (user.rewards > 0) {
             _safeRewardsTransfer(account, user.rewards);
             pool.rewardsPaid = pool.rewardsPaid.add(user.rewards);
-            user.rewards = 0;
             emit RewardPaid(poolId, account, user.rewards);
+            user.rewards = 0;
         }
     }
 
@@ -228,8 +228,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         if (user.rewards > 0) {
             _safeRewardsTransfer(account, user.rewards);
             pool.rewardsPaid = pool.rewardsPaid.add(user.rewards);
-            user.rewards = 0;
             emit RewardPaid(poolId, account, user.rewards);
+            user.rewards = 0;
 
             // Delete pool
             if (user.shares == 0) {
@@ -375,7 +375,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     ) internal {
         PoolInfo storage pool = poolInfo[poolId];
         if (account != address(0) && time != user.lastUpdateTime) {
-            user.rewards = user.shares.mul(rewardPerToken(poolId).sub(
+            user.rewards = user.shares.mul(pool.rewardPerTokenStored.sub(
                 user.userRewardPerTokenPaid)).div(1e18).add(user.rewards);
 
             user.userRewardPerTokenPaid = pool.rewardPerTokenStored;
