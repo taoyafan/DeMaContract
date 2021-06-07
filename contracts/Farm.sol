@@ -561,13 +561,23 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.totalShares = 0;
     }
 
-    function burn(uint256 poolId, uint256 amount) external override onlyOwner {
+    function stop(uint256 poolId) external override onlyOwner {
         PoolInfo storage pool = poolInfo[poolId];
 
         pool.leftPeriodTimes = 0;
         pool.rewardsNextPeriod = 0;
         pool.periodFinish = block.timestamp;
-        DEMA.burn(address(this), amount);
+    }
+
+    function burn(uint256 poolId) external override onlyOwner {
+        PoolInfo storage pool = poolInfo[poolId];
+
+        // Make sure this pool is completely deprecated
+        require(pool.periodFinish <= block.timestamp);
+        require(pool.totalShares == 0, "Total shares not equal to 0");
+
+        uint256 leftAmount = pool.rewardsed.sub(pool.rewardsPaid);
+        DEMA.burn(address(this), leftAmount);
     }
 
     /* ========== EVENTS ========== */

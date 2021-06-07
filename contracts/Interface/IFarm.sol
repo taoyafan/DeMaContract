@@ -85,7 +85,11 @@ interface IFarm {
         address operator                // Who can stake and withdraw.
     ) external; 
 
-    // If amount is 0, it just stop to reward.
-    function burn(uint256 poolId, uint256 amount) external;          
+    // Stop the pool
+    function stop(uint256 poolId) external;    
+
+    // Burn the left rewards after call stop function.
+    // Require total share is 0
+    function burn(uint256 poolId) external;          
 
 }
