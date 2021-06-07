@@ -635,10 +635,9 @@ contract Bank is Ownable, ReentrancyGuard {
         nonReentrant
     {
         TokenBank storage bank = banks[token];
-        require(bank.isOpen, 'token not exists');
 
         uint256 balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
-        if(balance >= bank.totalVal.add(value)) {
+        if((bank.isOpen == false) || balance >= bank.totalVal.add(value)) {
             // Received not by deposit
         } else {
             bank.totalReserve = bank.totalReserve.sub(value);
