@@ -26,7 +26,6 @@ contract Bank is Ownable, ReentrancyGuard {
         address tokenAddr;
         bool isOpen;
         bool canDeposit;
-        bool canWithdraw;
         uint256 poolId;
 
         uint256 totalVal;           // Left balance, including reserved
@@ -231,7 +230,7 @@ contract Bank is Ownable, ReentrancyGuard {
     function withdraw(address token, uint256 withdrawShares) external nonReentrant {
         TokenBank storage bank = banks[token];
         UserBankInfo storage user = userBankInfo[msg.sender];
-        require(bank.isOpen && bank.canWithdraw, 'Token not exist or cannot withdraw');
+        require(bank.isOpen, 'Token not exist');
 
         _calInterest(token);
 
@@ -573,7 +572,6 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.isOpen = true;
         bank.tokenAddr = token;
         bank.canDeposit = true;
-        bank.canWithdraw = true;
         bank.poolId = poolId;
 
         bank.totalVal = 0;
@@ -584,12 +582,11 @@ contract Bank is Ownable, ReentrancyGuard {
         bank.lastInterestTime = now;
     }
 
-    function updateToken(address token, bool canDeposit, bool canWithdraw) external onlyOwner {
+    function updateToken(address token, bool canDeposit) external onlyOwner {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
 
         bank.canDeposit = canDeposit;
-        bank.canWithdraw = canWithdraw;
     }
 
     function opProduction(
