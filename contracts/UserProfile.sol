@@ -18,7 +18,10 @@ contract UserProfile is IUserProfile, Ownable {
     mapping(address => uint256) public override userId;
     mapping(address => address[]) invitees;
 
+    // Get address from id
     mapping(uint256 => address) public override idToAddress;
+
+    uint256 public userNum = 0;
 
     mapping(address => bool) public pluginsOk;
 
@@ -68,6 +71,8 @@ contract UserProfile is IUserProfile, Ownable {
 
         // Set inviter info
         invitees[inviterAccount].push(msg.sender);
+
+        userNum = userNum + 1;
 
         emit Register(msg.sender, setName, setId, inviterId);
     }
