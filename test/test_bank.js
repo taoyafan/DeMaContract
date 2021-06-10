@@ -16,6 +16,44 @@ function logObj(obj, name) {
     }
 }
 
+// which: 0: stake, 1: bonus, 2: inviter bonus
+async function checkTotalEarn(bank, bankFarm, poolId, which) {
+
+    if (which == 0) {
+        let earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
+        let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
+        let shares = userFarmBnbPool.shares;
+        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+        console.log(`Stake earn is: ${earn}`);
+        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+    }
+    else if (which == 1) {
+        let earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
+        let totalEarn = await bankFarm.bonusEarned(accounts[0]);
+
+        let bonusFarmBnbPool = await bankFarm.bonus(bnbPoolId, accounts[0]);
+        let shares = bonusFarmBnbPool.shares;
+        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+        console.log(`Bonus earn is: ${earn}`);
+        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+        assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+    }
+    else if (which == 2) {
+        let earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
+        let totalEarn = await bankFarm.inviterBonusEarned(accounts[0]);
+
+        let inviterFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
+        let shares = inviterFarmBnbPool.shares;
+        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+        console.log(`Inviter earn is: ${earn}`);
+        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+        assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+    }
+}
+
 contract("TestBank", (accounts) => {
     // Each contract instance
     let interestModel;
@@ -503,10 +541,6 @@ contract("TestBank", (accounts) => {
 
                 let amountAfter = await erc20TokenGetBalance(usdt.address, walletAddress);
                 actualReceivedUSDT = amountAfter.minus(amountBefore);
-            })
-
-            it(`User left amount in bank should be 0`, async () => {
-
             })
 
             it(`Account balance increased by ${targetSendUSDT} USDT`, async () => {
