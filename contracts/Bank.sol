@@ -177,6 +177,17 @@ contract Bank is Ownable, ReentrancyGuard {
         return userBankInfo[account].sharesPerToken[token];
     }
 
+    function earnPertoken(address account, address token) public view returns (uint256) {
+        TokenBank storage bank = banks[token];
+        Farm.stakeEarnedPerPool(bank.poolId, account);
+    }
+
+    function earn(address account) external view returns (uint256) {
+        uint256 totalEarn = 0;
+        for (uint256 index = 0; index < userBanksNum(account); ++index) {
+            totalEarn = totalEarn.add(account, earnPertoken(userBankAddress(account, index)));
+    }
+
     /* ---- User Positions Info ---- */
 
     function userPosNum(address account) public view returns (uint256) {
@@ -451,7 +462,7 @@ contract Bank is Ownable, ReentrancyGuard {
                     SafeToken.safeTransferETH(pos.owner, temp.left[i]) :
                     SafeToken.safeTransfer(production.borrowToken[i], pos.owner, temp.left[i]);
             } else {
-                banks[production.borrowToken[i]].totalVal = 
+                banks[production.borrowToken[i]].totalVal =
                     banks[production.borrowToken[i]].totalVal.sub(temp.debts[i]).add(temp.rest);
             }
         }
@@ -605,8 +616,8 @@ contract Bank is Ownable, ReentrancyGuard {
         external
         onlyOwner
     {
-        // If two borrow tokens are same, meas only borrow one token. Then debt[1] and canBorrow[1] must be 0; 
-        require(borrowToken[0] != borrowToken[1] || 
+        // If two borrow tokens are same, meas only borrow one token. Then debt[1] and canBorrow[1] must be 0;
+        require(borrowToken[0] != borrowToken[1] ||
             (minDebt[1] == 0 && canBorrow[1] == false), "Borrow tokens cannot be same or only borrow one token");
 
         if(pid == 0){
