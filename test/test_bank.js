@@ -17,40 +17,57 @@ function logObj(obj, name) {
 }
 
 // which: 0: stake, 1: bonus, 2: inviter bonus
-async function checkTotalEarn(bank, bankFarm, poolId, which) {
+async function checkTotalEarn(bank, bankFarm, poolsId, account, which) {
+
+    let getEarn = BigNumber(0);  // Aquire from contract
+    let targetEarn = BigNumber(0);    // Sum of earn of each pool
+
+    let bn1e18 = new BN(BigNumber(1e18).toString());
 
     if (which == 0) {
-        let earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
-        let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
-        let shares = userFarmBnbPool.shares;
-        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+        // Stake earn
 
-        console.log(`Stake earn is: ${earn}`);
-        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+        getEarn = bank.earn(account);
+
+        for (let id of pooslId) {
+            let userFarmPool = await bankFarm.userStakeInfo(id, account);
+            let shares = userFarmPool.shares;
+            let rewardsPerShare = await bankFarm.rewardPerToken(id);
+            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+        }
+
+        console.log(`Stake earn is: ${getEarn}`);
+        assert.equal(getEarn.toString(), targetEarn.toString());
     }
     else if (which == 1) {
-        let earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
-        let totalEarn = await bankFarm.bonusEarned(accounts[0]);
+        // Bonus earn
 
-        let bonusFarmBnbPool = await bankFarm.bonus(bnbPoolId, accounts[0]);
-        let shares = bonusFarmBnbPool.shares;
-        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+        getEarn = await bankFarm.bonusEarned(account);
 
-        console.log(`Bonus earn is: ${earn}`);
-        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
-        assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+        for (let id of pooslId) {
+            let userFarmPool = await bankFarm.bonus(id, account);
+            let shares = userFarmPool.shares;
+            let rewardsPerShare = await bankFarm.rewardPerToken(id);
+            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+        }
+
+        console.log(`Bonus earn is: ${totalEarn}`);
+        assert.equal(totalEarn.toString(), targetEarn.toString());
     }
     else if (which == 2) {
-        let earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
-        let totalEarn = await bankFarm.inviterBonusEarned(accounts[0]);
+        // Inviter bonus earn
 
-        let inviterFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
-        let shares = inviterFarmBnbPool.shares;
-        let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+        getEarn = await bankFarm.inviterBonusEarned(account);
+
+        for (let id of pooslId) {
+            let userFarmPool = await bankFarm.inviterBonus(id, account);
+            let shares = userFarmPool.shares;
+            let rewardsPerShare = await bankFarm.rewardPerToken(id);
+            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+        }
 
         console.log(`Inviter earn is: ${earn}`);
-        assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
-        assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+        assert.equal(getEarn.toString(), targetEarn.toString());
     }
 }
 
