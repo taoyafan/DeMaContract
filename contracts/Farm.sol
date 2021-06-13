@@ -216,7 +216,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     function getBonusRewardsPerPool(uint256 poolId, address account)
         public
         override
-        nonReentrant
         checkPoolId(poolId)
     {
         _updateBonus(poolId, account);
@@ -253,7 +252,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     function getInviterBonusRewardsPerPool(uint256 poolId, address account)
         public
         override
-        nonReentrant
         checkPoolId(poolId)
     {
         _updateInviterBonus(poolId, account);
@@ -455,7 +453,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         // Need decrease bonus.
         if (userBonus.shares > maxBonusShares) {
-            uint256 bonusReduction = userBonus.shares.mul(maxBonusShares);
+            uint256 bonusReduction = userBonus.shares.sub(maxBonusShares);
             uint256 inviterBonusReduction = bonusRatio == inviterBonusRatio ?
                 bonusReduction : bonusReduction.mul(inviterBonusRatio).div(bonusRatio);
 
