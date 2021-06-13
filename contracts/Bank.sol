@@ -178,13 +178,15 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function earnPertoken(address account, address token) public view returns (uint256) {
         TokenBank storage bank = banks[token];
-        Farm.stakeEarnedPerPool(bank.poolId, account);
+        return Farm.stakeEarnedPerPool(bank.poolId, account);
     }
 
     function earn(address account) external view returns (uint256) {
         uint256 totalEarn = 0;
         for (uint256 index = 0; index < userBanksNum(account); ++index) {
-            totalEarn = totalEarn.add(account, earnPertoken(userBankAddress(account, index)));
+            totalEarn = totalEarn.add(earnPertoken(account, userBankAddress(account, index)));
+        }
+        return totalEarn;
     }
 
     /* ---- User Positions Info ---- */
