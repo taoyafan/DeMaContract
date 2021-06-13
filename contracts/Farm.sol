@@ -242,8 +242,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         override
         nonReentrant
     {
-        for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
-            getBonusRewardsPerPool(bonusPoolsId(account, index), account);
+        for (uint256 index = bonusPoolsLength(account); index > 0; --index) {
+            getBonusRewardsPerPool(bonusPoolsId(account, index - 1), account);
         }
     }
 
@@ -278,8 +278,8 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         override
         nonReentrant
     {
-        for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
-            getInviterBonusRewardsPerPool(inviterBonusPoolsId(account, index), account);
+        for (uint256 index = inviterBonusPoolsLength(account); index > 0; --index) {
+            getInviterBonusRewardsPerPool(inviterBonusPoolsId(account, index - 1), account);
         }
     }
 

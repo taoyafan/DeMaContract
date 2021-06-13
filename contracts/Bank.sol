@@ -487,8 +487,8 @@ contract Bank is Ownable, ReentrancyGuard {
 
     // Send earned DEMA from all tokens to user.
     function getBankRewards() public {
-        for (uint256 index = 0; index < userBanksNum(msg.sender); ++index) {
-            getBankRewardsPerToken(userBankAddress(msg.sender, index));
+        for (uint256 index = userBanksNum(msg.sender); index > 0; --index) {
+            getBankRewardsPerToken(userBankAddress(msg.sender, index - 1));
         }
     }
 
@@ -506,8 +506,8 @@ contract Bank is Ownable, ReentrancyGuard {
 
     // Get MDX and DEMA rewards of all productions
     function getRewardsAllProd() public {
-        for (uint256 i = 0; i < userProdNum(msg.sender); ++i) {
-            getRewardsPerProd(userProdId(msg.sender, i));
+        for (uint256 i = userProdNum(msg.sender); i > 0; --i) {
+            getRewardsPerProd(userProdId(msg.sender, i-1));
         }
     }
 
