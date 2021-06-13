@@ -16,61 +16,6 @@ function logObj(obj, name) {
     }
 }
 
-// which: 0: stake, 1: bonus, 2: inviter bonus
-async function checkTotalEarn(bank, bankFarm, poolsId, account, which) {
-
-    let getEarn = BigNumber(0);  // Aquire from contract
-    let targetEarn = BigNumber(0);    // Sum of earn of each pool
-
-    let bn1e18 = new BN(BigNumber(1e18).toString());
-
-    if (which == 0) {
-        // Stake earn
-
-        getEarn = bank.earn(account);
-
-        for (let id of pooslId) {
-            let userFarmPool = await bankFarm.userStakeInfo(id, account);
-            let shares = userFarmPool.shares;
-            let rewardsPerShare = await bankFarm.rewardPerToken(id);
-            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
-        }
-
-        console.log(`Stake earn is: ${getEarn}`);
-        assert.equal(getEarn.toString(), targetEarn.toString());
-    }
-    else if (which == 1) {
-        // Bonus earn
-
-        getEarn = await bankFarm.bonusEarned(account);
-
-        for (let id of pooslId) {
-            let userFarmPool = await bankFarm.bonus(id, account);
-            let shares = userFarmPool.shares;
-            let rewardsPerShare = await bankFarm.rewardPerToken(id);
-            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
-        }
-
-        console.log(`Bonus earn is: ${totalEarn}`);
-        assert.equal(totalEarn.toString(), targetEarn.toString());
-    }
-    else if (which == 2) {
-        // Inviter bonus earn
-
-        getEarn = await bankFarm.inviterBonusEarned(account);
-
-        for (let id of pooslId) {
-            let userFarmPool = await bankFarm.inviterBonus(id, account);
-            let shares = userFarmPool.shares;
-            let rewardsPerShare = await bankFarm.rewardPerToken(id);
-            targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
-        }
-
-        console.log(`Inviter earn is: ${earn}`);
-        assert.equal(getEarn.toString(), targetEarn.toString());
-    }
-}
-
 contract("TestBank", (accounts) => {
     // Each contract instance
     let interestModel;
@@ -316,39 +261,43 @@ contract("TestBank", (accounts) => {
             })
 
             it("Check stake earn", async () => {
-                let earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
-                let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
-                let shares = userFarmBnbPool.shares;
-                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+                await checkTotalEarn([bnbPoolId], accounts[0], 0);
 
-                console.log(`Stake earn is: ${earn}`);
-                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                // let earn = await bankFarm.stakeEarnedPerPool(bnbPoolId, accounts[0]);
+                // let userFarmBnbPool = await bankFarm.userStakeInfo(bnbPoolId, accounts[0]);
+                // let shares = userFarmBnbPool.shares;
+                // let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+
+                // console.log(`Stake earn is: ${earn}`);
+                // assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
             })
 
             it("Check bonus earn", async () => {
-                let earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
-                let totalEarn = await bankFarm.bonusEarned(accounts[0]);
+                await checkTotalEarn([bnbPoolId], accounts[0], 1);
+                // let earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
+                // let totalEarn = await bankFarm.bonusEarned(accounts[0]);
 
-                let bonusFarmBnbPool = await bankFarm.bonus(bnbPoolId, accounts[0]);
-                let shares = bonusFarmBnbPool.shares;
-                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+                // let bonusFarmBnbPool = await bankFarm.bonus(bnbPoolId, accounts[0]);
+                // let shares = bonusFarmBnbPool.shares;
+                // let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
 
-                console.log(`Bonus earn is: ${earn}`);
-                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
-                assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                // console.log(`Bonus earn is: ${earn}`);
+                // assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                // assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
             })
 
             it("Check inviter earn", async () => {
-                let earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
-                let totalEarn = await bankFarm.inviterBonusEarned(accounts[0]);
+                await checkTotalEarn([bnbPoolId], accounts[0], 2);
+                // let earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
+                // let totalEarn = await bankFarm.inviterBonusEarned(accounts[0]);
 
-                let inviterFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
-                let shares = inviterFarmBnbPool.shares;
-                let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
+                // let inviterFarmBnbPool = await bankFarm.inviterBonus(bnbPoolId, accounts[0]);
+                // let shares = inviterFarmBnbPool.shares;
+                // let rewardsPerShare = await bankFarm.rewardPerToken(bnbPoolId);
 
-                console.log(`Inviter earn is: ${earn}`);
-                assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
-                assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                // console.log(`Inviter earn is: ${earn}`);
+                // assert.equal(earn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
+                // assert.equal(totalEarn.toString(), rewardsPerShare.mul(shares).div(bn1e18).toString());
             })
         })
 
@@ -357,8 +306,6 @@ contract("TestBank", (accounts) => {
             let earn;
             let demaBefore;
             let demaAfter;
-
-            let tx;
 
             before(`withdraw ${targetSendBNB} BNB`, async () => {
                 let amountBefore = BigNumber(await web3.eth.getBalance(accounts[0]));
@@ -410,59 +357,10 @@ contract("TestBank", (accounts) => {
             })
         })
 
-        describe("Bonus test", async () => {
+        bonusTestAfterWithdraw(accounts[0]);
 
-            let earn;
-            let demaBefore;
-            let demaAfter;
+        inviterBonusTestAfterWithdraw(accounts[0]);
 
-            before(`Get bonus`, async () => {
-                demaBefore = await dema.balanceOf(accounts[0]);
-                await time.advanceBlock();
-
-                earn = await bankFarm.bonusEarnedPerPool(bnbPoolId, accounts[0]);
-                await getBonusRewardsPerPool(bnbPoolId, accounts[0]);
-
-                console.log(`Bonus earn is ${web3.utils.fromWei(earn.toString())}`)
-
-                demaAfter = await dema.balanceOf(accounts[0]);
-            })
-
-            it(`Check received DEMA`, async () => {
-                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
-            })
-
-            it("Check bonus pool num", async () => {
-                assert.equal(await bankFarm.bonusPoolsLength(accounts[0]), 0);
-            })
-        })
-
-        describe("Inviter bonus test", async () => {
-
-            let earn;
-            let demaBefore;
-            let demaAfter;
-
-            before(`Get inviter bonus`, async () => {
-                demaBefore = await dema.balanceOf(accounts[0]);
-                await time.advanceBlock();
-
-                earn = await bankFarm.inviterBonusEarnedPerPool(bnbPoolId, accounts[0]);
-                await getInviterBonusRewardsPerPool(bnbPoolId, accounts[0]);
-
-                console.log(`Inviter bonus earn is ${web3.utils.fromWei(earn.toString())}`)
-
-                demaAfter = await dema.balanceOf(accounts[0]);
-            })
-
-            it(`Check received DEMA`, async () => {
-                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
-            })
-
-            it("Check inviter bonus pool num", async () => {
-                assert.equal(await bankFarm.inviterBonusPoolsLength(accounts[0]), 0);
-            })
-        })
     })
 
     describe("Deposit and withdraw USDT after depositing BNB", async () => {
@@ -507,7 +405,7 @@ contract("TestBank", (accounts) => {
 
             it(`Bank balance Increased by ${targetSendUSDT} BNB`, async () => {
                 let bankBalance = BigNumber(await usdt.balanceOf(bank.address));
-                assert.equal(bankBalance.toString(), targetSendBNBWei.toString())
+                assert.equal(bankBalance.toString(), targetSendUSDTWei.toString())
             })
 
             it("Check user bank num", async () => {
@@ -521,7 +419,7 @@ contract("TestBank", (accounts) => {
                 let totalShares = await bankInfo.totalShares;
 
                 let amout = userShares.mul(totalAmount).div(totalShares);
-                assert.equal(userShares.toString(), targetSendBNBWei.toString());
+                assert.equal(userShares.toString(), targetSendUSDTWei.toString());
             })
 
             it("Check farm bonus pool length", async () => {
@@ -548,35 +446,35 @@ contract("TestBank", (accounts) => {
         // describe("Earn test", async () => {
         // })
 
-        describe("Withdraw test", async () => {
+        // describe("Withdraw test", async () => {
 
-            let earn;
-            before(`withdraw ${targetSendUSDT} USDT`, async () => {
-                let amountBefore = await erc20TokenGetBalance(usdt.address, walletAddress);
+        //     let earn;
+        //     before(`withdraw ${targetSendUSDT} USDT`, async () => {
+        //         let amountBefore = await erc20TokenGetBalance(usdt.address, walletAddress);
 
-                await bank.withdraw(usdt.address, targetSendUSDTWei);
+        //         await bank.withdraw(usdt.address, targetSendUSDTWei);
 
-                let amountAfter = await erc20TokenGetBalance(usdt.address, walletAddress);
-                actualReceivedUSDT = amountAfter.minus(amountBefore);
-            })
+        //         let amountAfter = await erc20TokenGetBalance(usdt.address, walletAddress);
+        //         actualReceivedUSDT = amountAfter.minus(amountBefore);
+        //     })
 
-            it(`Account balance increased by ${targetSendUSDT} USDT`, async () => {
-                assert.equal(actualReceivedUSDT.toString(), targetSendUSDT.toString())
-            })
+        //     it(`Account balance increased by ${targetSendUSDT} USDT`, async () => {
+        //         assert.equal(actualReceivedUSDT.toString(), targetSendUSDT.toString())
+        //     })
 
-            it(`Check received DEMA`, async () => {
-                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
-            })
+        //     it(`Check received DEMA`, async () => {
+        //         assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
+        //     })
 
-            it("Check user bank num", async () => {
-                assert.equal(await bank.userBanksNum(accounts[0]), 0);
-            })
+        //     it("Check user bank num", async () => {
+        //         assert.equal((await bank.userBanksNum(accounts[0])).toNumber(), 0);
+        //     })
 
-            it("Check user shares", async () => {
-                let userShares = await bank.userSharesPreTokoen(accounts[0], bnbAddress)
-                assert.equal(userShares.toString(), '0');
-            })
-        })
+        //     it("Check user shares", async () => {
+        //         let userShares = await bank.userSharesPreTokoen(accounts[0], bnbAddress)
+        //         assert.equal(userShares.toString(), '0');
+        //     })
+        // })
     })
 
     // async function lpTest(nameA, nameB, addressA, addressB) {
@@ -608,4 +506,120 @@ contract("TestBank", (accounts) => {
 
     // describe("BUSD-USDT-LP Test", async () => {
     // });
+    
+    async function checkTotalEarn(poolsId, account, which) {
+
+        let getEarn = BigNumber(0);  // Aquire from contract
+        let targetEarn = BigNumber(0);    // Sum of earn of each pool
+
+        let bn1e18 = new BN(BigNumber(1e18).toString());
+
+        if (which == 0) {
+            // Stake earn
+
+            getEarn = await bank.earn(account);
+
+            for (let id of poolsId) {
+                let userFarmPool = await bankFarm.userStakeInfo(id, account);
+                let shares = userFarmPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(id);
+                targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+            }
+
+            console.log(`Stake earn is: ${getEarn}`);
+            assert.equal(getEarn.toString(), targetEarn.toString());
+        }
+        else if (which == 1) {
+            // Bonus earn
+
+            getEarn = await bankFarm.bonusEarned(account);
+
+            for (let id of poolsId) {
+                let userFarmPool = await bankFarm.bonus(id, account);
+                let shares = userFarmPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(id);
+                targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+            }
+
+            console.log(`Bonus earn is: ${getEarn}`);
+            assert.equal(getEarn.toString(), targetEarn.toString());
+        }
+        else if (which == 2) {
+            // Inviter bonus earn
+
+            getEarn = await bankFarm.inviterBonusEarned(account);
+
+            for (let id of poolsId) {
+                let userFarmPool = await bankFarm.inviterBonus(id, account);
+                let shares = userFarmPool.shares;
+                let rewardsPerShare = await bankFarm.rewardPerToken(id);
+                targetEarn = targetEarn.plus(rewardsPerShare.mul(shares).div(bn1e18).toString());
+            }
+
+            console.log(`Inviter earn is: ${getEarn}`);
+            assert.equal(getEarn.toString(), targetEarn.toString());
+        }
+    }
+    
+    async function bonusTestAfterWithdraw(account) {
+
+        describe("Bonus test after withdraw all", async () => {
+
+            let earn;
+            let demaBefore;
+            let demaAfter;
+
+            before(`Get bonus`, async () => {
+                demaBefore = await dema.balanceOf(account);
+                await time.advanceBlock();
+
+                earn = await bankFarm.bonusEarned(account);
+                await bankFarm.getBonusRewards(account);
+
+                console.log(`Bonus earn is ${web3.utils.fromWei(earn.toString())}`)
+
+                demaAfter = await dema.balanceOf(account);
+            })
+
+            it(`Check received DEMA`, async () => {
+                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
+            })
+
+            it("Check bonus pool num", async () => {
+                let poolNum = await bankFarm.bonusPoolsLength(account);
+                assert.equal(poolNum.toNumber(), 0);
+            })
+        })
+    }
+    
+    async function inviterBonusTestAfterWithdraw(account) {
+
+        describe("Inviter bonus test after withdraw all", async () => {
+
+            let earn;
+            let demaBefore;
+            let demaAfter;
+
+            before(`Get inviter bonus`, async () => {
+                demaBefore = await dema.balanceOf(account);
+                await time.advanceBlock();
+
+                earn = await bankFarm.inviterBonusEarned(account);
+                await bankFarm.getInviterRewards(account);
+
+                console.log(`Inviter bonus earn is ${web3.utils.fromWei(earn.toString())}`)
+
+                demaAfter = await dema.balanceOf(account);
+            })
+
+            it(`Check received DEMA`, async () => {
+                assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
+            })
+
+            it("Check inviter bonus pool num", async () => {
+                let poolNum = await bankFarm.inviterBonusPoolsLength(account);
+                assert.equal(poolNum.toNumber(), 0);
+            })
+        })
+    }
 });
