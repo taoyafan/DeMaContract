@@ -14,15 +14,17 @@ module.exports = async function (deployer, network, accounts) {
     await deployer.deploy(TripleSlopeModel);
     await deployer.deploy(BankConfig);
     await deployer.deploy(DEMA);
-    await deployer.deploy(Farm,
-                          UserProfile.address,
-                          DEMA.address,
-                          500,
-                          500
-                          );
-    await deployer.deploy(Bank,
-                          Farm.address
-                          );
+    await deployer.deploy(
+        Farm,
+        UserProfile.address,
+        DEMA.address,
+        500,
+        500
+    );
+    await deployer.deploy(
+        Bank,
+        Farm.address
+    );
 
     saveToJson("TripleSlopeModel", (await TripleSlopeModel.deployed()).address);
     saveToJson("BankConfig", (await BankConfig.deployed()).address);

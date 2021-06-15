@@ -6,7 +6,7 @@ const Farm = artifacts.require("Farm");
 
 const BigNumber = require("bignumber.js");
 
-module.exports = function (deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
 
     
 };
