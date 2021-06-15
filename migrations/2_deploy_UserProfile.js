@@ -1,9 +1,15 @@
 let UserProfile = artifacts.require("./UserProfile.sol");
 let PlgUserIntroduction = artifacts.require("./PlgUserIntroduction.sol");
+let saveToJson = require('./save_address_to_json.js')
 
-module.exports = function(deployer) {
-  deployer.deploy(UserProfile);
-  deployer.deploy(PlgUserIntroduction);
+module.exports = async function(deployer, network) {
+  await deployer.deploy(UserProfile);
+  saveToJson("UserProfile", (await UserProfile.deployed()).address);
+  
+  if (network == 'development') {
+    await deployer.deploy(PlgUserIntroduction);
+    saveToJson("PlgUserIntroduction", (await PlgUserIntroduction.deployed()).address);
+  }
 
   // let UserProfile = await UserProfile.deployed();
   // console.log(UserProfile.address);
