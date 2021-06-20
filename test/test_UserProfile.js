@@ -52,18 +52,27 @@ contract("Test User Profile", (accounts) => {
 
         before("Inviter should be 0", async () => {
             newUser = accounts[3];  // password test
-            setName = "Hi";
+            setName = "Morty";
             setId = 620;
             let inviter = await userProfile.methods.inviter(newUser).call();
             assert.strictEqual(inviter, "0x0000000000000000000000000000000000000000");
             let bytes = new TextEncoder().encode(setName);
-            await userProfile.methods.register(bytes, setId, 0).send({from: newUser});
+            console.log(`Bytes name is : ${bytes}`)
+
+            let sendHex = web3.utils.bytesToHex(bytes);
+            console.log(`Send hex is : ${sendHex}`)
+
+            await userProfile.methods.register(sendHex, setId, 0).send({from: newUser, gas:3000000});
         });
 
         it("Name check", async () => {
             let getName = await userProfile.methods.name(newUser).call();
-            let getBytes = web3.utils.hexToBytes(getName);
-            getName = new TextDecoder().decode(new Uint8Array(getBytes));
+            if (getName) {
+                let getBytes = web3.utils.hexToBytes(getName);
+                getName = new TextDecoder().decode(new Uint8Array(getBytes));
+            } else {
+                getName = '';
+            }
 
             assert.strictEqual(getName, setName);
         });

@@ -17,7 +17,7 @@
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
     "testBank": "truffle test ./test/test_bank.js",
-    "test": "mocha ./test/test_UserProfile.js"
+    "testUser": "truffle test ./test/test_UserProfile.js"
   },
   "repository": {
     "type": "git",
