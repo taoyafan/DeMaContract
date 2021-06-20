@@ -54,7 +54,7 @@ contract Bank is Ownable, ReentrancyGuard {
         IGoblin goblin;
         uint256[2] minDebt;
         uint256 openFactor;         // When open: (debts / total) should < (openFactor / 10000)
-        uint256 liquidateFactor;    // When liquidate: (debts / total) should > (liquidateFactor / 10000)
+        uint256 liquidateFactor;    // When liquidate: new health should < (liquidateFactor / 10000)
     }
 
     struct Position {
@@ -97,7 +97,7 @@ contract Bank is Ownable, ReentrancyGuard {
     // Used in liquidate to prevent stack over deep
     struct liqTemp {
         uint256[2] debts;
-        uint256[2] health;
+        uint256 health;
         uint256[2] before;
         uint256 back;           // Only one item is to save memory.
         uint256 rest;           // Only one item is to save memory.
@@ -412,10 +412,8 @@ contract Bank is Ownable, ReentrancyGuard {
 
         temp.debts = _removeDebt(pos, production);
 
-        temp.health = production.goblin.health(posId, production.borrowToken, temp.debts);
-
-        require((temp.health[0].mul(production.liquidateFactor) <= temp.debts[0].mul(10000)) &&
-                (temp.health[1].mul(production.liquidateFactor) <= temp.debts[1].mul(10000)), "can't liquidate");
+        temp.health = production.goblin.newHealth(posId, production.borrowToken, temp.debts);
+        require(temp.health < production.liquidateFactor, "can't liquidate");
 
         temp.isBSC;
         temp.before;
@@ -615,9 +613,9 @@ contract Bank is Ownable, ReentrancyGuard {
         external
         onlyOwner
     {
-        // If two borrow tokens are same, meas only borrow one token. Then debt[1] and canBorrow[1] must be 0;
-        require(borrowToken[0] != borrowToken[1] ||
-            (minDebt[1] == 0 && canBorrow[1] == false), "Borrow tokens cannot be same or only borrow one token");
+        require(borrowToken[0] != borrowToken[1], "Borrow tokens cannot be same");
+        require(canBorrow[0] || minDebt[0]==0, "Token 0 can borrow or min debt should be 0");
+        require(canBorrow[1] || minDebt[1]==0, "Token 1 can borrow or min debt should be 0");
 
         if(pid == 0){
             pid = currentPid;

@@ -33,11 +33,23 @@ interface IGoblin {
      * @param borrowTokens Address of two tokens this position had debt.
      * @param debts Debts of two tokens.
      */
-     function health(
+    function health(
         uint256 id,
         address[2] calldata borrowTokens,
         uint256[2] calldata debts
     ) external view returns (uint256[2] memory);
+
+    /**
+     * @dev Return the left rate of the principal. need to divide to 10000, 100 means 1%
+     * @param id The position ID to perform loss rate check.
+     * @param borrowTokens Address of two tokens this position had debt.
+     * @param debts Debts of two tokens.
+     */
+    function newHealth(
+        uint256 id,
+        address[2] calldata borrowTokens,
+        uint256[2] calldata debts
+    ) external view returns (uint256);
 
     /**
      * @dev Liquidate the given position by converting it to debtToken and return back to caller.
