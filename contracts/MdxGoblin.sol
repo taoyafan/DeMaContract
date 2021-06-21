@@ -71,7 +71,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     mapping(uint256 => uint256) public override posLPAmount;
 
     // Principal of each tokens in each pos. Same order with borrow tokens
-    mapping(uint256 => uint256[2]) public principal;        
+    mapping(uint256 => uint256[2]) public principal;
     mapping(address => bool) public strategiesOk;
     IStrategy public liqStrategy;
 
@@ -187,7 +187,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // 2. Get the pool's total supply of token0 and token1.
         (uint256 ra, uint256 rb,) = lpToken.getReserves();
-        
+
         if (borrowTokens[0] == token1 ||
             (borrowTokens[0] == address(0) && token1 == wBNB))
         {
@@ -254,7 +254,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // 2. Get the pool's total supply of token0 and token1.
         (uint256 ra, uint256 rb,) = lpToken.getReserves();
-        
+
         if (borrowTokens[0] == token1 ||
             (borrowTokens[0] == address(0) && token1 == wBNB))
         {
@@ -267,7 +267,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         ra = ra.sub(na);
         rb = rb.sub(nb);
 
-        // 4. Get the health 
+        // 4. Get the health
         if (N[0] > 0) {
             // token 0 is the standard coin.
             uint256 leftA = _repayDeptsAndSwapLeftToA(ra, rb, debts[0], debts[1], na, nb);
@@ -395,19 +395,19 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // Update principal.
         uint256[2] storage N = principal[id];
         (uint256 ra, uint256 rb,) = lpToken.getReserves();
-        if (borrowTokens[0] == token1 ||
-            (borrowTokens[0] == address(0) && token1 == wBNB))
-        {
+
+        if (borrowTokens[0] == token1 || (borrowTokens[0] == address(0) && token1 == wBNB)){
             // If reverse
             (ra, rb) = (rb, ra);
         }
 
+        // 4. Update stored info after withdraw or deposit.
 
         // If withdraw some LP.
         if (temp.beforeLPAmount > temp.afterLPAmount) {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
             farm.withdraw(poolId, account, temp.deltaAmount);
-        
+
             if (deltaN[0] > 0 || deltaN[1] > 0){
                 // Decrease some principal.
                 if (N[0] > 0) {
@@ -418,7 +418,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                         N[0] = 0;
                     }
                 } else {
-                    // N[1] > 0
+                    // N[1] >= 0
                     uint256 decN1 = getMktSellInAmount(deltaN[0], ra, rb);
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
@@ -427,15 +427,23 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                     }
                 }
             }
+        }
 
         // If depoist some LP.
-        } else if (temp.beforeLPAmount < temp.afterLPAmount) {
+        else if (temp.beforeLPAmount < temp.afterLPAmount) {
             temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
             farm.stake(poolId, account, temp.deltaAmount);
 
             if (N[0] == 0 && N[1] == 0) {
                 // First time open the position, get the principal.
-                // TODO
+                // if deltaN[0] / deltaN[1] > ra / rb, that means token0 is worth more than token1.
+                if (deltaN[0].mul(rb) > deltaN[1].mul(ra)) {
+                    uint256 incN0 = getMktSellAmount(deltaN[1], rb, ra);
+                    N[0] = deltaN[0].add(incN0);
+                } else {
+                    uint256 incN1 = getMktSellAmount(deltaN[0], ra, rb);
+                    N[1] = deltaN[1].add(incN1);
+                }
             } else {
                 // Not the first time.
                 if (deltaN[0] > 0 || deltaN[1] > 0){
@@ -452,7 +460,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
         }
 
-        // Send tokens back.
+        // 5. Send tokens back.
         for (uint256 i = 0; i < 2; ++i) {
             if (borrowTokens[i] == address(0)) {
                 SafeToken.safeTransferETH(msg.sender, address(this).balance);
@@ -517,6 +525,9 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                 tokensLiquidate[i] = borrowTokens[i].myBalance();
                 borrowTokens[i].safeTransfer(msg.sender, tokensLiquidate[i]);
             }
+
+            // Clear principal
+            principal[id][i] = 0;
         }
 
         emit Liquidate(id, address(lpToken), lpTokenAmount, borrowTokens, tokensLiquidate);

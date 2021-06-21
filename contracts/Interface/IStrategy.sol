@@ -8,13 +8,13 @@ interface IStrategy {
     /// @param borrows The amount of each borrow token.
     /// @param debts The user's total debt of each borrow token, for better decision making context.
     /// @param data Extra calldata information passed along to this strategy.
-    /// @return principalChange Principal changed amount change of each token, increase or decrease.
+    /// @return Principal changed amount change of each token, increase or decrease.
     /// return token and amount need transfer back.
     function execute(
-        address user, 
-        address[2] calldata borrowTokens, 
-        uint256[2] calldata borrows, 
-        uint256[2] calldata debts, 
-        bytes calldata data) external payable returns (uint256[2] memory principalChange);
+        address user,
+        address[2] calldata borrowTokens,
+        uint256[2] calldata borrows,
+        uint256[2] calldata debts,
+        bytes calldata data) external payable returns (uint256[2]);
 
 }

@@ -144,7 +144,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         }
 
         // If there are some tokens left here, send back to user.
-        if (token0.myBalance() > 0 && token1.myBalance() > 0) {
+        uint256[2] memory leftAmount = [token0.myBalance(), token1.myBalance()];
+        if (leftAmount[0] > 0 && leftAmount[1] > 0) {
 
             // 4. swap remaining token to what user want.
             if (whichWantBack == uint256(0) || whichWantBack == uint256(1)) {
@@ -156,8 +157,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
 
             // 5. send all tokens back.
-            _safeUnWrapperAndSend(token0, user, token0.myBalance());
-            _safeUnWrapperAndSend(token1, user, token1.myBalance());
+            _safeUnWrapperAndSend(token0, user, leftAmount[0]);
+            _safeUnWrapperAndSend(token1, user, leftAmount[1]);
+        }
+
+        if (borrowTokens[0] == token0 || (borrowTokens[0] == address(0) && token0 == wBNB))
+        {
+            return [leftAmount[0], leftAmount[1]];
+        } else {
+            return [leftAmount[1], leftAmount[0]];
         }
     }
 

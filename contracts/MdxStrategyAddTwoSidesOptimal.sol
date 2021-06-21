@@ -110,22 +110,16 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
         override
         onlyGoblin
         nonReentrant
+        returns (uint256[2])
     {
-        address token0;
-        address token1;
-        uint256 minLPAmount;
+        // 1. decode token and amount info, and transfer to contract.
+        (address token0, address token1, uint256 token0Amount, uint256 token1Amount, uint256 minLPAmount) =
+            abi.decode(data, (address, address, uint256, uint256, uint256));
         {
-            // 1. decode token and amount info, and transfer to contract.
-            (address _token0, address _token1, uint256 token0Amount, uint256 token1Amount, uint256 _minLPAmount) =
-                abi.decode(data, (address, address, uint256, uint256, uint256));
-            token0 = _token0;
-            token1 = _token1;
-            minLPAmount = _minLPAmount;
-
             require(((borrowTokens[0] == token0) && (borrowTokens[1] == token1)) ||
                     ((borrowTokens[0] == token1) && (borrowTokens[1] == token0)), "borrowTokens not token0 and token1");
 
-            if (token0Amount > 0 && _token0 != address(0)) {
+            if (token0Amount > 0 && token0 != address(0)) {
                 token0.safeTransferFrom(user, address(this), token0Amount);
             }
             if (token1Amount > 0 && token1 != address(0)) {
@@ -183,6 +177,13 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
         } else {
             safeUnWrapperAndAllSend(token0, msg.sender);
             safeUnWrapperAndAllSend(token1, msg.sender);
+        }
+
+        if (borrowTokens[0] == token0 || (borrowTokens[0] == address(0) && token0 == wBNB))
+        {
+            return [token0Amount, token1Amount];
+        } else {
+            return [token1Amount, token0Amount];
         }
     }
 
