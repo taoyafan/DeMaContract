@@ -65,6 +65,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         override
         onlyGoblin
         nonReentrant
+        returns (uint256[2] memory)
     {
         // rate will divide 10000. 10000 means all token will be withdrawn.
         // whichWantBack:

@@ -15,6 +15,6 @@ interface IStrategy {
         address[2] calldata borrowTokens,
         uint256[2] calldata borrows,
         uint256[2] calldata debts,
-        bytes calldata data) external payable returns (uint256[2]);
+        bytes calldata data) external payable returns (uint256[2] memory);
 
 }

@@ -110,7 +110,7 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
         override
         onlyGoblin
         nonReentrant
-        returns (uint256[2])
+        returns (uint256[2] memory)
     {
         // 1. decode token and amount info, and transfer to contract.
         (address token0, address token1, uint256 token0Amount, uint256 token1Amount, uint256 minLPAmount) =
