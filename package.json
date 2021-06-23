@@ -17,8 +17,9 @@
     "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
-    "testBank": "truffle test ./test/test_bank.js",
-    "testUser": "truffle test ./test/test_UserProfile.js"
+    "testbank": "truffle test ./test/test_bank.js",
+    "testuser": "truffle test ./test/test_UserProfile.js",
+    "testadds": "truffle test ./test/test_add_strategy.js"
   },
   "repository": {
     "type": "git",

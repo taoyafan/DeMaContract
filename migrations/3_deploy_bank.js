@@ -33,8 +33,8 @@ module.exports = async function (deployer, network, accounts) {
     saveToJson("Bank", (await Bank.deployed()).address);
 
     if (network == 'development') {
-        const usdt = await deployer.deploy(ERC20Token, "USDT", "USDT", BigNumber(1e23))    //1e5
-        const busd = await deployer.deploy(ERC20Token, "BUSD", "BUSD", BigNumber(1e23))    //1e5
+        const usdt = await deployer.deploy(ERC20Token, "USDT", "USDT", BigNumber(1e25))    //1e7
+        const busd = await deployer.deploy(ERC20Token, "BUSD", "BUSD", BigNumber(1e25))    //1e7
 
         saveToJson("USDT", usdt.address);
         saveToJson("BUSD", busd.address);
