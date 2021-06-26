@@ -24,15 +24,15 @@ const bnbAddress = "0x0000000000000000000000000000000000000000";
 //
 // (2)
 // token0, token1,
-//  BUSD    BNB   
+//  BUSD    BNB
 //
 // (3)
 // token0, token1,
-//  BUSD    MDX   
+//  BUSD    MDX
 //
 // (4)
 // token0, token1,
-//  MDX     BUSD   
+//  MDX     BUSD
 
 contract("TestAddStrategy", (accounts) => {
 
@@ -42,14 +42,19 @@ contract("TestAddStrategy", (accounts) => {
     let router;
     let mdx;
 
+    let addStrategy;
+
+    let goblin = accouts[0];
+    let user = accounts[1]
+
     before(async () => {
         [factory, wbnb, busd, router, /* wbnb_busd_lp */, mdx, /* mdx_busd_lp */] = await mdxInit();
-        this.addStrategy = new AddStrategy(router.address, accounts[0]);
+        addStrategy = new AddStrategy(router.address, goblin);
     });
-    
+
     async function test(token0Address, token1Address, reverse) {
 
-        describe(`Test with ${reverse ? token1Address : token0Address} 
+        describe(`Test with ${reverse ? token1Address : token0Address}
             and ${reverse ? token0Address : token1Address}`, async () => {
 
             let r0 = 1000;
@@ -59,21 +64,49 @@ contract("TestAddStrategy", (accounts) => {
             let borrow0 = [0, 100, 0, 100];
             let borrow1 = [0, 0, 100, 100];
 
-            let demaBefore;
-            let demaAfter;
+            if (reverse) {
+                [token0Address, token1Address] = [token1Address, token0Address];
+                [r0, r1] = [r1, r0];
+                [token0Amount, token1Amount] = [token1Amount, token0Amount];
+                [borrow0, borrow1] = [borrow1, borrow0];
+            }
 
-            before(`Get inviter bonus`, async () => {
-                if (reverse) {
-                    [token0Address, token1Address] = [token1Address, token0Address];
-                    [r0, r1] = [r1, r0];
-                    [token0Amount, token1Amount] = [token1Amount, token0Amount];
-                    [borrow0, borrow1] = [borrow1, borrow0];
-                }
-            })
-            
             async function singalTest(amount0, amount1, borrow0, borrow1, r0, r1, token0, token1) {
+
+                amount0 = BigNumber(web3.utils.toWei(amount0));
+                amount1 = BigNumber(web3.utils.toWei(amount1));
+                borrow0 = BigNumber(web3.utils.toWei(borrow0));
+                borrow1 = BigNumber(web3.utils.toWei(borrow1));
+                r0 = BigNumber(web3.utils.toWei(r0));
+                r1 = BigNumber(web3.utils.toWei(r1));
+
+                function approve(tokenAddress, to, amount, from) {
+                    if (tokenAddress == bnbAddress)
+                        return
+
+                    let token = await ERC20.at(tokenAddress);
+                    await token.approve(to, amount, {from: from});
+                }
+
                 it(`Check received DEMA`, async () => {
-                    assert.equal(demaAfter.sub(demaBefore).toString(), earn.toString())
+                    let data = web3.eth.abi.encodeParameters(
+                        ["address", "address", "uint256", "uint256", "uint256"],
+                        [token0, token1, amount0, amount1, 0]);
+
+                    let value = 0;
+                    if (token0 == bnbAddress) {
+                        value = amount0.add(borrow0)
+                    } else if (token1 == bnbAddress) {
+                        value = amount1.add(borrow1)
+                    }
+
+                    approve(token0, addStrategy.address, borrow0, goblin);
+                    approve(token1, addStrategy.address, borrow1, goblin);
+
+                    approve(token0, addStrategy.address, amount0, user);
+                    approve(token1, addStrategy.address, amount1, user);
+
+                    addStrategy.execute(user, [token0, token1], [borrow0, borrow1], [borrow0, borrow1], data, {value: value})
                 })
             }
         })
