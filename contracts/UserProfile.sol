@@ -21,7 +21,7 @@ contract UserProfile is IUserProfile, Ownable {
     // Get address from id
     mapping(uint256 => address) public override idToAddress;
 
-    uint256 public userNum = 0;
+    address[] allUsers;
 
     mapping(address => bool) public pluginsOk;
 
@@ -38,6 +38,7 @@ contract UserProfile is IUserProfile, Ownable {
 
         // Set inviter info
         invitees[msg.sender].push(msg.sender);
+        allUsers.push(msg.sender);
     }
 
     /* ==================================== Read ==================================== */
@@ -49,6 +50,23 @@ contract UserProfile is IUserProfile, Ownable {
 
     function getUserInvitee(address account, uint256 index) external view override returns (address) {
         return invitees[account][index];
+    }
+
+    function getUserAllInvitees(address account) external view returns (address[] memory) {
+        return invitees[account];
+    }
+
+    // Get users
+    function getUsersNum() external view  returns (uint256) {
+        return allUsers.length;
+    }
+
+    function getUser(uint256 index) external view returns (address) {
+        return allUsers[index];
+    }
+
+    function getAllUsers() external view returns (address[] memory) {
+        return allUsers;
     }
 
     /* ==================================== Write ==================================== */
@@ -72,7 +90,7 @@ contract UserProfile is IUserProfile, Ownable {
         // Set inviter info
         invitees[inviterAccount].push(msg.sender);
 
-        userNum = userNum + 1;
+        allUsers.push(msg.sender);
 
         emit Register(msg.sender, setName, setId, inviterId);
     }

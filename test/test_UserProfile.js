@@ -88,6 +88,8 @@ contract("Test User Profile", (accounts) => {
             assert.strictEqual(getInviter, accounts[0]);
         });
 
+        // ------------------- invitees test -------------------
+
         it("invitees num check", async () => {
             let inviteeNums = await userProfile.methods.getUserInviteesNum(accounts[0]).call();
             // inviteeNums is string
@@ -97,6 +99,35 @@ contract("Test User Profile", (accounts) => {
         it("invitees check", async () => {
             let getInvitees = await userProfile.methods.getUserInvitee(accounts[0], 1).call();
             assert.strictEqual(getInvitees, newUser);
+        });
+
+        it("all invitees check", async () => {
+            let getAllInvitees = await userProfile.methods.getUserAllInvitees(accounts[0]).call();
+            assert.strictEqual(getAllInvitees.length, 2);
+            assert.strictEqual(getAllInvitees[0], accounts[0]);
+            assert.strictEqual(getAllInvitees[1], newUser);
+        });
+
+        // ------------------- user test -------------------
+
+        it("Users num check", async () => {
+            let usersNums = await userProfile.methods.getUsersNum().call();
+            // usersNums is string
+            assert.strictEqual(+usersNums, 2);
+        });
+
+        it("User check", async () => {
+            let user0 = await userProfile.methods.getUser(0).call();
+            assert.strictEqual(user0, accounts[0]);
+            let user1 = await userProfile.methods.getUser(1).call();
+            assert.strictEqual(user1, newUser);
+        });
+
+        it("All Users check", async () => {
+            let users = await userProfile.methods.getAllUsers().call();
+            assert.strictEqual(users.length, 2);
+            assert.strictEqual(users[0], accounts[0]);
+            assert.strictEqual(users[1], newUser);
         });
     });
 

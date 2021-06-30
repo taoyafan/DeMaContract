@@ -4,7 +4,11 @@ let saveToJson = require('./save_address_to_json.js')
 
 module.exports = async function(deployer, network) {
   await deployer.deploy(UserProfile);
-  saveToJson("UserProfile", (await UserProfile.deployed()).address);
+  if (network == 'bscmain') {
+    saveToJson("bscmain_UserProfile", (await UserProfile.deployed()).address);
+  } else { 
+    saveToJson("UserProfile", (await UserProfile.deployed()).address);
+  }
   
   if (network == 'development') {
     await deployer.deploy(PlgUserIntroduction);
