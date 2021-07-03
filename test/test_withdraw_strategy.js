@@ -96,8 +96,11 @@ contract("TestWithdrawStrategy", (accounts) => {
                     let afterUserToken0Amount;
                     let afterUserToken1Amount;
                     let afterLpAmount;
+                    
+                    let sendAmount0;
+                    let sendAmount1;
+                    let sendLp;
 
-                    let value;
                     let token0;
                     let token1;
                     let lpAddress;
@@ -124,7 +127,6 @@ contract("TestWithdrawStrategy", (accounts) => {
 
                         // 2. Get before amount
                         await addLiquidate(token0, token1, r0, r1, goblin)
-                        await addLiquidate(token0, token1, r0*lpSendRate, r1*lpSendRate, goblin)
 
                         beforeGoblinToken0Amount = await getBalance(token0, goblin);
                         beforeGoblinToken1Amount = await getBalance(token1, goblin);
@@ -139,31 +141,44 @@ contract("TestWithdrawStrategy", (accounts) => {
 
                         beforeLpAmount = await getBalance(lpAddress, goblin);
 
-                        // console.log(`beforeGoblinToken0Amount is: ${fromWei(beforeGoblinToken0Amount)}`)
-                        // console.log(`beforeGoblinToken1Amount is: ${fromWei(beforeGoblinToken1Amount)}`)
-                        // console.log(`beforeUserToken0Amount is: ${fromWei(beforeUserToken0Amount)}`)
-                        // console.log(`beforeUserToken1Amount is: ${fromWei(beforeUserToken1Amount)}`)
-                        // console.log(`beforeLpAmount is: ${fromWei(beforeLpAmount)}`)
+                        console.log(`beforeGoblinToken0Amount is: ${fromWei(beforeGoblinToken0Amount)}`)
+                        console.log(`beforeGoblinToken1Amount is: ${fromWei(beforeGoblinToken1Amount)}`)
+                        console.log(`beforeUserToken0Amount is: ${fromWei(beforeUserToken0Amount)}`)
+                        console.log(`beforeUserToken1Amount is: ${fromWei(beforeUserToken1Amount)}`)
+                        console.log(`beforeLpAmount is: ${fromWei(beforeLpAmount)}`)
 
                     })  // before
 
                     it(`Call execute`, async () => {
+                        sendLp = beforeLpAmount.multipliedBy(lpSendRate).dividedToIntegerBy(1)
+                        // let sendAmount0, sendAmount1
+                        // let a, b
+                        // console.log(`1 Send lp is : ${sendLp}`)
+                        console.log(`1 Send lp is : ${sendLp}, send amount is : ${sendAmount0}, ${sendAmount1}`)
+                        
+                        [sendAmount0, sendAmount1] = await getR0R1(token0, token1)
+                        // [sendAmount0, sendAmount1] = await getTokenAmountInLp(token0, token1, sendLp)
 
-                        await transfer(lpAddress, withdrawStrategy, beforeLpAmount.multipliedBy(lpSendRate), from)
+                        console.log(`Send lp is : ${sendLp}, send amount is : ${sendAmount0}, ${sendAmount1}`)
+                        // console.log(`send amount is : ${sendAmount0}, ${sendAmount1}`)
+                        // console.log(`a b is : ${a}, ${b}`)
 
-                        let data = web3.eth.abi.encodeParameters(
-                            ["address", "address", "uint256", "uint256"],
-                            [token0, token1, rate, back]);
+                        // await transfer(lpAddress, withdrawStrategy, sendLp, goblin)
 
-                        await addStrategy.execute(user, [token0, token1], [0, 0],
-                            [debt0, debt1], data, {from: goblin})
+                        // let data = web3.eth.abi.encodeParameters(
+                        //     ["address", "address", "uint256", "uint256"],
+                        //     [token0, token1, rate, back]);
 
-                        // 5. Get the after amount
-                        afterGoblinToken0Amount = await getBalance(token0, goblin);
-                        afterGoblinToken1Amount = await getBalance(token1, goblin);
-                        afterUserToken0Amount = await getBalance(token0, user);
-                        afterUserToken1Amount = await getBalance(token1, user);
-                        afterLpAmount = await getBalance(lpAddress, goblin);
+                        // await withdrawStrategy.execute(user, [token0, token1], [0, 0],
+                        //     [debt0, debt1], data, {from: goblin})
+
+                        // // 5. Get the after amount
+                        // afterGoblinToken0Amount = await getBalance(token0, goblin);
+                        // afterGoblinToken1Amount = await getBalance(token1, goblin);
+                        // afterUserToken0Amount = await getBalance(token0, user);
+                        // afterUserToken1Amount = await getBalance(token1, user);
+                        // afterLpAmount = await getBalance(lpAddress, goblin);
+                        
 
                         // console.log(`afterGoblinToken0Amount is: ${fromWei(afterGoblinToken0Amount)}`)
                         // console.log(`afterGoblinToken1Amount is: ${fromWei(afterGoblinToken1Amount)}`)
@@ -172,101 +187,130 @@ contract("TestWithdrawStrategy", (accounts) => {
                         // console.log(`afterLpAmount is: ${fromWei(afterLpAmount)}`)
                     })
 
-                    it('Check user amount', async () => {
-                        let sentLp = beforeLpAmount.multipliedBy(lpSendRate)
-                        let sendAmount0, sendAmount1
-                        [sendAmount0, sendAmount1] = await getTokenAmountInLp(token0, token1, sentLp)
-                        let _r0, _r1
-                        [_r0, _r1] = await getR0R1(token0, token1)
-                        let totalTo0Amount = await swapAllToA(sendAmount0, sendAmount1, _r0, _r1);
+                    // it(`Check LP value`, async () => {
+                    //     let targetSendLp = beforeLpAmount.minus(afterLpAmount);
+                    //     assert.equal(targetSendLp, sendLp)
+                    // })
 
-                        let debtTo0 = await swapAllToA(debt0, debt1, _r0, _r1);
+                    // it('Check user amount', async () => {
+                    //     let _r0, _r1
+                    //     [_r0, _r1] = await getR0R1(token0, token1)
 
-                        let getAmount0 = afterUserToken0Amount.minus(beforeUserToken0Amount)
-                        let getAmount1 = afterUserToken1Amount.minus(beforeUserToken1Amount)
+                    //     // Swap all deposit tokens to token0
+                    //     let totalTo0Amount = await swapAllToA(sendAmount0, sendAmount1, _r0, _r1);
+                    //     console.log(`Equivalent deposit token0: ${fromWei(totalTo0Amount)}`)
 
-                        let getTo0Amount = await swapAllToA(getAmount0, getAmount1, _r0, _r1);
+                    //     // Swap all debts to token0
+                    //     let debtTo0 = await swapAllToA(debt0, debt1, _r0, _r1);
+                    //     console.log(`Equivalent debts token0: ${fromWei(debtTo0)}`)
 
-                        if (back == 3) {
-                            if (totalTo0Amount.multipliedBy(rate.minus(400)).dividedToIntegerBy(10000).isGreaterThan(debtTo0)) {
-                                let targetTo0Amount = totalTo0Amount.multipliedBy(rate).dividedToIntegerBy(10000).minus(debtTo0)
-                                let delta = getTo0Amount.isGreaterThan(targetTo0Amount) ? getTo0Amount.minus(targetTo0Amount) :
-                                    targetTo0Amount.minus(getTo0Amount)
+                    //     let getAmount0 = afterUserToken0Amount.minus(beforeUserToken0Amount)
+                    //     let getAmount1 = afterUserToken1Amount.minus(beforeUserToken1Amount)
 
-                                assert(delta.isLessThan(getTo0Amount.multipliedBy(4).dividedToIntegerBy(1000)))
-                            } else {
-                                assert.equal(getTo0Amount.toNumber(), 0, "There should not return token")
-                            }
-                        } else {
-                            // Should has return token.
-                            assert(delta.isLessThan(getTo0Amount.multipliedBy(4).dividedToIntegerBy(1000)))
-                        }
-                        assert.equal(decAmount0.minus(amount0).dividedToIntegerBy(1e18).toNumber(), 0)
-                        assert.equal(decAmount1.minus(amount1).dividedToIntegerBy(1e18).toNumber(), 0)
-                    })
+                    //     // Swap all return toekns to token0
+                    //     let getTo0Amount = await swapAllToA(getAmount0, getAmount1, _r0, _r1);
+                    //     console.log(`Equivalent return token0: ${fromWei(getTo0Amount)}`)
 
-                    it('Check goblin amount', async () => {
-                        let decAmount0 = beforeGoblinToken0Amount.minus(afterGoblinToken0Amount)
-                        let decAmount1 = beforeGoblinToken1Amount.minus(afterGoblinToken1Amount)
-                        assert.equal(decAmount0.minus(borrow0).dividedToIntegerBy(1e18).toNumber(), 0)
-                        assert.equal(decAmount1.minus(borrow1).dividedToIntegerBy(1e18).toNumber(), 0)
-                    })
+                    //     if (back == 3) {
+                    //         // Repay first, if repay all then return left
+                    //         if (totalTo0Amount.multipliedBy(rate.minus(400)).dividedToIntegerBy(10000).isGreaterThan(debtTo0)) {
+                    //             let targetTo0Amount = totalTo0Amount.multipliedBy(rate).dividedToIntegerBy(10000).minus(debtTo0)
+                    //             console.log(`Target equivalent return token0: ${fromWei(targetTo0Amount)}`)
+                                
+                    //             let delta = getTo0Amount.isGreaterThan(targetTo0Amount) ? getTo0Amount.minus(targetTo0Amount) :
+                    //                 targetTo0Amount.minus(getTo0Amount)
 
-                    it(`Check LP value`, async () => {
-                        let incLp = afterLpAmount.minus(beforeLpAmount);
-                        console.log(`Increased lp amount is: ${fromWei(incLp)}`);
+                    //             assert(delta.isLessThan(getTo0Amount.multipliedBy(4).dividedToIntegerBy(1000)), 
+                    //                 'Delta should be 0')
+                    //         } else {
+                    //             assert.equal(getTo0Amount.toNumber(), 0, "There should not return token")
+                    //         }
+                    //     } else {
+                    //         // return amounts should equal to (all - debts) * rate
+                    //         let targetTo0Amount = totalTo0Amount.minus(debtTo0).multipliedBy(rate).dividedToIntegerBy(10000)
+                    //         console.log(`Target equivalent return token0: ${targetTo0Amount}`)
+                                
+                    //         let delta = getTo0Amount.isGreaterThan(targetTo0Amount) ? getTo0Amount.minus(targetTo0Amount) :
+                    //             targetTo0Amount.minus(getTo0Amount)
 
-                        let _r0, _r1
-                        [_r0, _r1] = await getR0R1(token0, token1)
+                    //         assert(delta.isLessThan(getTo0Amount.multipliedBy(4).dividedToIntegerBy(1000)), 
+                    //             'Delta should be 0')
 
-                        // Get the value of incLp
-                        let lp = await MdexPair.at(lpAddress)
-                        let totalLp = await lp.totalSupply();
-                        console.log(`Total lp amount is: ${fromWei(totalLp)}`)
+                    //         if (back == 0) {
+                    //             // Only return token0
+                    //             assert.equal(getAmount1.toNumber(), 0, "Should return only token0")
+                    //         } else if (back == 1) {
+                    //             // Only return token1
+                    //             assert.equal(getAmount0.toNumber(), 0, "Should return only token1")
+                    //         }
+                    //     }
+                    // })
 
-                        let token0AmountInLp = BigNumber(_r0).multipliedBy(incLp).dividedToIntegerBy(totalLp)
-                        let token1AmountInLp = BigNumber(_r1).multipliedBy(incLp).dividedToIntegerBy(totalLp)
-                        console.log(`token0AmountInLp is: ${fromWei(token0AmountInLp)}, token1AmountInLp is: ${
-                            fromWei(token1AmountInLp)}`);
+                    // it('Check goblin amount', async () => {
+                    //     let _r0, _r1
+                    //     [_r0, _r1] = await getR0R1(token0, token1)
 
-                        let totalToken0Send = amount0.plus(borrow0)
-                        let totalToken1Send = amount1.plus(borrow1)
-                        console.log(`totalToken0Send is: ${fromWei(totalToken0Send)}, totalToken1Send is: ${
-                            fromWei(totalToken1Send)}`)
+                    //     // Swap all deposit tokens to token0
+                    //     let totalTo0Amount = await swapAllToA(sendAmount0, sendAmount1, _r0, _r1);
 
-                        let targetAmount0 = await swapAllToA(totalToken0Send, totalToken1Send, _r0, _r1);
-                        let getAmount0 = await swapAllToA(token0AmountInLp, token1AmountInLp, _r0, _r1);
-                        console.log(`targetAmount0 is : ${fromWei(targetAmount0)}`)
-                        console.log(`getAmount0 is : ${fromWei(getAmount0)}`)
+                    //     // Swap all debts to token0
+                    //     let debtTo0 = await swapAllToA(debt0, debt1, _r0, _r1);
 
-                        delta = getAmount0.isGreaterThan(targetAmount0) ? getAmount0.minus(targetAmount0) :
-                            targetAmount0.minus(getAmount0)
-                        assert(delta.isLessThan(getAmount0.multipliedBy(4).dividedToIntegerBy(1000)))
-                    })
+                    //     let getAmount0 = afterGoblinToken0Amount.minus(beforeGoblinToken0Amount)
+                    //     let getAmount1 = afterGoblinToken1Amount.minus(beforeGoblinToken1Amount)
 
-                    it('Remove liquidate', async () => {
-                        await removeAllLiquidity(token0, token1, goblin)
+                    //     // Swap all return toekns to token0
+                    //     let getTo0Amount = await swapAllToA(getAmount0, getAmount1, _r0, _r1);
+                    //     console.log(`Equivalent return token0: ${fromWei(getTo0Amount)}`)
 
-                        let wbnbAmount = await wbnb.balanceOf(goblin)
-                        if (wbnbAmount > 0) {
-                            wbnb.withdraw(wbnbAmount)
-                        }
+                    //     if (back == 3) {
+                    //         // Repay debts first, amount = total * rate
+                    //         if (totalTo0Amount.multipliedBy(rate.minus(400)).dividedToIntegerBy(10000).isGreaterThan(debtTo0)) {
+                    //             assert.equal(getAmount0, debt0, "All debt0 should be repayed")
+                    //             assert.equal(getAmount1, debt1, "All debt1 should be repayed")
+                    //         } else {
+                    //             assert.equal(getAmount0, sendAmount0.multipliedBy(rate).dividedToIntegerBy(10000),
+                    //                  "All debt0 should be repayed")
+                    //             assert.equal(getAmount1, sendAmount1.multipliedBy(rate).dividedToIntegerBy(10000), 
+                    //                 "All debt1 should be repayed")
+                    //         }                            
+                    //     } else {
+                    //         // return amounts should equal to debts * rate
+                    //         assert.equal(getAmount0, debt0.multipliedBy(rate).dividedToIntegerBy(10000),
+                    //             "Debt0 repayed amount not correct")
+                    //         assert.equal(getAmount1, debt1.multipliedBy(rate).dividedToIntegerBy(10000),
+                    //             "Debt1 repayed amount not correct")
+                    //     }
+                        
+                    // })
 
-                        let lpAmount = await getBalance(lpAddress, goblin);
-                        assert.equal(lpAmount.toNumber(), 0, `lp amount should be 0`)
+                    // it('Recover', async () => {
+                    //     await removeAllLiquidity(token0, token1, goblin)
 
-                        wbnbAmount = await wbnb.balanceOf(goblin)
-                        assert.equal(wbnbAmount.toNumber(), 0, `wbnb amount should be 0`)
+                    //     let wbnbAmount = await wbnb.balanceOf(goblin)
+                    //     if (wbnbAmount > 0) {
+                    //         wbnb.withdraw(wbnbAmount)
+                    //     }
 
-                        transfer(token0, user, amount0, goblin)
-                        transfer(token1, user, amount1, goblin)
-                    })
+                    //     let lpAmount = await getBalance(lpAddress, goblin);
+                    //     assert.equal(lpAmount.toNumber(), 0, `lp amount should be 0`)
+
+                    //     wbnbAmount = await wbnb.balanceOf(goblin)
+                    //     assert.equal(wbnbAmount.toNumber(), 0, `wbnb amount should be 0`)
+
+                    //     let getAmount0 = afterUserToken0Amount.minus(beforeUserToken0Amount)
+                    //     let getAmount1 = afterUserToken1Amount.minus(beforeUserToken1Amount)
+                    //     transfer(token0, goblin, getAmount0, user)
+                    //     transfer(token1, goblin, getAmount1, user)
+                    // })
                 })  // describe
             }   // singalTest()
 
             // -------------- The following are helper function --------------
 
             async function getTokenAmountInLp(token0, token1, lpAmount) {
+
+                return (await getR0R1(token0, token1));
 
                 if (token0 == bnbAddress) {
                     token0 = wbnb.address
@@ -285,6 +329,8 @@ contract("TestWithdrawStrategy", (accounts) => {
                 let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
                 let token1AmountInLp = BigNumber(_r1).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
 
+                console.log(`lpAmount is : ${lpAmount}, amount in lp is : ${token0AmountInLp}, ${token1AmountInLp}`)
+                
                 return [token0AmountInLp, token1AmountInLp]
             }
 
@@ -302,6 +348,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                     return
 
                 let token = await ERC20.at(tokenAddress);
+                await token.approve(to, 0, {from: from});
                 await token.approve(to, amount, {from: from});
             }
 
@@ -335,25 +382,6 @@ contract("TestWithdrawStrategy", (accounts) => {
                 }
                 console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
                 return [_r0, _r1];
-            }
-
-            async function addLiquidate(token0, token1, r0, r1, from) {
-                if (token0 == bnbAddress) {
-                    token0 = wbnb.address
-                    wbnb.deposit({from: from, value: r0})
-                } else if (token1 == bnbAddress) {
-                    token1 = wbnb.address
-                    wbnb.deposit({from: from, value: r1})
-                }
-
-                await approve(token0, router.address, r0, from)
-                await approve(token1, router.address, r1, from)
-
-                await router.addLiquidity(token0, token1,
-                    r0, r1, 0, 0, from, MaxUint256, {from: from});
-
-                console.log(`After init add liquidity:`)
-                await getR0R1(token0, token1);
             }
 
             async function addLiquidate(token0, token1, r0, r1, from) {
