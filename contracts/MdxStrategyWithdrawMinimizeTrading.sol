@@ -85,6 +85,8 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         require(borrowTokens[0] != borrowTokens[1] ||
                 debts[1] == 0, "borrowTokens should be different, or debts[1] should be 0");
 
+        require(whichWantBack < 4, "whichWantBack could only be 0, 1, 2, 3");
+
         // 1. Replace BNB by WBNB for all tokens.
         {
             require(token0 != token1, "token0 and token1 cannot be same.");
