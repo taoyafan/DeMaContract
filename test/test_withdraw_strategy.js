@@ -156,10 +156,15 @@ contract("TestWithdrawStrategy", (accounts) => {
                         // console.log(`1 Send lp is : ${sendLp}`)
                         console.log(`1 Send lp is : ${sendLp}, send amount is : ${sendAmount0}, ${sendAmount1}`)
                         
-                        [sendAmount0, sendAmount1] = await getR0R1(token0, token1)
+                        let tmp = await getR0R1(token0, token1)
+                        console.log(`tmp is : ${tmp}`)
+                        
+                        sendAmount0 = tmp[0]
+                        sendAmount1 = tmp[1]
+                        [sendAmount0, sendAmount1] = [1, 2];
                         // [sendAmount0, sendAmount1] = await getTokenAmountInLp(token0, token1, sendLp)
 
-                        console.log(`Send lp is : ${sendLp}, send amount is : ${sendAmount0}, ${sendAmount1}`)
+                        console.log(`Send lp is : ${sendLp}, send amount is : ${sendAmount0}; ${sendAmount1}`)
                         // console.log(`send amount is : ${sendAmount0}, ${sendAmount1}`)
                         // console.log(`a b is : ${a}, ${b}`)
 
