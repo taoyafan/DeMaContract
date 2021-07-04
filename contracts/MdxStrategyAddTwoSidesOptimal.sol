@@ -208,7 +208,7 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
         (uint256 swapAmt, bool isReversed) = optimalDeposit(tokenA.myBalance(), tokenB.myBalance(),
             tokenAReserve, tokenBReserve);
 
-        if (swapAmt > 0){
+        if (swapAmt > 1e5){
             address[] memory path = new address[](2);
             (path[0], path[1]) = isReversed ? (tokenB, tokenA) : (tokenA, tokenB);
             // path[0] is the token who need to be swaped for path[1]

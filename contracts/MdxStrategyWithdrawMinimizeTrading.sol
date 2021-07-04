@@ -179,7 +179,6 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
     /* ==================================== Internal ==================================== */
 
-    // TODO do amount check in another file
     function _swapTokensForExactTokens(uint256 amount, address token0, address token1) internal {
         if (amount < 1e5) {
             return;
@@ -195,7 +194,6 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         router.swapTokensForExactTokens(amount, path[0].myBalance(), path, address(this), now);
     }
 
-    // TODO do amount check in another file
     function _swapExactTokensForTokens(uint256 amount, address token0, address token1) internal {
         if (amount < 1e5) {
             return;
@@ -247,7 +245,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         if (da == 0) {
             return na;
         }
-        // TODO do same change in another file
+        
         uint256 part1 = na.sub(nb.mul(da).div(db));
         uint256 part2 = ra.mul(1000).div(997);
         uint256 part3 = da.mul(rb).div(db);

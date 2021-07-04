@@ -205,7 +205,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 db = debts[1];
 
         // na/da > nb/db, swap A to B
-        if (na.mul(db) > nb.mul(da)) {
+        if (na.mul(db) > nb.mul(da).add(1e25)) {
             uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
             amount = amount > na ? na : amount;
             na = na.sub(amount);
@@ -213,7 +213,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
 
         // na/da < nb/db, swap B to A
-        else if (na.mul(db) < nb.mul(da)) {
+        else if (na.mul(db).add(1e25) < nb.mul(da)) {
             uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
             amount = amount > nb ? nb : amount;
             na = na.add(getMktSellAmount(amount, rb, ra));
@@ -590,15 +590,16 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             return na;
         }
 
-        uint256 part1 = nb.mul(da).div(db).sub(na);
+        uint256 part1 = na.sub(nb.mul(da).div(db));
         uint256 part2 = ra.mul(1000).div(997);
         uint256 part3 = da.mul(rb).div(db);
 
-        uint256 b = part1.add(part2).add(part3);
-        uint256 c = part1.mul(part2);
+        uint256 b = part2.add(part3).sub(part1);
+        uint256 nc = part1.mul(part2);
 
-        // (-b + math.sqrt(b * b - 4 * c)) / 2
-        return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
+        // (-b + math.sqrt(b * b + 4 * nc)) / 2
+        // Note that nc = - c
+        return Math.sqrt(b.mul(b).add(nc.mul(4))).sub(b).div(2);
     }
 
     /// @dev Return the left amount of A after repay all debts
