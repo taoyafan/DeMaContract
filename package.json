@@ -19,7 +19,8 @@
     "consolebsc": "truffle console --network bsctest",
     "testbank": "truffle test ./test/test_bank.js",
     "testuser": "truffle test ./test/test_UserProfile.js --show-events",
-    "testadds": "truffle test ./test/test_add_strategy.js"
+    "testadds": "truffle test ./test/test_add_strategy.js",
+    "testwds": "truffle test ./test/test_withdraw_strategy.js"
   },
   "repository": {
     "type": "git",

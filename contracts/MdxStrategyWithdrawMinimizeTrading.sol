@@ -146,9 +146,13 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             _repayDebts(da, db, lpToken);
         }
 
+        if (lpToken.balanceOf(address(this)) > 0) {
+            lpToken.transfer(msg.sender, lpToken.balanceOf(address(this)));
+        }
+
         // If there are some tokens left here, send back to user.
-        uint256[2] memory leftAmount = [token0.myBalance(), token1.myBalance()];
-        if (leftAmount[0] > 0 && leftAmount[1] > 0) {
+        uint256[2] memory leftAmount;
+        if (token0.myBalance() > 0 || token1.myBalance() > 0) {
 
             // 4. swap remaining token to what user want.
             if (whichWantBack == uint256(0) || whichWantBack == uint256(1)) {
@@ -160,6 +164,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
 
             // 5. send all tokens back.
+            leftAmount = [token0.myBalance(), token1.myBalance()];
             _safeUnWrapperAndSend(token0, user, leftAmount[0]);
             _safeUnWrapperAndSend(token1, user, leftAmount[1]);
         }
@@ -174,7 +179,12 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
     /* ==================================== Internal ==================================== */
 
+    // TODO do amount check in another file
     function _swapTokensForExactTokens(uint256 amount, address token0, address token1) internal {
+        if (amount < 1e5) {
+            return;
+        }
+
         token0.safeApprove(address(router), 0);
         token0.safeApprove(address(router), uint256(-1));
 
@@ -185,7 +195,12 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         router.swapTokensForExactTokens(amount, path[0].myBalance(), path, address(this), now);
     }
 
+    // TODO do amount check in another file
     function _swapExactTokensForTokens(uint256 amount, address token0, address token1) internal {
+        if (amount < 1e5) {
+            return;
+        }
+        
         token0.safeApprove(address(router), 0);
         token0.safeApprove(address(router), uint256(-1));
 
@@ -193,7 +208,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         path[0] = token0;
         path[1] = token1;
 
-        router.swapExactTokensForTokens(amount, path[0].myBalance(), path, address(this), now);
+        router.swapExactTokensForTokens(amount, 0, path, address(this), now);
     }
 
     function _getMktSellAmount(uint256 aIn, uint256 rIn, uint256 rOut) internal pure returns (uint256) {
@@ -232,16 +247,17 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         if (da == 0) {
             return na;
         }
-
-        uint256 part1 = nb.mul(da).div(db).sub(na);
+        // TODO do same change in another file
+        uint256 part1 = na.sub(nb.mul(da).div(db));
         uint256 part2 = ra.mul(1000).div(997);
         uint256 part3 = da.mul(rb).div(db);
 
-        uint256 b = part1.add(part2).add(part3);
-        uint256 c = part1.mul(part2);
+        uint256 b = part2.add(part3).sub(part1);
+        uint256 nc = part1.mul(part2);
 
-        // (-b + math.sqrt(b * b - 4 * c)) / 2
-        return Math.sqrt(b.mul(b).sub(c.mul(4))).sub(b).div(2);
+        // (-b + math.sqrt(b * b + 4 * nc)) / 2
+        // Note that nc = - c
+        return Math.sqrt(b.mul(b).add(nc.mul(4))).sub(b).div(2);
     }
 
     /**
@@ -273,27 +289,28 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
             }
 
             // Directly swaped A to (db - nb) B can repay debts
-            else if (na > da && nb <= db && _getMktSellAmount(na-da, ra, rb) > (db.sub(nb))) {
-                _swapTokensForExactTokens(db.sub(nb), tokenA, tokenB);
+            else if (na > da && nb <= db && _getMktSellAmount(na-da, ra, rb) > (db-nb)) {
+                _swapTokensForExactTokens(db-nb, tokenA, tokenB);
             }
 
             // Directly swaped B to (da - na) A can repay debts
-            else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da.sub(na))){
-                _swapTokensForExactTokens(da.sub(na), tokenB, tokenA);
+            else if (nb > db && na <= da && _getMktSellAmount(nb-db, rb, ra) > (da-na)){
+                _swapTokensForExactTokens(da-na, tokenB, tokenA);
             }
 
             // Otherwise, exchange tokens according to two debts amount ratio
             else {
 
-                // na/da > nb/db, swap A to B
-                if (na.mul(db) > nb.mul(da)) {
+                // na/da > nb/db, swap A to B. If almost same, don't swap
+                // TODO Do same thing in another file
+                if (na.mul(db) > nb.mul(da).add(1e25)) {
                     uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
                     amount = amount > na ? na : amount;
                     _swapExactTokensForTokens(amount, tokenA, tokenB);
                 }
 
-                // na/da < nb/db, swap B to A
-                else if (na.mul(db) < nb.mul(da)) {
+                // na/da < nb/db, swap B to A. If almost same, don't swap
+                else if (na.mul(db).add(1e25) < nb.mul(da)) {
                     uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
                     amount = amount > nb ? nb : amount;
                     _swapExactTokensForTokens(amount, tokenB, tokenA);
