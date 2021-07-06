@@ -71,7 +71,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                 [debts0, debts1] = [debts1, debts0];
             }
 
-            
+
             for (let i = 0; i < debts0.length; ++i) {
                 for (let j = 0; j < rate.length; ++j) {
                     for (let k = 0; k < back.length; ++k) {
@@ -104,7 +104,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                     let afterUserToken0Amount;
                     let afterUserToken1Amount;
                     let afterLpAmount;
-                    
+
                     let sendAmount0;
                     let sendAmount1;
                     let sendLp;
@@ -134,7 +134,7 @@ contract("TestWithdrawStrategy", (accounts) => {
 
 
                         // 2. Get before amount
-                        await addLiquidate(token0, token1, r0, r1, goblin)
+                        await addLiquidity(token0, token1, r0, r1, goblin)
 
                         beforeGoblinToken0Amount = await getBalance(token0, goblin);
                         beforeGoblinToken1Amount = await getBalance(token1, goblin);
@@ -161,7 +161,7 @@ contract("TestWithdrawStrategy", (accounts) => {
 
                     it(`Call execute`, async () => {
                         sendLp = beforeLpAmount.multipliedBy(lpSendRate).dividedToIntegerBy(1)
-                        
+
                         let tmp = await getTokenAmountInLp(token0, token1, sendLp)
                         sendAmount0 = tmp[0]
                         sendAmount1 = tmp[1]
@@ -184,7 +184,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                         afterUserToken0Amount = await getBalance(token0, user);
                         afterUserToken1Amount = await getBalance(token1, user);
                         afterLpAmount = await getBalance(lpAddress, goblin);
-                        
+
                         // console.log(`afterGoblinToken0Amount is: ${fromWei(afterGoblinToken0Amount)}`)
                         // console.log(`afterGoblinToken1Amount is: ${fromWei(afterGoblinToken1Amount)}`)
                         // console.log(`afterUserToken0Amount is: ${fromWei(afterUserToken0Amount)}`)
@@ -229,11 +229,11 @@ contract("TestWithdrawStrategy", (accounts) => {
                             if (totalTo0Amount.multipliedBy(rate-400).dividedToIntegerBy(10000).isGreaterThan(debtTo0)) {
                                 let targetTo0Amount = totalTo0Amount.multipliedBy(rate).dividedToIntegerBy(10000).minus(debtTo0)
                                 console.log(`Target equivalent return token0: ${fromWei(targetTo0Amount)}`)
-                                
+
                                 let delta = getTo0Amount.isGreaterThan(targetTo0Amount) ? getTo0Amount.minus(targetTo0Amount) :
                                     targetTo0Amount.minus(getTo0Amount)
 
-                                assert(delta.isLessThan(getTo0Amount.multipliedBy(6).dividedToIntegerBy(1000)), 
+                                assert(delta.isLessThan(getTo0Amount.multipliedBy(6).dividedToIntegerBy(1000)),
                                     'Delta should be 0')
                             } else {
                                 assert.equal(getTo0Amount.toNumber(), 0, "There should not return token")
@@ -247,11 +247,11 @@ contract("TestWithdrawStrategy", (accounts) => {
                                 targetTo0Amount = BigNumber(0)
                             }
                             console.log(`Target equivalent return token0: ${fromWei(targetTo0Amount)}`)
-                                
+
                             let delta = getTo0Amount.isGreaterThan(targetTo0Amount) ? getTo0Amount.minus(targetTo0Amount) :
                                 targetTo0Amount.minus(getTo0Amount)
 
-                            assert(delta.isLessThanOrEqualTo(getTo0Amount.multipliedBy(6).dividedToIntegerBy(1000)), 
+                            assert(delta.isLessThanOrEqualTo(getTo0Amount.multipliedBy(6).dividedToIntegerBy(1000)),
                                 'Delta is  should be 0')
 
                             if (back == 0) {
@@ -288,8 +288,8 @@ contract("TestWithdrawStrategy", (accounts) => {
                         console.log(`Equivalent return token0: ${fromWei(getTo0Amount)}`)
 
                         // back == 3: repay total * rate
-                        // other: if total > debt : 
-                        //              repay debt * rate 
+                        // other: if total > debt :
+                        //              repay debt * rate
                         //      else :  total * rate
 
                         if (back == 3) {
@@ -303,20 +303,20 @@ contract("TestWithdrawStrategy", (accounts) => {
                                 let repayRate = withdrawTo0Amount.multipliedBy(10000).dividedToIntegerBy(debtTo0)
                                 console.log(`repayRate is : ${repayRate}`)
 
-                                equal(getTo0Amount, withdrawTo0Amount, 
+                                equal(getTo0Amount, withdrawTo0Amount,
                                     false, "", null)
-                                equal(getAmount0, debt0.multipliedBy(repayRate).dividedToIntegerBy(10000), 
+                                equal(getAmount0, debt0.multipliedBy(repayRate).dividedToIntegerBy(10000),
                                     false, "All debt0 should be repayed", token0)
-                                equal(getAmount1, debt1.multipliedBy(repayRate).dividedToIntegerBy(10000), 
+                                equal(getAmount1, debt1.multipliedBy(repayRate).dividedToIntegerBy(10000),
                                     false, "All debt1 should be repayed", token1)
                             }
                         } else {
                             // Repay debt with the rate of total.
                             if (totalTo0Amount.isGreaterThan(debtTo0)) {
                                 // Repay part
-                                equal(getAmount0, debt0.multipliedBy(rate).dividedToIntegerBy(10000), 
+                                equal(getAmount0, debt0.multipliedBy(rate).dividedToIntegerBy(10000),
                                     true, "", token0)
-                                equal(getAmount1, debt1.multipliedBy(rate).dividedToIntegerBy(10000), 
+                                equal(getAmount1, debt1.multipliedBy(rate).dividedToIntegerBy(10000),
                                     true, "", token1)
                             } else {
                                 // All used to repay
@@ -324,11 +324,11 @@ contract("TestWithdrawStrategy", (accounts) => {
                                 let repayRate = withdrawTo0Amount.multipliedBy(10000).dividedToIntegerBy(debtTo0)
                                 console.log(`repayRate is : ${repayRate}`)
 
-                                equal(getTo0Amount, withdrawTo0Amount, 
+                                equal(getTo0Amount, withdrawTo0Amount,
                                     false, "", null)
-                                equal(getAmount0, debt0.multipliedBy(repayRate).dividedToIntegerBy(10000), 
+                                equal(getAmount0, debt0.multipliedBy(repayRate).dividedToIntegerBy(10000),
                                     false, "", token0)
-                                equal(getAmount1, debt1.multipliedBy(repayRate).dividedToIntegerBy(10000), 
+                                equal(getAmount1, debt1.multipliedBy(repayRate).dividedToIntegerBy(10000),
                                     false, "", token1)
                             }
                         }
@@ -399,7 +399,7 @@ contract("TestWithdrawStrategy", (accounts) => {
 
                 let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
                 let token1AmountInLp = BigNumber(_r1).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
-                
+
                 return [token0AmountInLp, token1AmountInLp]
             }
 
@@ -453,7 +453,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                 return [_r0, _r1];
             }
 
-            async function addLiquidate(token0, token1, r0, r1, from) {
+            async function addLiquidity(token0, token1, r0, r1, from) {
                 if (token0 == bnbAddress) {
                     token0 = wbnb.address
                     wbnb.deposit({from: from, value: r0})
