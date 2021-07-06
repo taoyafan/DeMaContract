@@ -21,8 +21,8 @@
     // 2. Positions usage
         // Create
         // Replenishment
-        // Withdraw
         // Repay
+        // Withdraw
 
     // 3. Health and liquidate
         // Open position health restrict
@@ -60,6 +60,14 @@
         // (2) Can borrow two tokens.
             // Unit 1
                 // Unit 2, Expect: (success, success, success)
+    // 2. Positions usage
+        // Unit 1
+            // Unit 2
+                // Create
+                // Replenishment
+                // Repay
+                // Withdraw
+
 
 
 contract("TestBank", (accounts) => {
