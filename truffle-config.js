@@ -70,16 +70,26 @@ module.exports = {
       network_id: 97,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
       gasPrice: 20000000000,   // 20 gwei (in wei)
-      production: true        // Treats this network as if it was a public net. (default: false)
+      // production: true        // Treats this network as if it was a public net. (default: false)
     },
     bscmain: {
       provider: () => new HDWalletProvider(privateKey, "https://bsc-dataseed.binance.org"),
       network_id: 56,
+      confirmations: 2,
+      timeoutBlocks: 200,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
       gasPrice: 5000000000,   // 5 gwei (in wei)
-      production: true        // Treats this network as if it was a public net. (default: false)
+      // production: true        // Treats this network as if it was a public net. (default: false)
     },
-
+    matic: {
+      provider: () => new HDWalletProvider(privateKey, "https://rpc-mainnet.maticvigil.com/"),
+      network_id: 137,
+      confirmations: 2,
+      timeoutBlocks: 200,
+      gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
+      gasPrice: 3500000000,   // 3.5 gwei (in wei)
+      // production: true        // Treats this network as if it was a public net. (default: false)
+    },
     hecotest: {
       provider: () => new HDWalletProvider(privateKey, "https://http-testnet.hecochain.com"),
       network_id: 256,
