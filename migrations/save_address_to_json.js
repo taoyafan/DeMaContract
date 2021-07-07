@@ -1,12 +1,23 @@
 const fs = require('fs')
+const path = require('path');
 
 function saveToJson(name, date) {
-    const file = "bin/contracts/address.json"
     let json;
 
+    const uplevelDir = path.resolve(__dirname, '..');
+    const file = path.join(uplevelDir, `bin/contracts/address.json`);
+
+    const fileDir = path.resolve(file, '..');
+    
+    if(!fs.existsSync(fileDir)) {
+        console.log(`Not exist ${fileDir}`);
+        fs.mkdirSync(fileDir, {recursive:true});
+        console.log(`Make ${fileDir} success!`);
+    }
+
     try {
-        const jsonString = fs.readFileSync(file)
-        json = JSON.parse(jsonString)
+        const jsonStringFromRead = fs.readFileSync(file);
+        json = JSON.parse(jsonStringFromRead);
     } catch(err) {
         console.log(err)
         json = {}
@@ -14,8 +25,8 @@ function saveToJson(name, date) {
 
     json[name] = date;
 
-    const jsonString = JSON.stringify(json, null, 2)
-    fs.writeFileSync(file, jsonString)
+    const jsonStringToWrite = JSON.stringify(json, null, 2);
+    fs.writeFileSync(file, jsonStringToWrite,{ flag:'w'});
 }
 
 module.exports = saveToJson;
