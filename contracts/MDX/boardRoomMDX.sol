@@ -850,7 +850,7 @@ contract BoardRoomMDX is Ownable {
 
     // Add a new lp to the pool. Can only be called by the owner.
     // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
-    function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
+    function add(uint256 _allocPoint, address _lpToken, bool _withUpdate) public onlyOwner {
         require(address(_lpToken) != address(0), "lpToken is the zero address");
         if (_withUpdate) {
             massUpdatePools();
@@ -858,7 +858,7 @@ contract BoardRoomMDX is Ownable {
         uint256 lastRewardBlock = block.number > startBlock ? block.number : startBlock;
         totalAllocPoint = totalAllocPoint.add(_allocPoint);
         poolInfo.push(PoolInfo({
-        lpToken : _lpToken,
+        lpToken : IERC20(_lpToken),
         allocPoint : _allocPoint,
         lastRewardBlock : lastRewardBlock,
         accMDXPerShare : 0,
