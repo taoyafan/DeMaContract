@@ -8,6 +8,7 @@
   },
   "scripts": {
     "compile": "truffle compile",
+
     "muser": "truffle migrate --f 2 --to 2",
     "muserbsctest": "truffle migrate --f 2 --to 2 --network bsctest",
     "muserbscmain": "truffle migrate --f 2 --to 2 --network bscmain",
@@ -15,14 +16,19 @@
     "mbank": "truffle migrate --f 3 --to 3",
     "mmdx": "truffle migrate --f 4 --to 4",
     "migratebsc": "truffle migrate --network bsctest",
+
     "bankinit": "truffle exec ./scripts/bank_init.js",
     "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
+
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
+
     "testbank": "truffle test ./test/test_bank.js",
     "testuser": "truffle test ./test/test_UserProfile.js --show-events",
     "testadds": "truffle test ./test/test_add_strategy.js",
-    "testwds": "truffle test ./test/test_withdraw_strategy.js"
+    "testwds": "truffle test ./test/test_withdraw_strategy.js",
+    "testreinvestment": "truffle test ./test/TestReinvestment.test.js",
+    "testrewardspershare": "truffle test ./test/TestRewardsPerShare.test.js"
   },
   "repository": {
     "type": "git",
