@@ -211,7 +211,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ==================================== Write ==================================== */
 
-    function deposit(address token, uint256 amount) public payable nonReentrant {
+    function deposit(address token, uint256 amount) external payable nonReentrant {
         TokenBank storage bank = banks[token];
         UserBankInfo storage user = userBankInfo[msg.sender];
         require(bank.isOpen && bank.canDeposit, 'Token not exist or cannot deposit');
@@ -403,7 +403,7 @@ contract Bank is Ownable, ReentrancyGuard {
         emit OpPosition(posId, amount.debts, amount.backToken);
     }
 
-    function liquidate(uint256 posId) external payable onlyEOA nonReentrant {
+    function liquidate(uint256 posId) external onlyEOA nonReentrant {
         Position storage pos = positions[posId];
 
         require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debts");
