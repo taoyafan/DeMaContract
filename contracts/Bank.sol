@@ -77,6 +77,8 @@ contract Bank is Ownable, ReentrancyGuard {
     mapping(uint256 => Position) public positions;
     uint256 public currentPos = 1;
 
+    EnumerableSet.UintSet allPosId;
+
     /* ----------------- Others ----------------- */
 
     IBankConfig public config;
@@ -117,10 +119,30 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ==================================== Read ==================================== */
 
+    // New health
+    function allPosIdAndHealth() external view returns (uint256[] memory, uint256[] memory) {
+        uint256 len = EnumerableSet.length(allPosId);
+        uint256[] memory posId = new uint256[](len);
+        uint256[] memory posHealth = new uint256[](len);
+
+        for (uint256 i = 0; i < len; ++i) {
+            uint256 tempPosId = EnumerableSet.at(allPosId, i);
+            Position storage pos = positions[tempPosId];
+            Production storage prod = productions[pos.productionId];
+            uint256 debt0 = debtShareToVal(prod.borrowToken[0], pos.debtShare[0]);
+            uint256 debt1 = debtShareToVal(prod.borrowToken[1], pos.debtShare[1]);
+
+            posId[i] = tempPosId;
+            posHealth[i] = prod.goblin.newHealth(tempPosId, prod.borrowToken, [debt0, debt1]);
+        }
+
+        return (posId, posHealth);
+    }
+
     function positionInfo(uint256 posId)
         public
         view
-        returns (uint256, uint256[2] memory, uint256[2] memory, address)
+        returns (uint256, uint256, uint256[2] memory, uint256[2] memory, address)
     {
         Position storage pos = positions[posId];
         Production storage prod = productions[pos.productionId];
@@ -128,8 +150,12 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 debt0 = debtShareToVal(prod.borrowToken[0], pos.debtShare[0]);
         uint256 debt1 = debtShareToVal(prod.borrowToken[1], pos.debtShare[1]);
 
-        return (pos.productionId, prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
-            [debt0, debt1], pos.owner);
+        return (
+            pos.productionId, 
+            prod.goblin.newHealth(posId, prod.borrowToken, [debt0, debt1]),
+            prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
+            [debt0, debt1], 
+            pos.owner);
     }
 
     // Total amount, not including reserved
@@ -172,7 +198,7 @@ contract Bank is Ownable, ReentrancyGuard {
         return EnumerableSet.at(userBankInfo[account].banksAddress, index);
     }
 
-    function userSharesPreTokoen(address account, address token) external view returns (uint256) {
+    function userSharesPerTokoen(address account, address token) external view returns (uint256) {
         return userBankInfo[account].sharesPerToken[token];
     }
 
@@ -302,6 +328,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
             EnumerableSet.add(user.posId, posId);
             EnumerableSet.add(user.prodId, pid);
+            EnumerableSet.add(allPosId, pid);
             user.posNum[pid] = user.posNum[pid].add(1);
 
         } else {
@@ -396,7 +423,8 @@ contract Bank is Ownable, ReentrancyGuard {
             // If the lp amount in current pos is 0, delete the pos.
             if (production.goblin.posLPAmount(posId) == 0) {
                 EnumerableSet.remove(user.posId, posId);
-                user.posNum[pid] = user.posNum[pid].add(1);
+                EnumerableSet.remove(allPosId, pid);
+                user.posNum[pid] = user.posNum[pid].sub(1);
             }
         }
 
