@@ -194,4 +194,300 @@ function BankLiquidate(posId, account) {
 }
 ```
 
+5. Get bank DEMA rewards
+
+function definition: `getBankRewards()`, `getBankRewardsPerToken(address token)`
+
+javascript calling example:
+
+``` javascript
+function BankGetRewardsPerUser(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    bank.methods.getBankRewards().send({from: account});
+}
+
+function BankGetRewardsPerToken(token, account) {
+    // token should be address string, 0x0000000000000000000000000000000000000000 is bnb address.
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    bank.methods.getBankRewardsPerToken().send({from: account});
+}
+```
+
+6. Get production MDX(Or cake) and DEMA rewards
+
+function definition: `getRewardsAllProd()`, `getRewardsPerProd(uint256 prodId)`
+
+javascript calling example:
+
+``` javascript
+function ProdGetRewardsPerUser(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    bank.methods.getRewardsAllProd().send({from: account});
+}
+
+function ProdGetRewardsPerProd(prodId, account) {
+    // prodId is production id, should be number, need to check rewards is larger than 0.
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    bank.methods.getRewardsPerProd(prodId).send({from: account});
+}
+```
+
 ### Read functions
+
+1. Get user's bank number
+
+function definition: `userBanksNum(address account) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetUserBanksNum(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let banksNum = await bank.methods.userBanksNum(account).call({from: account});
+    return banksNum;
+}
+```
+
+2. Get user's each bank address(Same as deposited token address)
+
+function definition: `userBankAddress(address account, uint256 index) returns (address)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetUserBankAddress(index, account) {
+    // index is a number from 0 to banksNum-1
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let bankAddress = await bank.methods.userBankAddress(account, index).call({from: account});
+    return bankAddress;
+}
+```
+
+3. Get user's shares per token in bank
+
+function definition: `userSharesPerTokoen(address account, address token) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetUserSharesPerToken(token, account) {
+    // token is address string
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let shares = await bank.methods.userSharesPerTokoen(account, token).call({from: account});
+    return shares;
+}
+```
+
+4. Get user's DEMA earn per token(bank)
+
+function definition: `earnPertoken(address account, address token) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetUserEarnPerToken(token, account) {
+    // token is address string
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let earn = await bank.methods.earnPertoken(account, token).call({from: account});
+    return earn;
+}
+```
+
+5. Get user's DEMA earn of all tokens
+
+function definition: `earn(address account) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetUserEarn(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let earn = await bank.methods.earn(account).call({from: account});
+    return earn;
+}
+```
+
+6. Get total amount in bank for each token, not include reserved
+
+function definition: `totalToken(address token) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function BankGetTotalAmount(token, account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let totalAmount = await bank.methods.totalToken(token).call({from: account});
+    return totalAmount;
+}
+```
+
+7. Get bank info per token
+
+function definition: 
+
+``` javascript
+    banks(address token) returns {
+        address tokenAddr;
+        bool isOpen;
+        bool canDeposit;
+        uint256 poolId;
+
+        uint256 totalVal;           // Left balance, including reserved
+        uint256 totalShares;        // Stake shares
+        uint256 totalDebt;          // Debts balance
+        uint256 totalDebtShares;    // Debts shares
+        uint256 totalReserve;       // Reserved amount.
+        uint256 lastInterestTime;
+    }
+```
+
+javascript calling example:
+
+``` javascript
+async function BankGetInfoPerToken(token, account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let bankInfo = await bank.methods.banks(token).call({from: account});
+    return bankInfo;
+}
+```
+
+8. Get user position num and id.
+
+function definition: 
+
+`userPosNum(address account) returns (uint256)`
+
+`userPosId(address account, uint256 index) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function ProdGetUserPosNum(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let posNum = await bank.methods.userPosNum(token).call({from: account});
+    return posNum;
+}
+
+async function ProdGetUserPosId(index, account) {
+    // index is a number from 0 to banksNum-1
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let posId = await bank.methods.userPosId(token, index).call({from: account});
+    return posId;
+}
+```
+
+9. Get user production num and id.
+
+function definition: 
+
+`userPosNum(address account) returns (uint256)`
+
+`userPosId(address account, uint256 index) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function ProdGetUserPosNum(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let posNum = await bank.methods.userPosNum(token).call({from: account});
+    return posNum;
+}
+
+async function ProdGetUserPosId(index, account) {
+    // index is a number from 0 to banksNum-1
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let posId = await bank.methods.userPosId(token, index).call({from: account});
+    return posId;
+}
+```
+
+10. Get position information
+
+function definition: 
+
+``` javascript
+    positionInfo(uint256 posId) returns (
+        uint256,            // production id
+        uint256,            // newHealth
+        uint256[2] memory,  // health[2]
+        uint256[2] memory,  // debts[2]
+        address             // owner
+    )
+```
+
+javascript calling example:
+
+``` javascript
+async function ProdGetPositionInfo(posId, account) {
+    // posId is position id, is number
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let [prodId, newHealth, health, debts, owner] = await bank.methods.positionInfo(posId).call({from: account});
+    let risk = 0;
+    if (debts[0]) {
+        risk = debts[0] / health[0];
+    } else if (debts[1] {
+        risk = debts[1] / health[1];
+    })
+    return [prodId, newHealth, risk, debts, owner];
+}
+```
+
+11. Get all position id and new health 
+
+function definition: `allPosIdAndHealth() returns (uint256[] memory, uint256[] memory)`
+
+javascript calling example:
+
+``` javascript
+async function ProdGetPositionInfo(account) {
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let [posId, newHealth] = await bank.methods.allPosIdAndHealth().call({from: account});
+    return [posId, newHealth];
+}
+```
+
+12. Get production information
+
+function definition: 
+
+``` javascript
+    positionInfo(uint256 posId) returns {
+        address[2] borrowToken;
+        bool isOpen;
+        bool[2] canBorrow;
+
+        IGoblin goblin;
+        uint256[2] minDebt;
+        uint256 openFactor;         // When open: (debts / total) should < (openFactor / 10000)
+        uint256 liquidateFactor;    // When liquidate: new health should < (liquidateFactor / 10000)
+    }
+```
+
+javascript calling example:
+
+``` javascript
+async function ProdGetProdInfo(prodId, account) {
+    // prodId is production id is a number
+    // account should be address string
+    const bank = new web3.eth.Contract(bankAbi, bankAddress);
+    let prodInfo = await bank.methods.productions(prodId).call({from: account});
+    return prodInfo;
+}
+```
