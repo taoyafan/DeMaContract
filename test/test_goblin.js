@@ -45,7 +45,7 @@
 
 // Unit
     // 1. For 3 Token pairs
-    // 2. Open position and borrow only token0; only token1; both token0 and token1
+    // 2. Open position and borrow only token0; only token1; both token0 and token1, r0: 1000   r1: 200,000, price 200
 
 
 
@@ -60,6 +60,7 @@
         // (2) Can borrow two tokens.
             // Unit 1
                 // Unit 2, Expect: (success, success, success)
+
     // 2. Positions usage
         // Unit 1
             // Unit 2
@@ -67,6 +68,23 @@
                 // Replenishment
                 // Repay
                 // Withdraw
+
+    // 3. Health and liquidate
+        // Deposit 1000 USDT, borrow 9000 USDT, should failed.
+        // Deposit 400 USDT, borrow 2 BNB, health should be 4, new health should be 100%
+            // Liquidate should failed.
+            // Swap 200,000 USDT to 500 BNB, then r0 is 500, r1 is 400,000, BNB price is 800, then USDT in LP is 800(equal to 1 BNB), BNB in LP is 1
+                // health should be 2, new health should be 0.
+                // Liquidate should success.
+
+        // Deposit 300 USDT, borrow 2 BNB, borrow 200 USDT, USDT in LP should be 300, BNB in LP should be 3
+            // health should be [533, 5.33], new health should be 100%
+            // Liquidate should failed.
+            // Swap 200,000 USDT to 500 BNB, then r0 is 500, r1 is 400,000, BNB price is 800, then USDT in LP is 600, BNB in LP is 1.5
+                // health should be [], new health should be .
+                // Liquidate should success.
+
+
 
 
 
