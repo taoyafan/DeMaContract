@@ -14,16 +14,16 @@ const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffff
 //
 // token0 amount, token1 amount
 //       0              0
-//      100             0
-//       0             100
-//      100            100
-//      10             4000
+//      10              0
+//       0              10
+//      10              10
+//      10              400
 //
 // Borrow0 amount, Borrow1 amount,
 //      0              0
-//     100             0
-//      0             100
-//     100            100
+//     10              0
+//      0              10
+//     10              10
 //
 // target: check the return LP amount and principal
 //
@@ -81,7 +81,7 @@ contract("TestAddStrategy", (accounts) => {
                 [token0Amount, token1Amount] = [token1Amount, token0Amount];
                 [borrow0, borrow1] = [borrow1, borrow0];
             }
-            
+
             for (let i = 0; i < token0Amount.length; ++i) {
                 for (let j = 0; j < borrow0.length; ++j) {
                     singalTest(token0Amount[i], token1Amount[i], borrow0[j], borrow1[j], r0, r1)
@@ -105,7 +105,7 @@ contract("TestAddStrategy", (accounts) => {
                     let beforeUserToken0Amount;
                     let beforeUserToken1Amount;
                     let beforeLpAmount;
-        
+
                     let afterGoblinToken0Amount;
                     let afterGoblinToken1Amount;
                     let afterUserToken0Amount;
@@ -182,10 +182,10 @@ contract("TestAddStrategy", (accounts) => {
                             ["address", "address", "uint256", "uint256", "uint256"],
                             [token0, token1, amount0, amount1, 0]);
 
-                        await addStrategy.execute(user, [token0, token1], [borrow0, borrow1], 
+                        await addStrategy.execute(user, [token0, token1], [borrow0, borrow1],
                             [borrow0, borrow1], data, {from: goblin, value: value})
 
-                        // 5. Get the after amount 
+                        // 5. Get the after amount
                         afterGoblinToken0Amount = await getBalance(token0, goblin);
                         afterGoblinToken1Amount = await getBalance(token1, goblin);
                         afterUserToken0Amount = await getBalance(token0, user);
@@ -216,10 +216,10 @@ contract("TestAddStrategy", (accounts) => {
                     it(`Check LP value`, async () => {
                         let incLp = afterLpAmount.minus(beforeLpAmount);
                         console.log(`Increased lp amount is: ${fromWei(incLp)}`);
-                        
+
                         let _r0, _r1
                         [_r0, _r1] = await getR0R1(token0, token1)
-                        
+
                         // Get the value of incLp
                         let lp = await MdexPair.at(lpAddress)
                         let totalLp = await lp.totalSupply();
@@ -229,12 +229,12 @@ contract("TestAddStrategy", (accounts) => {
                         let token1AmountInLp = BigNumber(_r1).multipliedBy(incLp).dividedToIntegerBy(totalLp)
                         console.log(`token0AmountInLp is: ${fromWei(token0AmountInLp)}, token1AmountInLp is: ${
                             fromWei(token1AmountInLp)}`);
-                        
+
                         let totalToken0Send = amount0.plus(borrow0)
                         let totalToken1Send = amount1.plus(borrow1)
                         console.log(`totalToken0Send is: ${fromWei(totalToken0Send)}, totalToken1Send is: ${
                             fromWei(totalToken1Send)}`)
-                        
+
                         let targetAmount0 = await swapAllToA(totalToken0Send, totalToken1Send, _r0, _r1);
                         let getAmount0 = await swapAllToA(token0AmountInLp, token1AmountInLp, _r0, _r1);
                         console.log(`targetAmount0 is : ${fromWei(targetAmount0)}`)
@@ -248,17 +248,17 @@ contract("TestAddStrategy", (accounts) => {
                     it('Remove liquidate', async () => {
                         await removeAllLiquidity(token0, token1, goblin)
 
-                        let wbnbAmount = await wbnb.balanceOf(goblin) 
+                        let wbnbAmount = await wbnb.balanceOf(goblin)
                         if (wbnbAmount > 0) {
                             wbnb.withdraw(wbnbAmount)
                         }
 
                         let lpAmount = await getBalance(lpAddress, goblin);
                         assert.equal(lpAmount.toNumber(), 0, `lp amount should be 0`)
-                        
-                        wbnbAmount = await wbnb.balanceOf(goblin) 
+
+                        wbnbAmount = await wbnb.balanceOf(goblin)
                         assert.equal(wbnbAmount.toNumber(), 0, `wbnb amount should be 0`)
-                        
+
                         transfer(token0, user, amount0, goblin)
                         transfer(token1, user, amount1, goblin)
                     })
@@ -305,8 +305,8 @@ contract("TestAddStrategy", (accounts) => {
                 let token0InLp = await lp.token0()
                 res = await lp.getReserves();
                 let _r0, _r1
-                if (token0 == token0InLp || 
-                    (token0 == bnbAddress && token0InLp == wbnb.address)) 
+                if (token0 == token0InLp ||
+                    (token0 == bnbAddress && token0InLp == wbnb.address))
                 {
                     [_r0, _r1] = [res[0], res[1]]
                 } else {
