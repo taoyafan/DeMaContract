@@ -491,3 +491,48 @@ async function ProdGetProdInfo(prodId, account) {
     return prodInfo;
 }
 ```
+
+## Goblin
+
+Goblin address can be found in bank through getting production information.
+
+### Read functions
+
+1. Get farm pool id
+
+function definition: `poolId() returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function GoblinGetPoolId(account) {
+    // account should be address string
+    const goblin = new web3.eth.Contract(goblinAbi, goblinAddress);
+    let poolId = await goblin.methods.poolId().call({from: account});
+    return poolId;
+}
+```
+
+2. Get user earned MDX(Cake) amount
+
+function definition: `userEarnedAmount(address account) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function GoblinGetUserEarned(account) {
+    // account should be address string
+    const goblin = new web3.eth.Contract(goblinAbi, goblinAddress);
+    let earn = await goblin.methods.userEarnedAmount(account).call({from: account});
+    return earn;
+}
+```
+
+## Farm
+
+Farm pool id for bank can be found in bank info.
+
+Farm pool id for production can be found in each goblin.
+
+### Read functions
+
