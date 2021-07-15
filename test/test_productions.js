@@ -145,35 +145,35 @@
 
 
 
-contract("TestBank", (accounts) => {
+contract("TestProduction", (accounts) => {
 
-    // async function lpTest(nameA, nameB, addressA, addressB) {
+    let factory;
+    let wbnb;
+    let busd;
+    let router;
+    let mdx;
 
-    //     describe("BNB-USDT-LP Production Test", async () => {
-
-    //         before(`Deposit {nameA} and {nameB}`, async () => {
-
-    //         });
-
-    //         describe(`Borrow only {nameA}`, async () => {
-
-    //             before(`Open production`, async () => {
-
-    //             });
-
-    //             it("Check left amount", async () => {
-
-    //             });
-
-    //             it()
-
-    //         });
-
-    //     });
-
-    // }
+    let goblinBnbBusd;
+    let goblinMdxBusd;
 
 
-    // describe("BUSD-USDT-LP Test", async () => {
-    // });
+    before('Init', async () => {
+        [factory, wbnb, busd, router, /* wbnb_busd_lp */, mdx, /* mdx_busd_lp */] = await mdxInit();
+        withdrawStrategy = await WithdrawStrategy.new(router.address, goblin);
+        goblinBnbBusd = await 
+
+    })
+
+    // 1. Production token can borrow
+        // (1) Only allow borrow one token.
+            // Unit 1
+                // Token0 can borrow
+                    // Deposit 10 token0, Unit 3, Expect: (success, fail, fail)
+                // Token1 can borrow
+                    // Deposit 10 token0, Unit 3, Expect: (fail, success, fail)
+        // (2) Can borrow two tokens.
+            // Unit 1
+                // Deposit 10 token0, Unit 3, Expect: (success, success, success)
+    describe('')
+    
 })
