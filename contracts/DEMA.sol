@@ -1,15 +1,19 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Capped.sol";
+import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
 import "./Interface/IDEMA.sol";
 
 contract DEMA is IDEMA, ERC20Capped{
+
+    using EnumerableSet for EnumerableSet.AddressSet;
     
     // Dead address used to burn
     address public constant dead = address(0x000000000000000000000000000000000000dEaD); 
     address public governance;
-    mapping (address => bool) public minters;
+    EnumerableSet.AddressSet minters;
+    // mapping (address => bool) public minters;
 
     /* ==================================== Constructor ==================================== */
 
@@ -31,7 +35,7 @@ contract DEMA is IDEMA, ERC20Capped{
     /* ==================================== Only Minters ==================================== */
 
     function mint(address account, uint256 amount) external override {
-        require(minters[msg.sender], "!minter");
+        require(isMinter(msg.sender), "!minter");
         _mint(account, amount);
     }
 
@@ -42,16 +46,40 @@ contract DEMA is IDEMA, ERC20Capped{
     }
 
     function addMinter(address _minter) external onlyGovernance {
-        minters[_minter] = true;
+        EnumerableSet.add(minters, _minter);
     }
 
     function removeMinter(address _minter) external onlyGovernance {
-        minters[_minter] = false;
+        EnumerableSet.remove(minters, _minter);
     }
 
     // Burn tokens in dead address
     function burnDead(uint256 amount) external onlyGovernance {
         _burn(dead, amount);
+    }
+
+    /* ==================================== Read ==================================== */
+
+    function mintersNum() public view returns (uint256) {
+        return EnumerableSet.length(minters);
+    }
+
+    function getMinter(uint256 index) public view returns (address) {
+        return EnumerableSet.at(minters, index);
+    }
+
+    function isMinter(address inAddress) public view returns (bool) {
+        return EnumerableSet.contains(minters, inAddress);
+    }
+
+    function allMinters() external view returns (address[] memory){
+        uint256 len = mintersNum();
+        address[] memory mintersArray = new address[](len);
+
+        for (uint256 i = 0; i < len; ++i) { 
+            mintersArray[i] = getMinter(i);
+        }
+        return mintersArray;
     }
 
     /* ==================================== Write ==================================== */
