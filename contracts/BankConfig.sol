@@ -6,13 +6,16 @@ import "./Interface/IInterestModel.sol";
 
 contract BankConfig is IBankConfig, Ownable {
 
-    uint256 public override getReserveBps;
+    uint256 public override getReserveBps;      // Will divide 10000
     uint256 public override getLiquidateBps;
     IInterestModel public defaultModel;
 
     mapping(address => IInterestModel) modelForToken;
 
     function setParams(uint256 _getReserveBps, uint256 _getLiquidateBps, IInterestModel _interestModel) external onlyOwner {
+        require(_getReserveBps < 10000, "ReserveBps should less than 10000");
+        require(_getLiquidateBps < 5000, "_getLiquidateBps should less than 5000");
+
         getReserveBps = _getReserveBps;
         getLiquidateBps = _getLiquidateBps;
         defaultModel = _interestModel;
