@@ -15,6 +15,12 @@ contract("TestReinvestment", (accounts) => {
     let poolLength;
     let mdexBoardRoomPid;
     let depositAmount = BigNumber(1000);
+    let diffDepositAmount;
+    let diffTotalRewards;
+    let diffPending;
+    let diffAccMdxPerShare;
+    let diffReWardsPerShare;
+    
 
     before("before", async () => {
 
@@ -23,14 +29,14 @@ contract("TestReinvestment", (accounts) => {
         boardRoom = await BoardRoom.deployed();
         reinvestment = await Reinvestment.deployed();
         poolLengthBeforeAdd = await boardRoom.poolLength();
-    
+
         poolLength = parseInt(await boardRoom.poolLength(), 10);
         mdexBoardRoomPid = parseInt(await reinvestment.boardRoomPid(), 10);
 
         // add mdex to boardRoom pool, mdexBoardRoomPid is equal to reinvestment.boradRoomPid
-        if(mdexBoardRoomPid > poolLength) {
+        if (mdexBoardRoomPid > poolLength) {
             let testAddress = `0xD7ACd2a9FD159E69Bb102A1ca21C9a3e3A5F771B`;
-            for(;poolLength < mdexBoardRoomPid;) {         
+            for (; poolLength < mdexBoardRoomPid;) {
                 await boardRoom.add(1000, testAddress, 0);
                 poolLength = parseInt(await boardRoom.poolLength(), 10);
             }
@@ -39,23 +45,48 @@ contract("TestReinvestment", (accounts) => {
         await boardRoom.add(1000, mdxToken.address, 0);
         poolLength = parseInt(await boardRoom.poolLength(), 10);
 
+        // update pool, newRewards 
+        await mdxToken.approve(boardRoom.address, MaxUint256);
+        let boardMdexPerBlock = await boardRoom.mdxPerBlock();
+
+        // before reinvest deposit
+        let mdexAmountofBoardBefore = BigNumber(await mdxToken.balanceOf(boardRoom.address));
+        let pendingBefore = BigNumber(await boardRoom.pending(mdexBoardRoomPid, reinvestment.address));
+        let totalRewardsBefore = BigNumber(await reinvestment.totalRewards());
+        let rewardsPerShareBefore = BigNumber(await reinvestment.rewardsPerShare());
+        let accMdxPerShareBefore = BigNumber((await reinvestment.globalInfo()).accMdxPerShare);
+
+        // deposit to pool
         await mdxToken.approve(reinvestment.address, MaxUint256);
         await reinvestment.deposit(depositAmount);
+
+        // reinvest
+        await reinvestment.reinvest();
+        
+        // after reinvest depoist
+        let mdexAmountofBoardAfter = BigNumber(await mdxToken.balanceOf(boardRoom.address));
+        let pendingAfter = BigNumber(await boardRoom.pending(mdexBoardRoomPid, reinvestment.address));
+        let totalRewardsAfter = BigNumber(await reinvestment.totalRewards());
+        let rewardsPerShareAfter = BigNumber(await reinvestment.rewardsPerShare());
+        let accMdxPerShareAfter = BigNumber((await reinvestment.globalInfo()).accMdxPerShare);
+
+        // diff
+        diffDepositAmount = mdexAmountofBoardAfter.minus(mdexAmountofBoardBefore);
+        diffPending = pendingAfter.minus(pendingBefore);
+        diffTotalRewards = totalRewardsAfter.minus(totalRewardsBefore);
+        diffReWardsPerShare = rewardsPerShareAfter.minus(rewardsPerShareBefore);
+        diffAccMdxPerShare = accMdxPerShareAfter.minus(accMdxPerShareBefore);
     });
 
     it("totalRewards", async () => {
-        let mdxBalance = await mdxToken.balanceOf(reinvestment.address);
-        let totalRewardsFromReinvestment = await reinvestment.totalRewards();
-
-        assert.equal(totalRewardsFromReinvestment.toNumber(), mdxBalance.toNumber());
+        assert.equal(diffTotalRewards.toNumber(), diffDepositAmount.plus(diffPending).toNumber());
     });
 
     it("rewardsPerShare", async () => {
-        let rewardsPerShareAmount = await reinvestment.rewardsPerShare();
-        assert.equal(rewardsPerShareAmount.toNumber(), 0);
+        assert.equal(diffAccMdxPerShare, diffAccMdxPerShare);
     });
 
-    it("userEarnedAmount", async ()=> {
+    it("userEarnedAmount", async () => {
         let accounts0EarnedAmount = await reinvestment.userEarnedAmount(accounts[0]);
         assert.equal(accounts0EarnedAmount.toNumber(), depositAmount);
         let accounts1EarnedAmount = await reinvestment.userEarnedAmount(accounts[1]);
@@ -63,7 +94,7 @@ contract("TestReinvestment", (accounts) => {
     });
 
     it("deposit", async () => {
-        assert.equal(depositAmount.toNumber(), (await mdxToken.balanceOf(reinvestment.address)).toNumber());
+        assert.equal(depositAmount.toNumber(), diffDepositAmount.toNumber());
     });
 
     it("withdraw", async () => {
@@ -75,11 +106,3 @@ contract("TestReinvestment", (accounts) => {
         assert(beforeWithdrawAmount.minus(tempAmount), afterWithdrawAmount);
     })
 })
-
-function toWei(ether) {
-    return web3.utils.toWei(BigNumber(ether).toString())
-}
-
-function fromWei(wei) {
-    return web3.utils.fromWei(BigNumber(wei).toString())
-}
