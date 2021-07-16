@@ -151,10 +151,10 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 debt1 = debtShareToVal(prod.borrowToken[1], pos.debtShare[1]);
 
         return (
-            pos.productionId, 
+            pos.productionId,
             prod.goblin.newHealth(posId, prod.borrowToken, [debt0, debt1]),
             prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
-            [debt0, debt1], 
+            [debt0, debt1],
             pos.owner);
     }
 
@@ -644,6 +644,8 @@ contract Bank is Ownable, ReentrancyGuard {
         require(borrowToken[0] != borrowToken[1], "Borrow tokens cannot be same");
         require(canBorrow[0] || minDebt[0]==0, "Token 0 can borrow or min debt should be 0");
         require(canBorrow[1] || minDebt[1]==0, "Token 1 can borrow or min debt should be 0");
+        require(openFactor < 10000, "Open factor should less than 10000");
+        require(liquidateFactor < 9000, "Liquidate factor should less than 9000");
 
         if(pid == 0){
             pid = currentPid;
