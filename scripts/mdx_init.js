@@ -17,9 +17,6 @@ function mdxInit(callback) {
         let router = await MdexRouter.deployed();
         let mdx = await MdxToken.deployed();
 
-        await factory.createPair(wbnb.address, busd.address);
-        await factory.createPair(mdx.address, busd.address);
-
         // Get pair
         let lpAddresss = await factory.getPair(wbnb.address, busd.address);
         let wbnb_busd_lp = await MdexPair.at(lpAddresss);

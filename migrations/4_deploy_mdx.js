@@ -71,5 +71,9 @@ module.exports = async function (deployer, network, accounts) {
                 1
         );
         saveToJson("BoardRoomMDX", (await BoardRoomMDX.deployed()).address);
+        
+        let factory = await MdexFactory.deployed();
+        await factory.createPair(WBNB.address, busdAddress);
+        await factory.createPair(MdxToken.address, busdAddress);
     }
 };
