@@ -79,6 +79,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     struct TempParams {
         uint256 beforeLPAmount;
         uint256 afterLPAmount;
+        uint256 returnMdxAmount;
         uint256 deltaAmount;
     }
 
@@ -380,25 +381,25 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
         }
 
-        uint256 returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute 
+        temp.returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute 
 
         // strategy will send back all token and LP.
         uint256[2] memory deltaN = IStrategy(strategy).execute{value: msg.value}(
             account, borrowTokens, borrowAmounts, debts, ext);
 
-        if (mdx.myBalance() > returnMdxAmount) {
+        if (mdx.myBalance() > temp.returnMdxAmount) {
             // There are return mdx, that means it's a withdraw
-            returnMdxAmount = mdx.myBalance() - returnMdxAmount;
+            temp.returnMdxAmount = mdx.myBalance() - temp.returnMdxAmount;
         } else {
             // No return or Mdx amount decrease which means it's an add.
-            returnMdxAmount = 0; 
+            temp.returnMdxAmount = 0; 
         }
 
         // 3. Add LP tokens back to the bsc pool.
         _addPosition(id, account);
 
         // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance().sub(returnMdxAmount));
+        reinvestment.deposit(mdx.myBalance().sub(temp.returnMdxAmount));
 
         // Handle stake reward.
         temp.afterLPAmount = posLPAmount[id];
