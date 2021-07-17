@@ -29,7 +29,7 @@ module.exports = async function (deployer, network, accounts) {
     saveToJson("TripleSlopeModel", (await TripleSlopeModel.deployed()).address);
     saveToJson("BankConfig", (await BankConfig.deployed()).address);
     saveToJson("DEMA", (await DEMA.deployed()).address);
-    saveToJson("BankFarm", (await Farm.deployed()).address);
+    saveToJson("Farm", (await Farm.deployed()).address);
     saveToJson("Bank", (await Bank.deployed()).address);
 
     if (network == 'development') {
