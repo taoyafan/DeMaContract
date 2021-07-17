@@ -15,6 +15,7 @@
     "musermatic": "truffle migrate --f 2 --to 2 --network matic",
     "mbank": "truffle migrate --f 3 --to 3",
     "mmdx": "truffle migrate --f 4 --to 4",
+    "mgoblin": "truffle migrate --f 5 --to 5",
     "migratebsc": "truffle migrate --network bsctest",
 
     "bankinit": "truffle exec ./scripts/bank_init.js",
