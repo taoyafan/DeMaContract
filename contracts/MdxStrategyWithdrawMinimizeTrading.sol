@@ -21,30 +21,15 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
     IMdexFactory public factory;
     IMdexRouter public router;
     address public wBNB;
-    address public goblin;
 
     /// @dev Create a new withdraw minimize trading strategy instance for mdx.
     /// @param _router The mdx router smart contract.
-    constructor(IMdexRouter _router, address _goblin) public {
+    constructor(IMdexRouter _router) public {
         factory = IMdexFactory(_router.factory());
         router = _router;
 
         wBNB = _router.WBNB();
-        goblin = _goblin;
     }
-
-    /// @dev Throws if called by any account other than the goblin.
-    modifier onlyGoblin() {
-        require(isGoblin(), "caller is not the goblin");
-        _;
-    }
-
-    /// @dev Returns true if the caller is the current goblin.
-    function isGoblin() public view returns (bool) {
-        return msg.sender == goblin;
-    }
-
-    /* ==================================== Write Only Goblin ==================================== */
 
     /**
      * @dev Execute worker strategy. Take LP tokens. Return debt token + token want back.
@@ -63,7 +48,6 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
         external
         payable
         override
-        onlyGoblin
         nonReentrant
         returns (uint256[2] memory)
     {
