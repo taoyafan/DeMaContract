@@ -24,7 +24,7 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson("MdxToken", (await MdxToken.deployed()).address);
 
         await deployer.deploy(
-                MdexFactory,            // Factory, @todo neet to create MdexPair
+                MdexFactory,            // Factory
                 accounts[0]
         );
         saveToJson("MdexFactory", (await MdexFactory.deployed()).address);
@@ -60,7 +60,7 @@ module.exports = async function (deployer, network, accounts) {
         await deployer.deploy(
                 BSCPool,                // BSCPool
                 MdxToken.address,
-                BigNumber(1e19),        //_mdxPerBlock,
+                BigNumber(1e19),        //_mdxPerBlock, 10 mdx per block
                 0                       // startBlock
         );
         saveToJson("BSCPool", (await BSCPool.deployed()).address);
@@ -75,5 +75,20 @@ module.exports = async function (deployer, network, accounts) {
         let factory = await MdexFactory.deployed();
         await factory.createPair(WBNB.address, busdAddress);
         await factory.createPair(MdxToken.address, busdAddress);
+
+        // Add minter to BSC pool
+        let mdx = await MdxToken.deployed();
+        await mdx.addMinter(BSCPool.address);
+
+        // Add wbnb-busd and mdx-busd pool to bsc pool
+        let bscPool = await BSCPool.deployed();
+        let wbnbBusdLp = await factory.getPair(WBNB.address, busdAddress);
+        let mdxBusdLp = await factory.getPair(MdxToken.address, busdAddress);
+        
+        await bscPool.add(1000, wbnbBusdLp, false);
+        await bscPool.add(1000, mdxBusdLp, false);
+
+        saveToJson("MdxBnbBusdPoolId", 0);
+        saveToJson("MdxMdxBusdPoolId", 1);
     }
 };
