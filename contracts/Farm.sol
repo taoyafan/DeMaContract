@@ -102,14 +102,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return pool.rewardRate.mul(pool.periodDuration);
     }
 
-    function totalShares() external view override returns (uint256) {
-        uint256 total = 0;
-        for (uint256 poolId = 0; poolId < nextPoolId; ++poolId) {
-            total = total.add(poolInfo[poolId].totalShares);
-        }
-        return total;
-    }
-
     /* ----------------- User Staked Info ----------------- */
 
     // Rewards amount for user in one pool.

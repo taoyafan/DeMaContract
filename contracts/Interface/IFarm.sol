@@ -13,8 +13,6 @@ interface IFarm {
 
     function getRewardForDuration(uint256 poolId) external view returns (uint256);
 
-    function totalShares() external view returns (uint256);
-
     /* ----------------- User Staked Info ----------------- */
 
     // Rewards amount for user in one pool.
