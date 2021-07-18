@@ -21,7 +21,7 @@ function bankInit(callback) {
         let bank;
         let usdt;
         let busd;
-        let bankFarm;
+        let farm;
         let dema;
 
         // parameters
@@ -37,17 +37,17 @@ function bankInit(callback) {
         interestModel = await TripleSlopeModel.deployed();
         bankConfig = await BankConfig.deployed();
         bank = await Bank.deployed();
-        bankFarm = await Farm.at(addressJson.BankFarm);
+        farm = await Farm.at(addressJson.Farm);
         dema = await DEMA.deployed();
 
         // Add minter of dema for farm.
-        dema.addMinter(bankFarm.address);
+        dema.addMinter(farm.address);
         
         // Init Farm
         let bnbPoolId = 0;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(BigNumber(19200*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
+        farm.addPool(BigNumber(19200*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
 
         await time.advanceBlock();
         let blockNum = await web3.eth.getBlockNumber();
@@ -60,7 +60,7 @@ function bankInit(callback) {
         let usdtPoolId = 1;
         // rewardFirstPeriod = 7680*30, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = Bank address.
-        bankFarm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
+        farm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
 
         blockNum = await web3.eth.getBlockNumber();
         console.log("usdt pool added block: " + blockNum);
@@ -91,15 +91,13 @@ function bankInit(callback) {
         // Init Bank.
         await bankConfig.setParams(setReserveBps, setLiquidateBps, interestModel.address);
         await bank.updateConfig(bankConfig.address);
-        await bank.addToken(bnbAddress, bnbPoolId);
-        await bank.addToken(usdt.address, usdtPoolId);
 
         if(callback) {
             callback();
         }
 
         return [interestModel, bankConfig, bank, usdt, busd, bnbPoolId, bnbFarmTime, usdtPoolId, usdtFarmTime,
-            bankFarm, dema, setReserveBps, setLiquidateBps, bnbAddress];
+            farm, dema, setReserveBps, setLiquidateBps, bnbAddress];
     };
 
     return fun();

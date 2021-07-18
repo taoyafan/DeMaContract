@@ -39,4 +39,10 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson("USDT", usdt.address);
         saveToJson("BUSD", busd.address);
     }
+    
+    const bank = await Bank.deployed();
+    await bank.addToken(`0x0000000000000000000000000000000000000000`, 0);
+    await bank.addToken(usdt.address, 1); 
+    await bank.addToken(addressJson.MdxToken, 2);
+    await bank.addToken(busd.address, 3);
 };

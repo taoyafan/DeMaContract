@@ -53,8 +53,8 @@ contract Bank is Ownable, ReentrancyGuard {
 
         IGoblin goblin;
         uint256[2] minDebt;
-        uint256 openFactor;         // When open: (debts / total) should < (openFactor / 10000)
-        uint256 liquidateFactor;    // When liquidate: new health should < (liquidateFactor / 10000)
+        uint256 openFactor;         // When open: (debts / total) should <= (openFactor / 10000)
+        uint256 liquidateFactor;    // When liquidate: new health should <= (liquidateFactor / 10000)
     }
 
     struct Position {
