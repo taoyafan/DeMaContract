@@ -112,6 +112,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         _token1 = _token1 == address(0) ? wBNB : _token1;
 
         lpToken = IMdexPair(factory.getPair(_token0, _token1));
+        require(address(lpToken) != address(0), 'Pair not exit');
         // May switch the order of tokens
         token0 = lpToken.token0();
         token1 = lpToken.token1();

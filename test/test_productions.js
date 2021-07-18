@@ -144,8 +144,13 @@
             // Users positions num of MDX-USDT should be 0
 
 
+const BigNumber = require("bignumber.js");
+const fs = require('fs')
 
 contract("TestProduction", (accounts) => {
+    
+    const jsonString = fs.readFileSync("bin/contracts/address.json")
+    const addressJson = JSON.parse(jsonString)
 
     let factory;
     let wbnb;
@@ -156,6 +161,11 @@ contract("TestProduction", (accounts) => {
     let goblinBnbBusd;
     let goblinMdxBusd;
 
+    const name2Address = {
+        'Bnb': '0x0000000000000000000000000000000000000000',
+        'Busd': addressJson.BUSD,
+        'Mdx': addressJson.MdxToken,
+    }
 
     before('Init', async () => {
         [factory, wbnb, busd, router, /* wbnb_busd_lp */, mdx, /* mdx_busd_lp */] = await mdxInit();
@@ -164,16 +174,15 @@ contract("TestProduction", (accounts) => {
 
     })
 
-    // 1. Production token can borrow
-        // (1) Only allow borrow one token.
-            // Unit 1
-                // Token0 can borrow
-                    // Deposit 10 token0, Unit 3, Expect: (success, fail, fail)
-                // Token1 can borrow
-                    // Deposit 10 token0, Unit 3, Expect: (fail, success, fail)
-        // (2) Can borrow two tokens.
-            // Unit 1
-                // Deposit 10 token0, Unit 3, Expect: (success, success, success)
-    describe('')
+    // 2. Positions usage
+        // Unit 1
+            // Deposit 10 token0, Unit 3
+                // Create
+                // Replenishment
+                // Repay
+                // Withdraw
+    describe('Positions usage test', async () => {
+        
+    })
     
 })

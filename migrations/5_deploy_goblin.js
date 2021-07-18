@@ -4,6 +4,7 @@ const MdxGoblin = artifacts.require("MdxGoblin");
 const Reinvestment = artifacts.require("Reinvestment");
 const Farm = artifacts.require("Farm");
 const Bank = artifacts.require("Bank");
+const{ time } = require('@openzeppelin/test-helpers');
 
 const { assert } = require('console');
 const BigNumber = require("bignumber.js");
@@ -22,16 +23,16 @@ module.exports = async function (deployer, network, accounts) {
         {
             token0: "Bnb", 
             token1: "Busd", 
-            token0Address: addressJson.WBNB,
+            token0Address: "0x0000000000000000000000000000000000000000",
             token1Address: addressJson.BUSD, 
-            rewardFirstPeriod: BigNumber(2592000*30).multipliedBy(1e18),    // 1 DEMA per second.
+            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
         },
         {
             token0: "Mdx", 
             token1: "Busd", 
             token0Address: addressJson.MdxToken,
             token1Address: addressJson.BUSD, 
-            rewardFirstPeriod: BigNumber(2592000*30).multipliedBy(1e18),    // 1 DEMA per second.
+            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
         },
     ];
 
@@ -47,12 +48,7 @@ module.exports = async function (deployer, network, accounts) {
 
     for (prod of productions) {
 
-        // farm add pool 
-        // rewardFirstPeriod, leftPeriodTimes = 23, periodDuration = 1 month, 
-        // leftRatioNextPeriod = 90, operator = goblin address.
-        await farm.addPool(prod.rewardFirstPeriod, 23, time.duration.days(30), 90, prod.goblin.address);
-        prod.farmPoolId = (await farm.nextPoolId) - 1;
-        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, prod.farmPoolId);
+        prod.farmPoolId = await farm.nextPoolId();
         
         // Get mdx pool id
         prod.mdxPoolId = addressJson[`Mdx${prod.token0}${prod.token1}PoolId`];
@@ -74,6 +70,12 @@ module.exports = async function (deployer, network, accounts) {
         );
 
         saveToJson(`MdxGoblin${prod.token0}${prod.token1}`, prod.goblin.address);
+        
+        // farm add pool 
+        // rewardFirstPeriod, leftPeriodTimes = 23, periodDuration = 1 month, 
+        // leftRatioNextPeriod = 90, operator = goblin address.
+        await farm.addPool(prod.rewardFirstPeriod, 23, time.duration.days(30), 90, prod.goblin.address);
+        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, prod.farmPoolId);
 
         // bank add production
         bank = await Bank.at(addressJson.Bank);
@@ -87,7 +89,7 @@ module.exports = async function (deployer, network, accounts) {
             9000,                                       // uint256 openFactor,
             6000,                                       // uint256 liquidateFactor
         );
-        prod.prodId = (await bank.currentPid) - 1;
+        prod.prodId = (await bank.currentPid()) - 1;
         saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId);
     }
 };

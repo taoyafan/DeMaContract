@@ -39,9 +39,6 @@ function bankInit(callback) {
         bank = await Bank.deployed();
         farm = await Farm.at(addressJson.Farm);
         dema = await DEMA.deployed();
-
-        // Add minter of dema for farm.
-        dema.addMinter(farm.address);
         
         // Init Farm
         let bnbPoolId = 0;
