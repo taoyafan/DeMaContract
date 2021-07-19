@@ -144,7 +144,10 @@
             // Users positions num of MDX-USDT should be 0
 
 
+const MdxGoblin = artifacts.require("MdxGoblin");
+
 const BigNumber = require("bignumber.js");
+const { assert } = require("console");
 const fs = require('fs')
 
 contract("TestProduction", (accounts) => {
@@ -168,10 +171,13 @@ contract("TestProduction", (accounts) => {
     }
 
     before('Init', async () => {
-        [factory, wbnb, busd, router, /* wbnb_busd_lp */, mdx, /* mdx_busd_lp */] = await mdxInit();
-        withdrawStrategy = await WithdrawStrategy.new(router.address, goblin);
-        goblinBnbBusd = await 
+        factory = await MdexFactory.deployed();
+        wbnb = await WBNB.deployed();
+        busd = await BUSD.deployed();
+        router = await MdexRouter.deployed();
+        mdx = await MdxToken.deployed();
 
+        // TODO, deposit token in bank.
     })
 
     // 2. Positions usage
@@ -183,6 +189,79 @@ contract("TestProduction", (accounts) => {
                 // Withdraw
     describe('Positions usage test', async () => {
         
+        for (i = 0; i < 3; i++) {
+            let [token0Address, token1Address, goblinAddress] = getTokenPairAndInit(i);
+            InsideUnit1(token0Name, token1Name, goblinAddress);
+            break;  // TODO debug only, need to remove.
+        }
+
+        async function InsideUnit1(token0Name, token1Name, goblinAddress) {
+
+        }
+
     })
+
+    async function getTokenPairAndInit(i) {
+        assert(i == 0 || i == 1 || i == 2);
+
+        let pair = [['Bnb', 'Busd'], ['Busd', 'Bnb'], ['Mdx', 'Busd']];
+        let r0r1 = [[1000, 200000], [200000, 1000], [1000, 200000]];
+        
+        let token0Address = name2Address[pair[i][0]];
+        let token1Address = name2Address[pair[i][1]];
+        
+        let r0 = r0r1[i][0];
+        let r1 = r0r1[i][0];
+
+        let goblinAddress = addressJson[`MdxGoblin${token0Address}${token1Address}`]
+
+        await addLiquidate(token0Address, token1Address, r0, r1, goblinAddress);
+
+        return [token0Address, token1Address, goblinAddress]
+    }
+
+    // Input token address
+    async function addLiquidate(token0, token1, r0, r1, from) {
+        if (token0 == bnbAddress) {
+            token0 = wbnb.address
+            wbnb.deposit({from: from, value: r0})
+        } else if (token1 == bnbAddress) {
+            token1 = wbnb.address
+            wbnb.deposit({from: from, value: r1})
+        }
+
+        await approve(token0, router.address, r0, from)
+        await approve(token1, router.address, r1, from)
+
+        await router.addLiquidity(token0, token1,
+            r0, r1, 0, 0, from, MaxUint256, {from: from});
+
+        console.log(`After init add liquidity:`)
+        await getR0R1(token0, token1);
+    }
+    
+    // Input token address
+    async function getR0R1(token0, token1) {
+        if (token0 == bnbAddress) {
+            token0 = wbnb.address
+        } else if (token1 == bnbAddress) {
+            token1 = wbnb.address
+        }
+
+        let lpAddress = await factory.getPair(token0, token1);
+        let lp = await MdexPair.at(lpAddress)
+        let token0InLp = await lp.token0()
+        res = await lp.getReserves();
+        let _r0, _r1
+        if (token0 == token0InLp ||
+            (token0 == bnbAddress && token0InLp == wbnb.address))
+        {
+            [_r0, _r1] = [res[0], res[1]]
+        } else {
+            [_r0, _r1] = [res[1], res[0]]
+        }
+        console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
+        return [_r0, _r1];
+    }
     
 })
