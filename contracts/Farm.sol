@@ -489,7 +489,13 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
     /* ==================================== Only owner ==================================== */
 
-    function notifyRewardsAmount(uint256 poolId, uint256 reward, uint256 leftPeriodTimes)
+    function notifyRewardsAmount(
+        uint256 poolId,
+        uint256 reward,
+        uint256 leftPeriodTimes,
+        uint256 periodDuration,
+        uint256 leftRatioNextPeriod,
+    )
         external
         override
         onlyOwner
@@ -500,20 +506,22 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
 
         if (block.timestamp >= pool.periodFinish) {
             // If reward period finished
-            pool.rewardRate = reward.div(pool.periodDuration);
+            pool.rewardRate = reward.div(periodDuration);
         } else {
             // If reward period doesn't finished, added the remain reward.
             uint256 remaining = pool.periodFinish.sub(block.timestamp);
             uint256 leftover = remaining.mul(pool.rewardRate);
-            pool.rewardRate = reward.add(leftover).div(pool.periodDuration);
+            pool.rewardRate = reward.add(leftover).div(periodDuration);
         }
 
         DEMA.mint(address(this), reward);
-        pool.rewardsed = reward;
-        pool.rewardsNextPeriod = pool.rewardsed.mul(pool.leftRatioNextPeriod).div(100);
+        pool.rewardsed = pool.rewardsed.add(reward);
+        pool.rewardsNextPeriod = reward.mul(leftRatioNextPeriod).div(100);
         pool.leftPeriodTimes = leftPeriodTimes;
         pool.lastUpdateTime = block.timestamp;
-        pool.periodFinish = block.timestamp.add(pool.periodDuration);
+        pool.periodFinish = block.timestamp.add(periodDuration);
+        pool.periodDuration = periodDuration;
+        pool.leftRatioNextPeriod = leftRatioNextPeriod;
 
         emit RewardAdded(poolId, reward, pool.leftPeriodTimes);
     }
@@ -554,20 +562,15 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     function stop(uint256 poolId) external override onlyOwner {
         PoolInfo storage pool = poolInfo[poolId];
 
+        // Burn the leftover amount.
+        uint256 remaining = pool.periodFinish.sub(block.timestamp);
+        uint256 leftover = remaining.mul(pool.rewardRate);
+        DEMA.burn(address(this), leftover);
+        pool.rewardsed = pool.rewardsed.sub(leftover);
+
         pool.leftPeriodTimes = 0;
         pool.rewardsNextPeriod = 0;
         pool.periodFinish = block.timestamp;
-    }
-
-    function burn(uint256 poolId) external override onlyOwner {
-        PoolInfo storage pool = poolInfo[poolId];
-
-        // Make sure this pool is completely deprecated
-        require(pool.periodFinish <= block.timestamp);
-        require(pool.totalShares == 0, "Total shares not equal to 0");
-
-        uint256 leftAmount = pool.rewardsed.sub(pool.rewardsPaid);
-        DEMA.burn(address(this), leftAmount);
     }
 
     /* ========== EVENTS ========== */
