@@ -5,3 +5,4 @@ build/
 soljson*
 bin/
 package-lock.json
+*.xlsx
