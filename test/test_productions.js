@@ -41,21 +41,21 @@
         // All positions
         // Users positions number
         // Users all positions
-    
+
     // 6. Interest
         // For deposit token
         // For debts
 
 
 // Unit
-    // 1. For 3 Token pairs， r0: 1000   r1: 200,000, price 200
+    // 1. For 3 Token pairs， r0: 1000   r1: 200,000, price 200 (getTokenPairAndInit(i))
 
     // 2.
         // token0 amount, token1 amount
         //      10              0
         //       0              10
         //      10              10
-        //      10              400
+        //       1              10
 
     // 3.
         // Borrow0 amount, Borrow1 amount,
@@ -98,14 +98,14 @@
 
     // 4. Earn
         // Deposit 10 BNB for pool BNB-USDT
-            // Move time forward 30 second: 
+            // Move time forward 30 second:
                 // Check MDX earn, should equal to the value calculate bsc pool, reinvestment and boardroom.
                 // Check Farm earn, Using stakeEarnedPerPool() in Farm.sol
                 // Withdraw 100%. Then received MDX and DEMA should euqal to the value in above two steps.
 
     // 5. Global and user information
         // Create one BNB-USDT position and create two MDX-USDT position
-            // Productions number should be 2 
+            // Productions number should be 2
             // Get all productions id and check.
             // Positions number should be 3
             // All positions can aquire all 3 pos id
@@ -115,7 +115,7 @@
             // Users positions num of MDX-USDT should be 2
 
         // Withdraw one MDX-USDT position
-            // Productions number should be 2 
+            // Productions number should be 2
             // Get all productions id and check.
             // Positions number should be 2
             // All positions can aquire all 2 pos id
@@ -145,13 +145,24 @@
 
 
 const MdxGoblin = artifacts.require("MdxGoblin");
+const MdexFactory = artifacts.require("MdexFactory");
+const WBNB = artifacts.require("WBNB");
+const ERC20Token = artifacts.require("ERC20Token");
+const MdexRouter = artifacts.require("MdexRouter");
+const MdxToken = artifacts.require("MdxToken");
+const MdexPair = artifacts.require("MdexPair");
+const Bank = artifacts.require("Bank");
+const DEMA = artifacts.require("DEMA");
+const Farm = artifacts.require("Farm");
 
 const BigNumber = require("bignumber.js");
 const { assert } = require("console");
 const fs = require('fs')
 
+const bnbAddress = '0x0000000000000000000000000000000000000000'
+
 contract("TestProduction", (accounts) => {
-    
+
     const jsonString = fs.readFileSync("bin/contracts/address.json")
     const addressJson = JSON.parse(jsonString)
 
@@ -160,24 +171,31 @@ contract("TestProduction", (accounts) => {
     let busd;
     let router;
     let mdx;
-
-    let goblinBnbBusd;
-    let goblinMdxBusd;
+    let bank;
 
     const name2Address = {
-        'Bnb': '0x0000000000000000000000000000000000000000',
+        'Bnb': bnbAddress,
         'Busd': addressJson.BUSD,
         'Mdx': addressJson.MdxToken,
     }
 
     before('Init', async () => {
-        factory = await MdexFactory.deployed();
-        wbnb = await WBNB.deployed();
-        busd = await BUSD.deployed();
-        router = await MdexRouter.deployed();
-        mdx = await MdxToken.deployed();
+        factory = await MdexFactory.at(addressJson.MdexFactory);
+        wbnb = await WBNB.at(addressJson.WBNB);
+        busd = await BUSD.at(addressJson.BUSD);
+        router = await MdexRouter.at(addressJson.MdexRouter);
+        mdx = await MdxToken.at(addressJson.MdxToken);
+        bank = await Bank.at(addressJson.Bank);
 
-        // TODO, deposit token in bank.
+        // Deposit token in bank.
+        let amount = toWei(100);
+        bank.deposit(bnbAddress, amount, {from: accounts[0], value: amount});
+
+        mdx.approve(bank.address, amount, {from: accounts[0]})
+        bank.deposit(mdx.address, amount, {from: accounts[0]});
+
+        busd.approve(bank.address, amount, {from: accounts[0]})
+        bank.deposit(busd.address, amount, {from: accounts[0]});
     })
 
     // 2. Positions usage
@@ -188,28 +206,41 @@ contract("TestProduction", (accounts) => {
                 // Repay
                 // Withdraw
     describe('Positions usage test', async () => {
-        
+
         for (i = 0; i < 3; i++) {
-            let [token0Address, token1Address, goblinAddress] = getTokenPairAndInit(i);
-            InsideUnit1(token0Name, token1Name, goblinAddress);
+            let [token0Name, token1Name, goblinAddress] = getTokenPairAndInit(i);
+            afterUnit1(token0Name, token1Name, goblinAddress);
             break;  // TODO debug only, need to remove.
         }
 
-        async function InsideUnit1(token0Name, token1Name, goblinAddress) {
+        async function afterUnit1(token0Name, token1Name, goblinAddress) {
+
+            describe(`\n\nTest with ${token0Name} and ${token1Name}`, async () => {
+
+            })
 
         }
 
     })
 
+    async function approve(tokenAddress, to, amount, from) {
+        if (tokenAddress == bnbAddress)
+            return
+
+        let token = await ERC20.at(tokenAddress);
+        await token.approve(to, amount, {from: from});
+    }
+
+    // Return token0 name, token1 name, goblin address
     async function getTokenPairAndInit(i) {
         assert(i == 0 || i == 1 || i == 2);
 
         let pair = [['Bnb', 'Busd'], ['Busd', 'Bnb'], ['Mdx', 'Busd']];
         let r0r1 = [[1000, 200000], [200000, 1000], [1000, 200000]];
-        
+
         let token0Address = name2Address[pair[i][0]];
         let token1Address = name2Address[pair[i][1]];
-        
+
         let r0 = r0r1[i][0];
         let r1 = r0r1[i][0];
 
@@ -217,7 +248,7 @@ contract("TestProduction", (accounts) => {
 
         await addLiquidate(token0Address, token1Address, r0, r1, goblinAddress);
 
-        return [token0Address, token1Address, goblinAddress]
+        return [pair[i][0], pair[i][1], goblinAddress]
     }
 
     // Input token address
@@ -239,7 +270,7 @@ contract("TestProduction", (accounts) => {
         console.log(`After init add liquidity:`)
         await getR0R1(token0, token1);
     }
-    
+
     // Input token address
     async function getR0R1(token0, token1) {
         if (token0 == bnbAddress) {
@@ -263,5 +294,12 @@ contract("TestProduction", (accounts) => {
         console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
         return [_r0, _r1];
     }
-    
 })
+
+function toWei(ether) {
+    return web3.utils.toWei(BigNumber(ether).toString())
+}
+
+function fromWei(wei) {
+    return web3.utils.fromWei(BigNumber(wei).toString())
+}
