@@ -215,13 +215,99 @@ contract("TestProduction", (accounts) => {
 
         async function afterUnit1(token0Name, token1Name, goblinAddress) {
 
-            describe(`\n\nTest with ${token0Name} and ${token1Name}`, async () => {
+            let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 10]];
+            let posId;
 
-            })
+            for(borrows of borrowsArray) {
+                afterUnit3(token0Name, token1Name, borrows);
+                break;  //TODO debug only, need to remove.
+            }
 
+            async function afterUnit3(token0Name, token1Name, borrows) {
+
+                describe(`\n\nTest with ${token0Name} and ${token1Name}, borrow ${borrows[0]} and ${borrows[1]}`, async () => {
+
+                    let posId;
+
+                    describe(`\n\nTest create position`, async () => {
+                        before(`Create position`, async () => {
+                            posId = await createPosition([token0Name, token1Name], [toWei(10), 0], borrows, 0);
+                        })
+
+                        // Check result of create position
+                    })
+
+                    describe(`\n\nTest replenishment`, async () => {
+                        before(`replenishment`, async () => {
+                            await replenishment(posId, [token0Name, token1Name], [toWei(10), 0], borrows, 0);
+                        })
+
+                        // Check result of create position
+                    })
+
+                })
+            }
         }
 
     })
+
+    async function createPosition(tokensName, amounts, borrows, minDebt) {
+        let token0Address = name2Address[tokensName[0]];
+        let token1Address = name2Address[tokensName[1]];
+
+        let bnbValue = 0;
+        if (token0Address == bnbAddress) {
+            bnbValue = amounts[0];
+        } else if (token1Address == bnbAddress) {
+            bnbValue = amounts[1];
+        }
+
+        let pid = addressJson[`Mdx${token0Name}${token1Name}ProdId`]
+        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+
+        let strategyDate = web3.eth.abi.encodeParameters(
+            ["address", "address", "uint256", "uint256", "uint256"],
+            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
+
+        let data = web3.eth.abi.encodeParameters(
+            ["address", "bytes" ],
+            [addStrategyAddress, strategyDate]);
+
+        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
+        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
+
+        await bank.opPosition(0, pid, borrows, data).send({from: account, value: bnbValue});
+
+        return (await bank.currentPid());
+    }
+
+    async function replenishment(posId, tokensName, amounts, borrows, minDebt) {
+        let token0Address = name2Address[tokensName[0]];
+        let token1Address = name2Address[tokensName[1]];
+
+        let bnbValue = 0;
+        if (token0Address == bnbAddress) {
+            bnbValue = amounts[0];
+        } else if (token1Address == bnbAddress) {
+            bnbValue = amounts[1];
+        }
+
+        let pid = addressJson[`Mdx${token0Name}${token1Name}ProdId`]
+        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+
+        let strategyDate = web3.eth.abi.encodeParameters(
+            ["address", "address", "uint256", "uint256", "uint256"],
+            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
+
+        let data = web3.eth.abi.encodeParameters(
+            ["address", "bytes" ],
+            [addStrategyAddress, strategyDate]);
+
+        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
+        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
+
+        bank.opPosition(posId, pid, borrows, data).send({from: account, value: bnbValue});
+    }
 
     async function approve(tokenAddress, to, amount, from) {
         if (tokenAddress == bnbAddress)
@@ -297,9 +383,9 @@ contract("TestProduction", (accounts) => {
 })
 
 function toWei(ether) {
-    return web3.utils.toWei(BigNumber(ether).toString())
+    return BigNumber(web3.utils.toWei(BigNumber(ether).toString()))
 }
 
 function fromWei(wei) {
-    return web3.utils.fromWei(BigNumber(wei).toString())
+    return BigNumber(web3.utils.fromWei(BigNumber(wei).toString()))
 }
