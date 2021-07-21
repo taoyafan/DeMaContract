@@ -8,7 +8,7 @@ Each production relate to a goblin in contract `MdxGoblin.sol` (We will add an C
 
 There is only one farm in contract `Farm.sol` which used to give the extra DeMa token reward. Users can check DeMa rewards here.
 
-Contract `UserProfile.sol` allow users register and save the users information. 
+Contract `UserProfile.sol` allow users register and save the users information.
 
 The other contracts are transparent to user. They are only used in another contract.
 
@@ -76,6 +76,7 @@ function BankDeposit(token, amount, accout) {
     bank.methods.deposit(token, amount).send({from: account, value: bnbValue});
 }
 ```
+
 2. Withdraw each token which has been deposited
 
 function definition: `withdraw(address token, uint256 withdrawShares)`
@@ -103,6 +104,7 @@ function definition: `function opPosition(uint256 posId, uint256 pid, uint256[2]
 javascript calling example:
 
 ``` javascript
+// Note: need to approve to addStrategy from user.
 function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, account) {
     // pid is the production id should be number
     // tokens should be array of two address string
@@ -111,7 +113,7 @@ function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, ac
     // minLPAmount is min lp amount after create position should be BigNumber
 
     const bank = new web3.eth.Contract(bankAbi, bankAddress);
-    
+
     let bnbValue = BigNumber(0);
     if (tokens[0] == '0x0000000000000000000000000000000000000000') {
         // We use this zero address to represent bnb token.
@@ -124,9 +126,9 @@ function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, ac
         ["address", "address", "uint256", "uint256", "uint256"],
         [tokens[0], tokens[1], depositAmount[0], depositAmount[0], minLPAmount]);
     let data = web3.eth.abi.encodeParameters(
-        ["address", "bytes" ], 
+        ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);
-        
+
     bank.methods.opPosition(0, pid, borrowAmount, data).send({from: account, value: bnbValue});
 }
 
@@ -139,7 +141,7 @@ function BankPosReplenishment(posId, pid, tokens, depositAmount, borrowAmount, m
     // minLPAmount is min lp amount after create position should be BigNumber
 
     const bank = new web3.eth.Contract(bankAbi, bankAddress);
-    
+
     let bnbValue = BigNumber(0);
     if (tokens[0] == '0x0000000000000000000000000000000000000000') {
         // We use this zero address to represent bnb token.
@@ -152,9 +154,9 @@ function BankPosReplenishment(posId, pid, tokens, depositAmount, borrowAmount, m
         ["address", "address", "uint256", "uint256", "uint256"],
         [tokens[0], tokens[1], depositAmount[0], depositAmount[0], minLPAmount]);
     let data = web3.eth.abi.encodeParameters(
-        ["address", "bytes" ], 
+        ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);
-        
+
     bank.methods.opPosition(posId, pid, borrowAmount, data).send({from: account, value: bnbValue});
 }
 
@@ -171,9 +173,9 @@ function BankPosWithdraw(posId, pid, tokens, withdrawRate, whichWantBack, accoun
         ["address", "address", "uint256", "uint256"],
         [tokens[0], tokens[1], withdrawRate, depositAmount[0], minLPAmount]);
     let data = web3.eth.abi.encodeParameters(
-        ["address", "bytes" ], 
+        ["address", "bytes" ],
         [withdrawStrategyAddress, strategyDate]);
-        
+
     bank.methods.opPosition(posId, pid, /*borrow amount:*/ [0, 0], data).send({from: account});
 }
 ```
@@ -333,7 +335,7 @@ async function BankGetTotalAmount(token, account) {
 
 7. Get bank info per token
 
-function definition: 
+function definition:
 
 ``` javascript
     banks(address token) returns {
@@ -364,7 +366,7 @@ async function BankGetInfoPerToken(token, account) {
 
 8. Get user position num and id.
 
-function definition: 
+function definition:
 
 `userPosNum(address account) returns (uint256)`
 
@@ -391,7 +393,7 @@ async function ProdGetUserPosId(index, account) {
 
 9. Get user production num and id.
 
-function definition: 
+function definition:
 
 `userPosNum(address account) returns (uint256)`
 
@@ -418,7 +420,7 @@ async function ProdGetUserPosId(index, account) {
 
 10. Get position information
 
-function definition: 
+function definition:
 
 ``` javascript
     positionInfo(uint256 posId) returns (
@@ -448,7 +450,7 @@ async function ProdGetPositionInfo(posId, account) {
 }
 ```
 
-11. Get all position id and new health 
+11. Get all position id and new health
 
 function definition: `allPosIdAndHealth() returns (uint256[] memory, uint256[] memory)`
 
@@ -465,7 +467,7 @@ async function ProdGetPositionInfo(account) {
 
 12. Get production information
 
-function definition: 
+function definition:
 
 ``` javascript
     positionInfo(uint256 posId) returns {
