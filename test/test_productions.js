@@ -216,7 +216,6 @@ contract("TestProduction", (accounts) => {
         async function afterUnit1(token0Name, token1Name, goblinAddress) {
 
             let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 10]];
-            let posId;
 
             for(borrows of borrowsArray) {
                 afterUnit3(token0Name, token1Name, borrows);
@@ -228,10 +227,15 @@ contract("TestProduction", (accounts) => {
                 describe(`\n\nTest with ${token0Name} and ${token1Name}, borrow ${borrows[0]} and ${borrows[1]}`, async () => {
 
                     let posId;
+                    let beforeStates;
+                    let afterStates;
 
                     describe(`\n\nTest create position`, async () => {
+                        
                         before(`Create position`, async () => {
+                            beforeStates = await getStates();
                             posId = await createPosition([token0Name, token1Name], [toWei(10), 0], borrows, 0);
+                            afterStates = await getStates();
                         })
 
                         // Check result of create position
@@ -248,8 +252,9 @@ contract("TestProduction", (accounts) => {
                 })
             }
         }
-
     })
+
+    // ------------------------------------- Interface -------------------------------------
 
     async function createPosition(tokensName, amounts, borrows, minDebt) {
         let token0Address = name2Address[tokensName[0]];
@@ -309,12 +314,45 @@ contract("TestProduction", (accounts) => {
         bank.opPosition(posId, pid, borrows, data).send({from: account, value: bnbValue});
     }
 
-    async function approve(tokenAddress, to, amount, from) {
-        if (tokenAddress == bnbAddress)
-            return
+    // ------------------------------------- Utils -------------------------------------
 
-        let token = await ERC20.at(tokenAddress);
-        await token.approve(to, amount, {from: from});
+    async function getStates(bank, posId, userAddress, mdxPoolAddress, tokensName) {
+        let tokensAddress = [name2Address[tokensName[0]], name2Address[tokensName[1]]];
+
+        let states = {};
+
+        // user amount
+        states.userAmount = [
+            await getBalance(tokensAddress[0], userAddress), 
+            await getBalance(tokensAddress[1], userAddress)
+        ];
+
+        // bank amount
+        states.bankAmount = [
+            await getBalance(tokensAddress[0], bankAddress), 
+            await getBalance(tokensAddress[1], bankAddress)
+        ];
+
+        states.banksInfo = [
+            await bank.banks(tokensAddress[0]),
+            await bank.banks(tokensAddress[1])
+        ];
+
+        // position info
+        states.posInfo = await bank.positions(posId);
+        [states.allPosId, states.allPosHealth] = await bank.allPosIdAndHealth();
+
+        // user position and production info
+        states.userPosId = await bank.userAllPosId(userAddress);
+        states.userProdId = await bank.userAllProdId(userAddress);
+
+        // mdx pool lp amount
+        let lpAddress = await factory.getPair(tokensAddress[0], tokensAddress[1]);
+        states.mdxPoolLpAmount = await getBalance(lpAddress, mdxPoolAddress)
+    }
+
+    async function checkStates(beforeStates, afterStates, target) {
+        
     }
 
     // Return token0 name, token1 name, goblin address
@@ -335,6 +373,23 @@ contract("TestProduction", (accounts) => {
         await addLiquidate(token0Address, token1Address, r0, r1, goblinAddress);
 
         return [pair[i][0], pair[i][1], goblinAddress]
+    }
+
+    async function approve(tokenAddress, to, amount, from) {
+        if (tokenAddress == bnbAddress)
+            return
+
+        let token = await ERC20.at(tokenAddress);
+        await token.approve(to, amount, {from: from});
+    }
+
+    async function getBalance(tokenAddress, account) {
+        if (tokenAddress == bnbAddress) {
+            return BigNumber(await web3.eth.getBalance(account))
+        } else {
+            let token = await ERC20.at(tokenAddress);
+            return BigNumber(await token.balanceOf(account));
+        }
     }
 
     // Input token address
