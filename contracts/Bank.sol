@@ -217,6 +217,17 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ---- User Positions Info ---- */
 
+    function userAllPosId(address account) external view returns (uint256[] memory) {
+        uint256 len = userPosNum(account);
+        uint256[] memory posId = new uint256[](len);
+
+        for (uint256 i = 0; i < len; ++i) {
+            posId[i] = userPosId(account, i);
+        }
+
+        return posId;
+    }
+
     function userPosNum(address account) public view returns (uint256) {
         return EnumerableSet.length(userPPInfo[account].posId);
     }
@@ -226,6 +237,17 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     /* ---- User Productions Info ---- */
+
+    function userAllProdId(address account) external view returns (uint256[] memory) {
+        uint256 len = userProdNum(account);
+        uint256[] memory prodId = new uint256[](len);
+
+        for (uint256 i = 0; i < len; ++i) {
+            prodId[i] = userProdId(account, i);
+        }
+
+        return prodId;
+    }
 
     function userProdNum(address account) public view returns (uint256) {
         return EnumerableSet.length(userPPInfo[account].prodId);
