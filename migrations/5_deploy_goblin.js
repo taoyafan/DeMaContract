@@ -70,6 +70,9 @@ module.exports = async function (deployer, network, accounts) {
         );
 
         saveToJson(`MdxGoblin${prod.token0}${prod.token1}`, prod.goblin.address);
+
+        // Set strategy ok, MdxStrategyWithdrawMinimizeTrading will be set true when deploy
+        prod.goblin.setStrategyOk([MdxStrategyAddTwoSidesOptimal.address], true)
         
         // farm add pool 
         // rewardFirstPeriod, leftPeriodTimes = 23, periodDuration = 1 month, 

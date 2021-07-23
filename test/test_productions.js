@@ -257,78 +257,37 @@ contract("TestProduction", (accounts) => {
     // ------------------------------------- Interface -------------------------------------
 
     async function createPosition(tokensName, amounts, borrows, minDebt) {
-        let token0Address = name2Address[tokensName[0]];
-        let token1Address = name2Address[tokensName[1]];
-
-        let bnbValue = 0;
-        if (token0Address == bnbAddress) {
-            bnbValue = amounts[0];
-        } else if (token1Address == bnbAddress) {
-            bnbValue = amounts[1];
-        }
-
-        let pid = addressJson[`Mdx${token0Name}${token1Name}ProdId`]
-        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
-
-        let strategyDate = web3.eth.abi.encodeParameters(
-            ["address", "address", "uint256", "uint256", "uint256"],
-            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
-
-        let data = web3.eth.abi.encodeParameters(
-            ["address", "bytes" ],
-            [addStrategyAddress, strategyDate]);
-
-        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
-        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
-
-        await bank.opPosition(0, pid, borrows, data).send({from: account, value: bnbValue});
-
+        await addLp(0, tokensName, amounts, borrows, minDebt)
         return (await bank.currentPid());
     }
 
     async function replenishment(posId, tokensName, amounts, borrows, minDebt) {
-        let token0Address = name2Address[tokensName[0]];
-        let token1Address = name2Address[tokensName[1]];
+        await addLp(posId, tokensName, amounts, borrows, minDebt)
+    }
 
-        let bnbValue = 0;
-        if (token0Address == bnbAddress) {
-            bnbValue = amounts[0];
-        } else if (token1Address == bnbAddress) {
-            bnbValue = amounts[1];
-        }
+    async function repay() {
 
-        let pid = addressJson[`Mdx${token0Name}${token1Name}ProdId`]
-        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+    }
 
-        let strategyDate = web3.eth.abi.encodeParameters(
-            ["address", "address", "uint256", "uint256", "uint256"],
-            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
-
-        let data = web3.eth.abi.encodeParameters(
-            ["address", "bytes" ],
-            [addStrategyAddress, strategyDate]);
-
-        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
-        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
-
-        bank.opPosition(posId, pid, borrows, data).send({from: account, value: bnbValue});
+    async function withdraw() {
+        
     }
 
     // ------------------------------------- Utils -------------------------------------
 
-    async function getStates(bank, posId, userAddress, mdxPoolAddress, tokensName) {
+    async function getStates(posId, userAddress, mdxPoolAddress, tokensName) {
         let tokensAddress = [name2Address[tokensName[0]], name2Address[tokensName[1]]];
 
-        let states = {};
+        let states = {tokensAddress: tokensAddress};
 
         // user amount
-        states.userAmount = [
+        states.userBalance = [
             await getBalance(tokensAddress[0], userAddress), 
             await getBalance(tokensAddress[1], userAddress)
         ];
 
         // bank amount
-        states.bankAmount = [
+        states.bankBalance = [
             await getBalance(tokensAddress[0], bankAddress), 
             await getBalance(tokensAddress[1], bankAddress)
         ];
@@ -338,21 +297,123 @@ contract("TestProduction", (accounts) => {
             await bank.banks(tokensAddress[1])
         ];
 
-        // position info
-        states.posInfo = await bank.positions(posId);
+        // position info, ids, health
+        if (posId == 0) {
+            // no pos
+            states.posInfo = {debtShare: [BigNumber(0), BigNumber(0)]}
+        } else {
+            states.posInfo = await bank.positions(posId);
+        }
+        states.posInfo.posId = posId;
         [states.allPosId, states.allPosHealth] = await bank.allPosIdAndHealth();
 
         // user position and production info
         states.userPosId = await bank.userAllPosId(userAddress);
         states.userProdId = await bank.userAllProdId(userAddress);
 
+        // Goblin info
+        let goblinAddress = addressJson[`MdxGoblin${tokensAddress[0]}${tokensAddress[1]}`];
+        let goblin = await MdxGoblin.at(goblinAddress);
+        states.goblin = {}
+        states.goblin.globalInfo = await goblin.globalInfo();
+        states.goblin.userInfo = await goblin.globalInfo();
+        states.goblin.lpAmount = await goblin.posLPAmount(posId);   // It will be 0 if posId is 0
+        states.goblin.principals = await goblin.principal(posId);
+
         // mdx pool lp amount
         let lpAddress = await factory.getPair(tokensAddress[0], tokensAddress[1]);
         states.mdxPoolLpAmount = await getBalance(lpAddress, mdxPoolAddress)
     }
 
-    async function checkStates(beforeStates, afterStates, target) {
+    // Assuming there is no time elapse
+    async function checkStates(beforeStates, afterStates, depositAmounts, borrowAmounts) {
+        const tokens = afterStates.tokenAddress;
+        for (i = 0; i < 2; ++i) {
+            // Check user balance
+            let userIncBalance = afterStates.userBalance[i].minus(beforeStates.userBalance[i]);
+            equal(userIncBalance, -depositAmounts[i], `User balance[${i}] changes wrong`, true, tokens[i])
+            
+            // Check bank balance
+            let bankIncBalance = afterStates.bankBalance[i].minus(beforeStates.bankBalance[i]);
+            equal(bankIncBalance, -borrowAmounts[i], `Bank balance[${i}] changes wrong`, true, tokens[i])
+
+            // Check bank total val
+            let bankIncVal = afterStates.banksInfo[i].totalVal.minus(beforeStates.banksInfo[i].totalVal);
+            equal(bankIncVal, -borrowAmounts[i], `Bank val[${i}] changes wrong`, true, tokens[i])
+            
+            // Check bank total debt
+            let bankIncDebt = afterStates.banksInfo[i].totalDebt.minus(beforeStates.banksInfo[i].totalDebt);
+            equal(bankIncDebt, (borrowAmounts[i]), `Bank debt[${i}] changes wrong`, true, tokens[i])
+
+            let userPosIncDebtShare = afterStates.posInfo.debtShare[i].minus(beforeStates.posInfo.debtShare[i])
+            let   
+             = await bank.debtShareToVal(tokensAddress, userPosIncDebtShare);
+            equal(userPosIncDebt, (borrowAmounts[i]), `Pos debtShare[${i}] changes wrong`, true, tokens[i])
+        }
+
+        // Check goblin states
+
         
+
+        // Health should be 10000 while there is no time elapse
+        for (i = 0; i < states.allPosId.length; ++i) {
+            if (allPosId[i] == states.posInfo.posId) {
+                equal(afterStates.allPosHealth[i], 10000, 'Health wrong');
+                break;
+            }
+        }
+    }
+
+    function equal(amount0, amount1, info, strictEqual, token) {
+        info = info + ` actual: ${fromWei(amount0)}, expect: ${fromWei(amount1)}`;
+        let larger = amount0.isGreaterThan(amount1) ? amount0 : amount1
+        let smaller =  amount0.isGreaterThan(amount1) ? amount1 : amount0
+
+        if (strictEqual) {
+            if (token == bnbAddress || token == wbnb.address) {
+                assert.equal(larger.minus(smaller)
+                    .dividedToIntegerBy(1e17).toNumber(), 0, info + `real: ${amount0}, target: ${amount1}`)
+            } else {
+                assert.equal(amount0.toString(), amount1.toString(), info)
+            }
+        } else {
+            let delta = larger.minus(smaller)
+            if (token == bnbAddress || token == wbnb.address) {
+                assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
+                    .dividedToIntegerBy(1000).plus(1e16)), info)
+            } else {
+                assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
+                    .dividedToIntegerBy(1000)), info)
+            }
+        }
+    }
+
+    async function addLp(posId, tokensName, amounts, borrows, minDebt) {
+        let token0Address = name2Address[tokensName[0]];
+        let token1Address = name2Address[tokensName[1]];
+
+        let bnbValue = 0;
+        if (token0Address == bnbAddress) {
+            bnbValue = amounts[0];
+        } else if (token1Address == bnbAddress) {
+            bnbValue = amounts[1];
+        }
+
+        let pid = addressJson[`Mdx${token0Name}${token1Name}ProdId`]
+        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+
+        let strategyDate = web3.eth.abi.encodeParameters(
+            ["address", "address", "uint256", "uint256", "uint256"],
+            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
+
+        let data = web3.eth.abi.encodeParameters(
+            ["address", "bytes" ],
+            [addStrategyAddress, strategyDate]);
+
+        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
+        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
+
+        await bank.opPosition(posId, pid, borrows, data).send({from: account, value: bnbValue});
     }
 
     // Return token0 name, token1 name, goblin address
@@ -434,6 +495,29 @@ contract("TestProduction", (accounts) => {
         }
         console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
         return [_r0, _r1];
+    }
+
+    async function removeAllLiquidity(token0, token1, from) {
+        if (token0 == bnbAddress) {
+            token0 = wbnb.address
+        } else if (token1 == bnbAddress) {
+            token1 = wbnb.address
+        }
+
+        let lpAddress = await factory.getPair(token0, token1);
+        let lpAmount = await getBalance(lpAddress, from)
+
+        await approve(lpAddress, router.address, lpAmount, from)
+        await router.removeLiquidity(token0, token1,
+            lpAmount, 0, 0, from, MaxUint256, {from: from});
+
+        console.log(`After remove all liquidity:`)
+        await getR0R1(token0, token1);
+    }
+
+    async function swapAllToA(na, nb, ra, rb) {
+        let deltaA = BigNumber(nb).multipliedBy(ra).dividedToIntegerBy(rb)
+        return BigNumber(na).plus(deltaA)
     }
 })
 
