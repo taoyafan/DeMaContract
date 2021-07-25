@@ -29,7 +29,8 @@
     "testadds": "truffle test ./test/test_add_strategy.js",
     "testwds": "truffle test ./test/test_withdraw_strategy.js",
     "testreinvestment": "truffle test ./test/TestReinvestment.test.js",
-    "testrewardspershare": "truffle test ./test/TestRewardsPerShare.test.js"
+    "testrewardspershare": "truffle test ./test/TestRewardsPerShare.test.js",
+    "testprod": "truffle test ./test/test_productions.js"
   },
   "repository": {
     "type": "git",
