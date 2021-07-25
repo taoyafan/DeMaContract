@@ -470,7 +470,7 @@ async function ProdGetPositionInfo(account) {
 function definition:
 
 ``` javascript
-    positionInfo(uint256 posId) returns {
+    productions (uint256 posId) returns {
         address[2] borrowToken;
         bool isOpen;
         bool[2] canBorrow;
