@@ -1,5 +1,7 @@
 const erc20ABI = require('./abi.js');
 const BigNumber = require("bignumber.js");
+const fs = require('fs')
+const path = require('path');
 
 // Return a BigNumber of balance that has divided decimals
 async function erc20TokenGetBalance(tokenAddress, accountAddress) {
@@ -12,4 +14,31 @@ async function erc20TokenGetBalance(tokenAddress, accountAddress) {
     return balance;
 }
 
-module.exports = erc20TokenGetBalance;
+function initFile(file) {
+    const fileDir = path.resolve(file, '..');
+    
+    if(!fs.existsSync(fileDir)) {
+        console.log(`Not exist ${fileDir}`);
+        fs.mkdirSync(fileDir, {recursive:true});
+        console.log(`Make ${fileDir} success!`);
+    }
+
+    fs.writeFileSync(file, '',{ flag:'w'});
+}
+
+function saveLogToFile(file, name, data = null) {
+    fs.appendFileSync(file, name);
+    fs.appendFileSync(file, '\n');
+
+    if (data) {
+        data = JSON.stringify(data, null, 2);
+        fs.appendFileSync(file, data);
+        fs.appendFileSync(file, '\n\n\n');
+    }
+}
+
+module.exports = {
+    erc20TokenGetBalance,
+    saveLogToFile,
+    initFile,
+}
