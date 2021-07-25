@@ -71,10 +71,10 @@ contract Bank is Ownable, ReentrancyGuard {
 
     mapping(address => UserPPInfo) userPPInfo;      // User Productions, Positions Info.
 
-    mapping(uint256 => Production) public productions;
+    mapping(uint256 => Production) productions;
     uint256 public currentPid = 1;
 
-    mapping(uint256 => Position) public positions;
+    mapping(uint256 => Position) positions;     // pos info can read in positionInfo()
     uint256 public currentPos = 1;
 
     EnumerableSet.UintSet allPosId;
@@ -88,11 +88,11 @@ contract Bank is Ownable, ReentrancyGuard {
 
     // Used in opProduction to prevent stack over deep
     struct WorkAmount {
-        uint256 sendBSC;
+        uint256 sendBnb;
         uint256[2] beforeToken;      // How many token in the pool after borrow before goblin work
         uint256[2] debts;
         uint256[2] backToken;
-        bool[2] isBorrowBSC;
+        bool[2] isBorrowBnb;
         bool borrowed;
     }
 
@@ -105,7 +105,7 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 rest;           // Only one item is to save memory.
         uint256[2] prize;
         uint256[2] left;
-        bool[2] isBSC;
+        bool[2] isBnb;
     }
 
     modifier onlyEOA() {
@@ -140,7 +140,7 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     function positionInfo(uint256 posId)
-        public
+        external
         view
         returns (uint256, uint256, uint256[2] memory, uint256[2] memory, address)
     {
@@ -156,6 +156,32 @@ contract Bank is Ownable, ReentrancyGuard {
             prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
             [debt0, debt1],
             pos.owner);
+    }
+
+    function productionsInfo(uint256 prodId) 
+        external 
+        view 
+        returns (
+            address[2] memory,  // borrowToken
+            bool,               // isOpen
+            bool[2] memory,     // canBorrow
+            address,            // goblin
+            uint256[2] memory,  // minDebt
+            uint256,            // openFactor   
+            uint256             // liquidateFactor
+        )
+    {
+        Production storage prod = productions[prodId];
+        
+        return (
+            [prod.borrowToken[0], prod.borrowToken[1]], 
+            prod.isOpen, 
+            [prod.canBorrow[0], prod.canBorrow[1]], 
+            address(prod.goblin), 
+            [prod.minDebt[0], prod.minDebt[0]], 
+            prod.openFactor, 
+            prod.liquidateFactor
+        );
     }
 
     // Total amount, not including reserved
@@ -306,7 +332,7 @@ contract Bank is Ownable, ReentrancyGuard {
         // get DEMA rewards
         getBankRewards();
 
-        if (token == address(0)) {//BSC
+        if (token == address(0)) {//Bnb
             SafeToken.safeTransferETH(msg.sender, amount);
         } else {
             SafeToken.safeTransfer(token, msg.sender, amount);
@@ -317,7 +343,7 @@ contract Bank is Ownable, ReentrancyGuard {
      * @dev Create position:
      * opPosition(0, productionId, [borrow0, borrow1],
      *     [addLpStrategyAddress, _token0, _token1, token0Amount, token1Amount, _minLPAmount] )
-     * note: if token is BSC, token address should be address(0);
+     * note: if token is Bnb, token address should be address(0);
      *
      * @dev Replenishment:
      * opPosition(posId, productionId, [0, 0],
@@ -371,20 +397,20 @@ contract Bank is Ownable, ReentrancyGuard {
         _calInterest(production.borrowToken[1]);
 
         WorkAmount memory amount;
-        amount.sendBSC = msg.value;
+        amount.sendBnb = msg.value;
         amount.debts = _removeDebt(positions[posId], production);
         uint256 i;
 
         for (i = 0; i < 2; ++i) {
             amount.debts[i] = amount.debts[i].add(borrow[i]);
-            amount.isBorrowBSC[i] = production.borrowToken[i] == address(0);
+            amount.isBorrowBnb[i] = production.borrowToken[i] == address(0);
 
             // Save the amount of borrow token after borrowing before goblin work.
-            if (amount.isBorrowBSC[i]) {
-                amount.sendBSC = amount.sendBSC.add(borrow[i]);
-                require(amount.sendBSC <= address(this).balance && amount.debts[i] <= banks[production.borrowToken[i]].totalVal,
-                    "insufficient BSC in the bank");
-                amount.beforeToken[i] = address(this).balance.sub(amount.sendBSC);
+            if (amount.isBorrowBnb[i]) {
+                amount.sendBnb = amount.sendBnb.add(borrow[i]);
+                require(amount.sendBnb <= address(this).balance && amount.debts[i] <= banks[production.borrowToken[i]].totalVal,
+                    "insufficient Bnb in the bank");
+                amount.beforeToken[i] = address(this).balance.sub(amount.sendBnb);
 
             } else {
                 amount.beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
@@ -395,7 +421,7 @@ contract Bank is Ownable, ReentrancyGuard {
             }
         }
 
-        production.goblin.work{value: amount.sendBSC}(
+        production.goblin.work{value: amount.sendBnb}(
             posId,
             msg.sender,
             production.borrowToken,
@@ -408,7 +434,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         // Calculate the back token amount
         for (i = 0; i < 2; ++i) {
-            amount.backToken[i] = amount.isBorrowBSC[i] ? (address(this).balance.sub(amount.beforeToken[i])) :
+            amount.backToken[i] = amount.isBorrowBnb[i] ? (address(this).balance.sub(amount.beforeToken[i])) :
                 SafeToken.myBalance(production.borrowToken[i]).sub(amount.beforeToken[i]);
 
             if(amount.backToken[i] > amount.debts[i]) {
@@ -416,7 +442,7 @@ contract Bank is Ownable, ReentrancyGuard {
                 amount.backToken[i] = amount.backToken[i].sub(amount.debts[i]);
                 amount.debts[i] = 0;
 
-                amount.isBorrowBSC[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
+                amount.isBorrowBnb[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
                     SafeToken.safeTransfer(production.borrowToken[i], msg.sender, amount.backToken[i]);
 
             } else if (amount.debts[i] > amount.backToken[i]) {
@@ -465,14 +491,14 @@ contract Bank is Ownable, ReentrancyGuard {
         temp.health = production.goblin.newHealth(posId, production.borrowToken, temp.debts);
         require(temp.health < production.liquidateFactor, "can't liquidate");
 
-        temp.isBSC;
+        temp.isBnb;
         temp.before;
 
         // Save before amount
         uint256 i;
         for (i = 0; i < 2; ++i) {
-            temp.isBSC[i] = production.borrowToken[i] == address(0);
-            temp.before[i] = temp.isBSC[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
+            temp.isBnb[i] = production.borrowToken[i] == address(0);
+            temp.before[i] = temp.isBnb[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
         }
 
         production.goblin.liquidate(posId, pos.owner, production.borrowToken, temp.debts);
@@ -490,7 +516,7 @@ contract Bank is Ownable, ReentrancyGuard {
         temp.left;
 
         for (i = 0; i < 2; ++i) {
-            temp.back = temp.isBSC[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
+            temp.back = temp.isBnb[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
             temp.back = temp.back.sub(temp.before[i]);
 
             temp.prize[i] = temp.back.mul(config.getLiquidateBps()).div(10000);
@@ -499,7 +525,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
             // Send reward to sender
             if (temp.prize[i] > 0) {
-                temp.isBSC[i] ?
+                temp.isBnb[i] ?
                     SafeToken.safeTransferETH(msg.sender, temp.prize[i]) :
                     SafeToken.safeTransfer(production.borrowToken[i], msg.sender, temp.prize[i]);
             }
@@ -507,7 +533,7 @@ contract Bank is Ownable, ReentrancyGuard {
             // Send rest token to pos.owner.
             if (temp.rest > temp.debts[i]) {
                 temp.left[i] = temp.rest.sub(temp.debts[i]);
-                temp.isBSC[i] ?
+                temp.isBnb[i] ?
                     SafeToken.safeTransferETH(pos.owner, temp.left[i]) :
                     SafeToken.safeTransfer(production.borrowToken[i], pos.owner, temp.left[i]);
             } else {
@@ -710,4 +736,6 @@ contract Bank is Ownable, ReentrancyGuard {
             SafeToken.safeTransfer(token, to, value);
         }
     }
+    
+    receive() external payable {}
 }
