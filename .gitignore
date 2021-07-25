@@ -6,3 +6,4 @@ soljson*
 bin/
 package-lock.json
 *.xlsx
+test/log/*
