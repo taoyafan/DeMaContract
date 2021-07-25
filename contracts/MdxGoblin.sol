@@ -67,7 +67,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     GlobalInfo public globalInfo;
-    mapping(address => UserInfo) userInfo;
+    mapping(address => UserInfo) public userInfo;
     mapping(uint256 => uint256) public override posLPAmount;
 
     // Principal of each tokens in each pos. Same order with borrow tokens
@@ -384,6 +384,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         temp.returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute 
 
+        // -------------------------- execute --------------------------
         // strategy will send back all token and LP.
         uint256[2] memory deltaN = IStrategy(strategy).execute{value: msg.value}(
             account, borrowTokens, borrowAmounts, debts, ext);
@@ -424,7 +425,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             if (deltaN[0] > 0 || deltaN[1] > 0){
                 // Decrease some principal.
                 if (N[0] > 0) {
-                    uint256 decN0 = getMktSellInAmount(deltaN[1], rb, ra);
+                    uint256 decN0 = getMktSellInAmount(deltaN[1], ra, rb);
                     if (N[0] > deltaN[0].add(decN0)) {
                         N[0] = N[0].sub(deltaN[0]).sub(decN0);
                     } else {
@@ -432,7 +433,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                     }
                 } else {
                     // N[1] >= 0
-                    uint256 decN1 = getMktSellInAmount(deltaN[0], ra, rb);
+                    uint256 decN1 = getMktSellInAmount(deltaN[0], rb, ra);
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
                     } else {
@@ -627,7 +628,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         if (nb > db) {
             // Swap B to A
-            uint256 incA = getMktSellAmount(nb-db, ra, rb);
+            uint256 incA = getMktSellAmount(nb-db, rb, ra);
             if (na.add(incA) > da) {
                 na = na.add(incA).sub(da);
             } else {
@@ -697,5 +698,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     function setCriticalStrategies(IStrategy _liqStrategy) external onlyOwner {
         liqStrategy = _liqStrategy;
     }
+    
+    receive() external payable {}
 
 }
