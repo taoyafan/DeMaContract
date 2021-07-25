@@ -1,6 +1,6 @@
 const WithdrawStrategy = artifacts.require("MdxStrategyWithdrawMinimizeTrading");
 const mdxInit = require("../scripts/mdx_init.js");
-const ERC20 = artifacts.require("ERC20Token");
+const ERC20Token = artifacts.require("ERC20Token");
 const MdexPair = artifacts.require("MdexPair");
 const bnbAddress = "0x0000000000000000000000000000000000000000";
 const BigNumber = require("bignumber.js");
@@ -407,7 +407,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                 if (tokenAddress == bnbAddress) {
                     await web3.eth.sendTransaction({from: from, to: to, value: amount})
                 } else {
-                    let token = await ERC20.at(tokenAddress);
+                    let token = await ERC20Token.at(tokenAddress);
                     await token.transfer(to, amount, {from: from});
                 }
             }
@@ -416,7 +416,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                 if (tokenAddress == bnbAddress)
                     return
 
-                let token = await ERC20.at(tokenAddress);
+                let token = await ERC20Token.at(tokenAddress);
                 await token.approve(to, 0, {from: from});
                 await token.approve(to, amount, {from: from});
             }
@@ -425,7 +425,7 @@ contract("TestWithdrawStrategy", (accounts) => {
                 if (tokenAddress == bnbAddress) {
                     return BigNumber(await web3.eth.getBalance(account))
                 } else {
-                    let token = await ERC20.at(tokenAddress);
+                    let token = await ERC20Token.at(tokenAddress);
                     return BigNumber(await token.balanceOf(account));
                 }
             }
