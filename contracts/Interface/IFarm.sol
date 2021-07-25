@@ -68,26 +68,5 @@ interface IFarm {
     function stake(uint256 poolId, address account, uint256 amount) external;
 
     // Must indicate the inviter once the user have has one. 
-    function withdraw(uint256 poolId, address account, uint256 amount) external;
-
-
-    /* ==================================== Only owner ==================================== */
-
-    function notifyRewardsAmount(uint256 poolId, uint256 reward, uint256 leftPeriodTimes) external;    
-
-    function addPool(
-        uint256 rewardFirstPeriod,      // Rewards will be minted in the first period
-        uint256 leftPeriodTimes,        // Left period times, 0 means only one period.
-        uint256 periodDuration,         // One period duration time.
-        uint256 leftRatioNextPeriod,    // Next period left rewards, will divide 100, 90 means left 90%
-        address operator                // Who can stake and withdraw.
-    ) external; 
-
-    // Stop the pool
-    function stop(uint256 poolId) external;    
-
-    // Burn the left rewards after call stop function.
-    // Require total share is 0
-    function burn(uint256 poolId) external;          
-
+    function withdraw(uint256 poolId, address account, uint256 amount) external;   
 }

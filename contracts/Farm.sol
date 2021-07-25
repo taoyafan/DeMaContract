@@ -494,10 +494,9 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         uint256 reward,
         uint256 leftPeriodTimes,
         uint256 periodDuration,
-        uint256 leftRatioNextPeriod,
+        uint256 leftRatioNextPeriod
     )
         external
-        override
         onlyOwner
         checkPoolId(poolId)
         updateRewards(poolId, address(0))
@@ -534,7 +533,6 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         address operator
     )
         external
-        override
         onlyOwner
     {
         PoolInfo storage pool = poolInfo[nextPoolId];
@@ -559,7 +557,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.totalShares = 0;
     }
 
-    function stop(uint256 poolId) external override onlyOwner {
+    function stop(uint256 poolId) external onlyOwner {
         PoolInfo storage pool = poolInfo[poolId];
 
         // Burn the leftover amount.
