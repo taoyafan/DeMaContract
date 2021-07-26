@@ -259,13 +259,13 @@ contract("TestProduction", (accounts) => {
                         
                         before(`Create position`, async () => {
                             beforeStates = await getStates(0, accounts[0], tokensName);
-                            logObj(beforeStates, "beforeStates");
+                            // logObj(beforeStates, "beforeStates");
                             saveLogToFile(file, `Before create position`, beforeStates)
 
                             posId = await createPosition(tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
 
                             afterStates = await getStates(posId, accounts[0], tokensName);
-                            logObj(afterStates, "afterStates");
+                            // logObj(afterStates, "afterStates");
                             saveLogToFile(file, `After create position`, afterStates)
                         })
 
@@ -274,12 +274,31 @@ contract("TestProduction", (accounts) => {
                         })
                     })
 
-                    // describe(`\n\nTest replenishment`, async () => {
-                    //     before(`replenishment`, async () => {
-                    //         await replenishment(posId, accounts[0], tokensName, [toWei(10), 0], borrows, 0);
+                    describe(`\n\nTest replenishment`, async () => {
+                        before(`replenishment`, async () => {
+                            beforeStates = afterStates;
+                            await replenishment(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After replenishment`, afterStates)
+                        })
+
+                        it(`Check replenishment result`, async () => {
+                            await checkStates(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                        })
+                    })
+
+                    // describe(`\n\nTest withdraw`, async () => {
+                    //     before(`withdraw`, async () => {
+                    //         beforeStates = afterStates;
+                    //         await withdraw(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
+                    //         afterStates = await getStates(posId, accounts[0], tokensName);
+                    //         saveLogToFile(file, `After withdraw`, afterStates)
                     //     })
 
-                    //     // Check result of create position
+                    //     it(`Check withdraw result`, async () => {
+                    //         await checkStates(beforeStates, afterStates, 
+                    //             [-deposits[0], -deposits[1]], [-borrows[0], -borrows[0]]);
+                    //     })
                     // })
 
                 })
@@ -294,7 +313,7 @@ contract("TestProduction", (accounts) => {
         return (await bank.currentPos() - 1);
     }
 
-    async function replenishment(posId, userAddress, tokensName, amounts, borrows, minDebt) {
+    async function replenishment(posId, tokensName, userAddress, amounts, borrows, minDebt) {
         await addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
     }
 
