@@ -455,6 +455,7 @@ contract Bank is Ownable, ReentrancyGuard {
             }
         }
 
+        // TODO This flag may be not correct
         if (amount.borrowed) {
             // Return the amount of each borrow token can be withdrawn with the given borrow amount rate.
             uint256[2] memory health = production.goblin.health(posId, production.borrowToken, amount.debts);
