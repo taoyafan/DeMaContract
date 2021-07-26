@@ -11,7 +11,8 @@ const BSCPool = artifacts.require("BSCPool");
 const BoardRoomMDX = artifacts.require("BoardRoomMDX");
 
 const BigNumber = require("bignumber.js");
-let saveToJson = require('./save_address_to_json.js')
+let saveToJson = require('./save_address_to_json.js');
+const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 module.exports = async function (deployer, network, accounts) {
     
@@ -52,7 +53,7 @@ module.exports = async function (deployer, network, accounts) {
                 Oracle.address,
                 MdexRouter.address,
                 busdAddress,
-                BigNumber(1e19),    //_mdxPerBlock,
+                BigNumber(1e18),    //_mdxPerBlock,
                 0                   // startBlock
         );
         saveToJson("SwapMining", (await SwapMining.deployed()).address);
@@ -60,27 +61,43 @@ module.exports = async function (deployer, network, accounts) {
         await deployer.deploy(
                 BSCPool,                // BSCPool
                 MdxToken.address,
-                BigNumber(1e19),        //_mdxPerBlock, 10 mdx per block
+                BigNumber(1e18),        //_mdxPerBlock, 1 mdx per block
                 0                       // startBlock
         );
         saveToJson("BSCPool", (await BSCPool.deployed()).address);
 
-        await deployer.deploy(
+        let rewardsPerCycle = BigNumber(1e17);
+        let cycles = 1000;
+        let boardRoom = await deployer.deploy(
                 BoardRoomMDX,
                 MdxToken.address,
-                1
+                cycles       // how many
         );
         saveToJson("BoardRoomMDX", (await BoardRoomMDX.deployed()).address);
+
+        // BoardRoom add pool
+        let mdxToken = await MdxToken.deployed();
+        let blockNum = await web3.eth.getBlockNumber();
+        await mdxToken.approve(boardRoom.address, MaxUint256);
+        await boardRoom.newReward(rewardsPerCycle.multipliedBy(cycles), rewardsPerCycle, +blockNum+1);
+
+        await boardRoom.add(0, mdxToken.address, false);
+        await boardRoom.add(0, mdxToken.address, false);
+        await boardRoom.add(0, mdxToken.address, false);
+        await boardRoom.add(0, mdxToken.address, false);
+        await boardRoom.add(1000, mdxToken.address, false);     // MDX pool
         
+        // Factory related operations
         let factory = await MdexFactory.deployed();
         await factory.createPair(WBNB.address, busdAddress);
         await factory.createPair(MdxToken.address, busdAddress);
 
-        // Add minter to BSC pool
+        // BSC pool related operations
+        // - Add minter to BSC pool
         let mdx = await MdxToken.deployed();
         await mdx.addMinter(BSCPool.address);
 
-        // Add wbnb-busd and mdx-busd pool to bsc pool
+        // - Add wbnb-busd and mdx-busd pool to bsc pool
         let bscPool = await BSCPool.deployed();
         let wbnbBusdLp = await factory.getPair(WBNB.address, busdAddress);
         let mdxBusdLp = await factory.getPair(MdxToken.address, busdAddress);
