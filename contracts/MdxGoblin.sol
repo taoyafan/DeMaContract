@@ -298,7 +298,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     function rewardPerLp() public view  returns (uint256) {
         if (globalInfo.totalLp != 0) {
             // globalInfo.totalMdx is the mdx amount at the last time update.
-            return (totalRewards().sub(globalInfo.totalMdx)).div(
+            return (totalRewards().sub(globalInfo.totalMdx)).mul(1e18).div(
                 globalInfo.totalLp).add(globalInfo.accMdxPerLp);
         } else {
             return globalInfo.accMdxPerLp;
@@ -308,7 +308,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     /// @return Earned MDX amount.
     function userEarnedAmount(address account) public view  returns (uint256) {
         UserInfo storage user = userInfo[account];
-        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).add(user.earnedMdxStored);
+        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored);
     }
 
     /* ==================================== Write ==================================== */
@@ -320,7 +320,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // Send MDX
         if (user.earnedMdxStored > 0) {
-            reinvestment.withdraw(user.earnedMdxStored);
+            reinvestment.withdraw(user.earnedMdxStored);    // TODO This may be not correct
             mdx.safeTransfer(account, user.earnedMdxStored);
             globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
             user.earnedMdxStored = 0;
