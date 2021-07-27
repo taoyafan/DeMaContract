@@ -117,8 +117,7 @@ contract Reinvestment is Ownable, IReinvestment {
         if (amount > 0) {
             _updatePool(msg.sender);
             UserInfo storage user = userInfo[msg.sender];
-
-            require(userInfo[msg.sender].earnedMdxStored >= amount, "User don't have enough amount");
+            require(user.earnedMdxStored >= amount, "User don't have enough amount");
 
             bool isWithdraw = false;
             if (mdx.myBalance() < amount) {

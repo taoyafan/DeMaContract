@@ -154,6 +154,7 @@ const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
 const DEMA = artifacts.require("DEMA");
 const Farm = artifacts.require("Farm");
+const Reinvestment = artifacts.require("Reinvestment");
 
 const BigNumber = require("bignumber.js");
 const fs = require('fs')
@@ -175,6 +176,7 @@ contract("TestProduction", (accounts) => {
     let router;
     let mdx;
     let bank;
+    let reinvestment;
 
     const name2Address = {
         'Bnb': bnbAddress,
@@ -194,6 +196,7 @@ contract("TestProduction", (accounts) => {
         router = await MdexRouter.at(addressJson.MdexRouter);
         mdx = await MdxToken.at(addressJson.MdxToken);
         bank = await Bank.at(addressJson.Bank);
+        reinvestment = await Reinvestment.at(addressJson.Reinvestment);
 
         // Deposit token in bank.
         let amount = toWei(100);
@@ -345,7 +348,7 @@ contract("TestProduction", (accounts) => {
         ];
 
         async function getBank(tokenAddress) {
-            let info = await bank.banks(tokensAddress[0]);
+            let info = await bank.banks(tokenAddress);
             let infoObj = {
                 tokenAddr:          info.tokenAddr,
                 isOpen:             Boolean(info.isOpen),
@@ -398,35 +401,71 @@ contract("TestProduction", (accounts) => {
         // Goblin info
         let goblinAddress = addressJson[`MdxGoblin${tokensName[0]}${tokensName[1]}`];
         let goblin = await MdxGoblin.at(goblinAddress);
-        states.goblin = {}
-
-        // - goblin global info
-        globalInfo = await goblin.globalInfo();
-        states.goblin.globalInfo = {
-            totalLp: BigNumber(globalInfo.totalLp),
-            totalMdx: BigNumber(globalInfo.totalMdx),
-            accMdxPerLp: BigNumber(globalInfo.accMdxPerLp),
-            lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
+        {
+            states.goblin = {}
+    
+            // - goblin global info
+            globalInfo = await goblin.globalInfo();
+            states.goblin.globalInfo = {
+                totalLp: BigNumber(globalInfo.totalLp),
+                totalMdx: BigNumber(globalInfo.totalMdx),
+                accMdxPerLp: BigNumber(globalInfo.accMdxPerLp),
+                lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
+            }
+    
+            // - goblin user info
+            let userInfo = await goblin.userInfo(userAddress);
+            states.goblin.userInfo = {
+                totalLp: BigNumber(userInfo.totalLp),
+                earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
+                accMdxPerLpStored: BigNumber(userInfo.accMdxPerLpStored),
+                lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
+            }
+    
+            states.goblin.lpAmount = BigNumber(await goblin.posLPAmount(posId));   // It will be 0 if posId is 0
+            states.goblin.principals = [BigNumber(await goblin.principal(posId, 0)), 
+                                        BigNumber(await goblin.principal(posId, 1))];
         }
-
-        // - goblin user info
-        userInfo = await goblin.userInfo(userAddress);
-        states.goblin.userInfo = {
-            totalLp: BigNumber(userInfo.totalLp),
-            earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
-            accMdxPerLpStored: BigNumber(userInfo.accMdxPerLpStored),
-            lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
-        }
-
-        states.goblin.lpAmount = BigNumber(await goblin.posLPAmount(posId));   // It will be 0 if posId is 0
-        states.goblin.principals = [BigNumber(await goblin.principal(posId, 0)), 
-                                    BigNumber(await goblin.principal(posId, 1))];
 
         // mdx pool lp amount
-        
-        let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
-        let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
-        states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
+        {
+            let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
+            let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
+            states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
+        }
+
+        // Reinvestment info
+        {
+            states.reinvest = {};
+            reinvestment = await Reinvestment.at(addressJson.Reinvestment);
+
+            // - global info
+            let globalInfo = await reinvestment.globalInfo();
+            states.reinvest.globalInfo = {
+                totalShares: BigNumber(globalInfo.totalShares),
+                totalMdx: BigNumber(globalInfo.totalMdx),
+                accMdxPerShare: BigNumber(globalInfo.accMdxPerShare),
+                lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
+            }; 
+
+            // - user info
+            async function getUserInfo(userAddress) {
+                let userInfo = await reinvestment.userInfo(userAddress);
+                return {
+                    totalShares: BigNumber(userInfo.totalShares),
+                    earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
+                    accMdxPerShareStored: BigNumber(userInfo.accMdxPerShareStored),
+                    lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
+                }; 
+            }
+            states.reinvest.userInfo = await getUserInfo(goblinAddress)
+            states.reinvest.ownerInfo = await getUserInfo(accounts[0])
+
+            // - Mdx balance
+            states.reinvest.mdxBalance = await getBalance(addressJson.MdxToken, reinvestment.address)
+        }
+
+
         return states
     }
 
