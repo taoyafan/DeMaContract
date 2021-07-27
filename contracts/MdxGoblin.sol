@@ -305,10 +305,12 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
     }
 
-    /// @return Earned MDX amount.
-    function userEarnedAmount(address account) public view  returns (uint256) {
+    /// @return Earned MDX and DEMA amount.
+    function userEarnedAmount(address account) public view  returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
-        return user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored);
+
+        return (user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored),
+                Farm.stakeEarnedPerPool(poolId, account));
     }
 
     /* ==================================== Write ==================================== */
@@ -382,7 +384,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
         }
 
-        temp.returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute 
+        temp.returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute
 
         // -------------------------- execute --------------------------
         // strategy will send back all token and LP.
@@ -394,7 +396,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             temp.returnMdxAmount = mdx.myBalance() - temp.returnMdxAmount;
         } else {
             // No return or Mdx amount decrease which means it's an add.
-            temp.returnMdxAmount = 0; 
+            temp.returnMdxAmount = 0;
         }
 
         // 3. Add LP tokens back to the bsc pool.
@@ -698,7 +700,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     function setCriticalStrategies(IStrategy _liqStrategy) external onlyOwner {
         liqStrategy = _liqStrategy;
     }
-    
+
     receive() external payable {}
 
 }
