@@ -289,7 +289,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // If reserved some rewards
         if (reservedRatio != 0) {
             // And then div the left share ratio.
-            poolPendingMdx.mul(uint256(10000).sub(reservedRatio)).div(10000);
+            poolPendingMdx = poolPendingMdx.mul(uint256(10000).sub(reservedRatio)).div(10000);
         }
 
         return poolPendingMdx.add(reinvestment.userEarnedAmount(address(this)));
@@ -310,7 +310,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         UserInfo storage user = userInfo[account];
 
         return (user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored),
-                Farm.stakeEarnedPerPool(poolId, account));
+                farm.stakeEarnedPerPool(poolId, account));
     }
 
     /* ==================================== Write ==================================== */
@@ -663,7 +663,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         UserInfo storage user = userInfo[account];
         if (account != address(0) && user.lastUpdateTime != block.timestamp) {
-            user.earnedMdxStored = userEarnedAmount(account);
+            user.earnedMdxStored = user.totalLp.mul(globalInfo.accMdxPerLp.sub(user.accMdxPerLpStored)
+                ).div(1e18).add(user.earnedMdxStored);
             user.accMdxPerLpStored = globalInfo.accMdxPerLp;
             user.lastUpdateTime = block.timestamp;
         }
