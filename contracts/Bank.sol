@@ -437,7 +437,7 @@ contract Bank is Ownable, ReentrancyGuard {
             amount.backToken[i] = amount.isBorrowBnb[i] ? (address(this).balance.sub(amount.beforeToken[i])) :
                 SafeToken.myBalance(production.borrowToken[i]).sub(amount.beforeToken[i]);
 
-            if(amount.backToken[i] > amount.debts[i]) {
+            if(amount.backToken[i] >= amount.debts[i]) {
                 // backToken are much more than debts, so send back backToken-debts.
                 amount.backToken[i] = amount.backToken[i].sub(amount.debts[i]);
                 amount.debts[i] = 0;
@@ -445,7 +445,7 @@ contract Bank is Ownable, ReentrancyGuard {
                 amount.isBorrowBnb[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
                     SafeToken.safeTransfer(production.borrowToken[i], msg.sender, amount.backToken[i]);
 
-            } else if (amount.debts[i] > amount.backToken[i]) {
+            } else {
                 // There are some borrow token
                 amount.borrowed = true;
                 amount.debts[i] = amount.debts[i].sub(amount.backToken[i]);
@@ -465,16 +465,14 @@ contract Bank is Ownable, ReentrancyGuard {
 
             _addDebt(positions[posId], production, amount.debts);
         }
-        // Then user may withdraw some or repay. get rewards of all pos.
-        else {
-            // Get all rewards.
+        // If the lp amount in current pos is 0, delete the pos.
+        else if (production.goblin.posLPAmount(posId) == 0) {
+            EnumerableSet.remove(user.posId, posId);
+            EnumerableSet.remove(allPosId, pid);
+            user.posNum[pid] = user.posNum[pid].sub(1);
+
+            // Get all rewards. Note that it MUST after user.posNum update.
             getRewardsAllProd();
-            // If the lp amount in current pos is 0, delete the pos.
-            if (production.goblin.posLPAmount(posId) == 0) {
-                EnumerableSet.remove(user.posId, posId);
-                EnumerableSet.remove(allPosId, pid);
-                user.posNum[pid] = user.posNum[pid].sub(1);
-            }
         }
 
         emit OpPosition(posId, amount.debts, amount.backToken);
