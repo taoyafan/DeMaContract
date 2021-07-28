@@ -273,7 +273,7 @@ contract("TestProduction", (accounts) => {
                         })
 
                         it(`Check create position result`, async () => {
-                            await checkStates(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
                         })
                     })
 
@@ -286,23 +286,29 @@ contract("TestProduction", (accounts) => {
                         })
 
                         it(`Check replenishment result`, async () => {
-                            await checkStates(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
                         })
                     })
 
-                    // describe(`\n\nTest withdraw`, async () => {
-                    //     before(`withdraw`, async () => {
-                    //         beforeStates = afterStates;
-                    //         await withdraw(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
-                    //         afterStates = await getStates(posId, accounts[0], tokensName);
-                    //         saveLogToFile(file, `After withdraw`, afterStates)
-                    //     })
+                    describe(`\n\nTest withdraw`, async () => {
 
-                    //     it(`Check withdraw result`, async () => {
-                    //         await checkStates(beforeStates, afterStates, 
-                    //             [-deposits[0], -deposits[1]], [-borrows[0], -borrows[0]]);
-                    //     })
-                    // })
+                        let withdrawRate = 10000;   // All
+                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
+                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
+
+                        before(`withdraw`, async () => {
+                            beforeStates = afterStates;
+                            await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
+                                backToken[whichWantBack]}`, afterStates)
+                        })
+
+                        // TODO Optimal is not correct.
+                        it(`Check withdraw result`, async () => {
+                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
+                        })
+                    })
 
                 })
             }
@@ -324,8 +330,50 @@ contract("TestProduction", (accounts) => {
 
     }
 
-    async function withdraw() {
-        
+    async function withdraw(posId, tokensName, userAddress, withdrawRate, whichWantBack) {
+        let token0Address = name2Address[tokensName[0]];
+        let token1Address = name2Address[tokensName[1]];
+
+        let withdrawStrategyAddress = addressJson.MdxStrategyWithdrawMinimizeTrading;
+
+        let strategyDate = web3.eth.abi.encodeParameters(
+            ["address", "address", "uint256", "uint256"],
+            [token0Address, token1Address, withdrawRate, whichWantBack]);
+            
+        let data = web3.eth.abi.encodeParameters(
+            ["address", "bytes" ],
+            [withdrawStrategyAddress, strategyDate]);
+    
+        bank.opPosition(posId, 0, [0, 0], data, {from: userAddress});
+    }
+
+    async function addLp(posId, userAddress, tokensName, amounts, borrows, minDebt) {
+        let token0Address = name2Address[tokensName[0]];
+        let token1Address = name2Address[tokensName[1]];
+
+        let bnbValue = 0;
+        if (token0Address == bnbAddress) {
+            bnbValue = amounts[0];
+        } else if (token1Address == bnbAddress) {
+            bnbValue = amounts[1];
+        }
+
+        let pid = addressJson[`Mdx${tokensName[0]}${tokensName[1]}ProdId`]
+        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+
+        let strategyDate = web3.eth.abi.encodeParameters(
+            ["address", "address", "uint256", "uint256", "uint256"],
+            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
+
+        let data = web3.eth.abi.encodeParameters(
+            ["address", "bytes" ],
+            [addStrategyAddress, strategyDate]);
+
+        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
+        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
+
+        console.log(`opPosition, posId: ${posId}, pid: ${pid}`);
+        await bank.opPosition(posId, pid, borrows, data, {from: userAddress, value: bnbValue});
     }
 
     // ------------------------------------- Utils -------------------------------------
@@ -470,7 +518,7 @@ contract("TestProduction", (accounts) => {
     }
 
     // Assuming there is no time elapse
-    async function checkStates(beforeStates, afterStates, depositAmounts, borrowAmounts) {
+    async function checkPosAddResult(beforeStates, afterStates, depositAmounts, borrowAmounts) {
         const tokens = afterStates.tokensAddress;
         
         for (i = 0; i < 2; ++i) {
@@ -528,6 +576,10 @@ contract("TestProduction", (accounts) => {
         }
     }
 
+    async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
+
+    }
+
     function equal(amount0, amount1, info, strictEqual, token) {
         amount0 = BigNumber(amount0);
         amount1 = BigNumber(amount1);
@@ -571,35 +623,6 @@ contract("TestProduction", (accounts) => {
         let to0Amount = _swapAllToA(token0AmountInLp, token1AmountInLp, _r0, _r1);
 
         return to0Amount
-    }
-
-    async function addLp(posId, userAddress, tokensName, amounts, borrows, minDebt) {
-        let token0Address = name2Address[tokensName[0]];
-        let token1Address = name2Address[tokensName[1]];
-
-        let bnbValue = 0;
-        if (token0Address == bnbAddress) {
-            bnbValue = amounts[0];
-        } else if (token1Address == bnbAddress) {
-            bnbValue = amounts[1];
-        }
-
-        let pid = addressJson[`Mdx${tokensName[0]}${tokensName[1]}ProdId`]
-        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
-
-        let strategyDate = web3.eth.abi.encodeParameters(
-            ["address", "address", "uint256", "uint256", "uint256"],
-            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
-
-        let data = web3.eth.abi.encodeParameters(
-            ["address", "bytes" ],
-            [addStrategyAddress, strategyDate]);
-
-        await approve(token0Address, addStrategyAddress, amounts[0], accounts[0]);
-        await approve(token1Address, addStrategyAddress, amounts[1], accounts[0]);
-
-        console.log(`opPosition, posId: ${posId}, pid: ${pid}`);
-        await bank.opPosition(posId, pid, borrows, data, {from: userAddress, value: bnbValue});
     }
 
     async function approve(tokenAddress, to, amount, from) {
