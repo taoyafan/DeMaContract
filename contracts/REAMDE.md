@@ -160,9 +160,8 @@ function BankPosReplenishment(posId, pid, tokens, depositAmount, borrowAmount, m
     bank.methods.opPosition(posId, pid, borrowAmount, data).send({from: account, value: bnbValue});
 }
 
-function BankPosWithdraw(posId, pid, tokens, withdrawRate, whichWantBack, account) {
+function BankPosWithdraw(posId, tokens, withdrawRate, whichWantBack, account) {
     // posId is the position id should be number
-    // pid is the production id should be number
     // tokens should be array of two address string
     // withdrawRate will divide by 10000, 5000 means withdraw 50%, 10000 means withdraw all, should less than 10000
     // whichWantBack can be 0(token0), 1(token1), 2(token what surplus).
@@ -171,12 +170,12 @@ function BankPosWithdraw(posId, pid, tokens, withdrawRate, whichWantBack, accoun
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256"],
-        [tokens[0], tokens[1], withdrawRate, depositAmount[0], minLPAmount]);
+        [tokens[0], tokens[1], withdrawRate, whichWantBack]);
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
         [withdrawStrategyAddress, strategyDate]);
 
-    bank.methods.opPosition(posId, pid, /*borrow amount:*/ [0, 0], data).send({from: account});
+    bank.methods.opPosition(posId, /*pid*/ 0, /*borrow amount:*/ [0, 0], data).send({from: account});
 }
 ```
 4. liquidate
