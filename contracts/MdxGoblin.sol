@@ -249,35 +249,39 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // 1. Get the position's LP balance and LP total supply.
         uint256 lpBalance = posLPAmount[id];
         uint256[2] storage N = principal[id];
-        require(N[0] > 0 || N[1] > 0, "Principal is 0");
 
-        uint256 lpSupply = lpToken.totalSupply();
-        // Ignore pending mintFee as it is insignificant
+        if (N[0] > 0 || N[1] > 0) {
+            uint256 lpSupply = lpToken.totalSupply();
+            // Ignore pending mintFee as it is insignificant
 
-        // 2. Get the pool's total supply of token0 and token1.
-        (uint256 ra, uint256 rb,) = lpToken.getReserves();
+            // 2. Get the pool's total supply of token0 and token1.
+            (uint256 ra, uint256 rb,) = lpToken.getReserves();
 
-        if (borrowTokens[0] == token1 ||
-            (borrowTokens[0] == address(0) && token1 == wBNB))
-        {
-            // If reverse
-            (ra, rb) = (rb, ra);
-        }
-        // 3. Convert the position's LP tokens to the underlying assets.
-        uint256 na = lpBalance.mul(ra).div(lpSupply);
-        uint256 nb = lpBalance.mul(rb).div(lpSupply);
-        ra = ra.sub(na);
-        rb = rb.sub(nb);
+            if (borrowTokens[0] == token1 ||
+                (borrowTokens[0] == address(0) && token1 == wBNB))
+            {
+                // If reverse
+                (ra, rb) = (rb, ra);
+            }
+            // 3. Convert the position's LP tokens to the underlying assets.
+            uint256 na = lpBalance.mul(ra).div(lpSupply);
+            uint256 nb = lpBalance.mul(rb).div(lpSupply);
+            ra = ra.sub(na);
+            rb = rb.sub(nb);
 
-        // 4. Get the health
-        if (N[0] > 0) {
-            // token 0 is the standard coin.
-            uint256 leftA = _repayDeptsAndSwapLeftToA(ra, rb, debts[0], debts[1], na, nb);
-            return leftA.mul(10000).div(N[0]);
+            // 4. Get the health
+            if (N[0] > 0) {
+                // token 0 is the standard coin.
+                uint256 leftA = _repayDeptsAndSwapLeftToA(ra, rb, debts[0], debts[1], na, nb);
+                return leftA.mul(10000).div(N[0]);
+            } else {
+                // token 1 is the standard coin.
+                uint256 leftB = _repayDeptsAndSwapLeftToA(rb, ra, debts[1], debts[0], nb, na);
+                return leftB.mul(10000).div(N[1]);
+            }
         } else {
-            // token 1 is the standard coin.
-            uint256 leftB = _repayDeptsAndSwapLeftToA(rb, ra, debts[1], debts[0], nb, na);
-            return leftB.mul(10000).div(N[1]);
+            // No principal, treat it as no loss.
+            return uint256(10000);
         }
     }
 
@@ -289,7 +293,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // If reserved some rewards
         if (reservedRatio != 0) {
             // And then div the left share ratio.
-            poolPendingMdx = poolPendingMdx.mul(uint256(10000).sub(reservedRatio)).div(10000);
+            poolPendingMdx = poolPendingMdx.sub(poolPendingMdx.mul(reservedRatio).div(10000));
         }
 
         return poolPendingMdx.add(reinvestment.userEarnedAmount(address(this)));
