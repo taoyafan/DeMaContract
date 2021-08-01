@@ -15,6 +15,8 @@ import "./utils/Math.sol";
 
 
 contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrategy {
+    event withdraw(uint256[2] withdraw);   // Same order as borrow tokens.
+
     using SafeToken for address;
     using SafeMath for uint256;
 
@@ -156,8 +158,11 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
 
         if (borrowTokens[0] == token0 || (borrowTokens[0] == address(0) && token0 == wBNB))
         {
+            emit withdraw([leftAmount[0], leftAmount[1]]);
             return [leftAmount[0], leftAmount[1]];
+
         } else {
+            emit withdraw([leftAmount[1], leftAmount[0]]);
             return [leftAmount[1], leftAmount[0]];
         }
     }
