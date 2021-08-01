@@ -14,7 +14,7 @@ contract Bank is Ownable, ReentrancyGuard {
     using SafeToken for address;
     using SafeMath for uint256;
 
-    event OpPosition(uint256 indexed id, uint256[2] debts, uint[2] back);
+    event OpPosition(uint256 indexed id, uint256[2] debts, uint256[2] backs);
     event Liquidate(uint256 indexed id, address indexed killer, uint256[2] prize, uint256[2] left);
 
     using EnumerableSet for EnumerableSet.AddressSet;
