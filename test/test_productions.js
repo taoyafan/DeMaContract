@@ -225,13 +225,15 @@ contract("TestProduction", (accounts) => {
 
         async function forEachTokenPair(tokensName, r) {
 
-            let depositArray = [[10, 0]];
+            let depositArray = [[10, 10]];
             let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 10]];
 
-            for(borrows of borrowsArray) {
-                forEachBorrow(tokensName, depositArray[0], borrows, r);
-                break;  //TODO debug only, need to remove.
-            }
+            // for(borrows of borrowsArray) {
+            //     forEachBorrow(tokensName, depositArray[0], borrows, r);
+            //     break;  //TODO debug only, need to remove.
+            // }
+
+            forEachBorrow(tokensName, depositArray[0], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 
@@ -277,35 +279,57 @@ contract("TestProduction", (accounts) => {
                         })
                     })
 
-                    describe(`\n\nTest replenishment`, async () => {
-                        before(`replenishment`, async () => {
-                            beforeStates = afterStates;
-                            await replenishment(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
-                            afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After replenishment`, afterStates)
-                        })
+                    // describe(`\n\nTest replenishment`, async () => {
+                    //     before(`replenishment`, async () => {
+                    //         beforeStates = afterStates;
+                    //         await replenishment(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
+                    //         afterStates = await getStates(posId, accounts[0], tokensName);
+                    //         saveLogToFile(file, `After replenishment`, afterStates)
+                    //     })
 
-                        it(`Check replenishment result`, async () => {
-                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                    //     it(`Check replenishment result`, async () => {
+                    //         await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                    //     })
+                    // })
+
+                    describe(`\n\nTest repay`, async () => {
+
+                        let withdrawRate = 1000;   // 10%
+                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
+                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
+
+                        it(`Repay ${withdrawRate/100}%`, async () => {
+                            beforeStates = afterStates;
+                            await repay(posId, tokensName, accounts[0], withdrawRate);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
+                                backToken[whichWantBack]}`, afterStates)
+                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
                         })
                     })
 
                     describe(`\n\nTest withdraw`, async () => {
 
-                        let withdrawRate = 10000;   // All
+                        let withdrawRate = 1000;   // 10%
                         let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
                         let backToken = [tokensName[0], tokensName[1], 'Optimal'];
 
-                        before(`withdraw`, async () => {
+                        // it(`Withdraw ${withdrawRate/100}%`, async () => {
+                        //     beforeStates = afterStates;
+                        //     await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
+                        //     afterStates = await getStates(posId, accounts[0], tokensName);
+                        //     saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
+                        //         backToken[whichWantBack]}`, afterStates)
+                        //     await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
+                        // })
+
+                        it(`Withdraw 100%`, async () => {
+                            withdrawRate = 10000;   // 100%
                             beforeStates = afterStates;
                             await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
                             afterStates = await getStates(posId, accounts[0], tokensName);
                             saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
                                 backToken[whichWantBack]}`, afterStates)
-                        })
-
-                        // TODO Optimal is not correct.
-                        it(`Check withdraw result`, async () => {
                             await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
                         })
                     })
@@ -326,8 +350,8 @@ contract("TestProduction", (accounts) => {
         await addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
     }
 
-    async function repay() {
-
+    async function repay(posId, tokensName, userAddress, withdrawRate) {
+        await withdraw(posId, tokensName, userAddress, withdrawRate, 3);
     }
 
     async function withdraw(posId, tokensName, userAddress, withdrawRate, whichWantBack) {
@@ -344,7 +368,7 @@ contract("TestProduction", (accounts) => {
             ["address", "bytes" ],
             [withdrawStrategyAddress, strategyDate]);
     
-        bank.opPosition(posId, 0, [0, 0], data, {from: userAddress});
+        await bank.opPosition(posId, 0, [0, 0], data, {from: userAddress});
     }
 
     async function addLp(posId, userAddress, tokensName, amounts, borrows, minDebt) {
@@ -386,13 +410,16 @@ contract("TestProduction", (accounts) => {
         // user amount
         states.userBalance = [
             await getBalance(tokensAddress[0], userAddress), 
-            await getBalance(tokensAddress[1], userAddress)
+            await getBalance(tokensAddress[1], userAddress),
+            await getBalance(addressJson['DEMA'], userAddress),
+            await getBalance(addressJson['MdxToken'], userAddress),
         ];
 
         // bank amount
         states.bankBalance = [
             await getBalance(tokensAddress[0], bank.address), 
-            await getBalance(tokensAddress[1], bank.address)
+            await getBalance(tokensAddress[1], bank.address),
+            await getBalance(addressJson.WBNB, userAddress)
         ];
 
         async function getBank(tokenAddress) {
@@ -475,6 +502,9 @@ contract("TestProduction", (accounts) => {
                                         BigNumber(await goblin.principal(posId, 1))];
         }
 
+        // Tokens amount in lp
+        states.posTokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount)
+
         // mdx pool lp amount
         {
             let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
@@ -513,8 +543,43 @@ contract("TestProduction", (accounts) => {
             states.reinvest.mdxBalance = await getBalance(addressJson.MdxToken, reinvestment.address)
         }
 
-
         return states
+    }
+
+    async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
+        const tokensAmountInLp = await getTokenAmountInLp(beforeStates.tokensAddress, beforeStates.goblin.lpAmount)
+        let toUserAmounts = [0, 0], toBankAmounts = [0, 0]; 
+        const debts = beforeStates.posInfo.debts;
+        for (i = 0; i < 2; ++i) {
+            let withdrawAmount = aDivB(aMulB(tokensAmountInLp[i], withdrawRate), 10000);
+            // TODO It's not correct.
+            if (whichWantBack == 3) {
+                if (withdrawAmount > debts[i]) {
+                    toBankAmounts[i] = debts[i];     
+                } else {
+                    toBankAmounts[i] = withdrawAmount;
+                }
+            } else {
+                toBankAmounts[i] = aDivB(aMulB(debts[i], withdrawRate), 10000);
+            }
+            
+            toUserAmounts[i] = aSubB(withdrawAmount, toBankAmounts[i]);
+        }
+        
+        if (whichWantBack == 0) {
+            toUserAmounts[0] = await swapToTarget(beforeState.tokensAddress, toUserAmounts, 0);
+            toUserAmounts[1] = 0;
+        } else if (whichWantBack == 1) {
+            toUserAmounts[0] = 0;
+            toUserAmounts[1] = await swapToTarget(beforeState.tokensAddress, toUserAmounts, 1);
+        } else {
+            // Don't swap
+        }
+
+        let depositAmounts = [-toUserAmounts[0], -toUserAmounts[1]];
+        let borrowAmounts = [-toBankAmounts[0], -toBankAmounts[1]];
+
+        await checkPosAddResult(beforeStates, afterStates, depositAmounts, borrowAmounts)
     }
 
     // Assuming there is no time elapse
@@ -524,37 +589,64 @@ contract("TestProduction", (accounts) => {
         for (i = 0; i < 2; ++i) {
             // Check user balance
             let userIncBalance = aSubB(afterStates.userBalance[i], beforeStates.userBalance[i]);
-            equal(userIncBalance, -depositAmounts[i], `User balance[${i}] changes wrong`, true, tokens[i])
+            equal(userIncBalance, -depositAmounts[i], `User balance[${i}] changes wrong`, false, tokens[i])
             
             // Check bank balance
             let bankIncBalance = aSubB(afterStates.bankBalance[i], beforeStates.bankBalance[i]);
-            equal(bankIncBalance, -borrowAmounts[i], `Bank balance[${i}] changes wrong`, true, tokens[i])
+            equal(bankIncBalance, -borrowAmounts[i], `Bank balance[${i}] changes wrong`, false, tokens[i])
 
             // Check bank total val
             let bankIncVal = aSubB(afterStates.banksInfo[i].totalVal, beforeStates.banksInfo[i].totalVal);
-            equal(bankIncVal, -borrowAmounts[i], `Bank val[${i}] changes wrong`, true, tokens[i])
+            equal(bankIncVal, bankIncBalance, `Bank val[${i}] changes wrong`, true, tokens[i])
             
             // Check bank total debt
             let bankIncDebt = aSubB(afterStates.banksInfo[i].totalDebt, beforeStates.banksInfo[i].totalDebt);
-            equal(bankIncDebt, borrowAmounts[i], `Bank debt[${i}] changes wrong`, true, tokens[i])
+            equal(bankIncDebt, -bankIncBalance, `Bank debt[${i}] changes wrong`, false, tokens[i])
 
             // Pos debt share
             let userPosIncDebt = aSubB(afterStates.posInfo.debts[i], beforeStates.posInfo.debts[i])
-            equal(userPosIncDebt, borrowAmounts[i], `Pos debtShare[${i}] changes wrong`, true, tokens[i])
-
-            // Goblin principals
-            let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
-            equal(principal, depositAmounts[i], `Principal[${i}] amounts changes wrong`, true, tokens[i]); 
+            equal(userPosIncDebt, -bankIncBalance, `Pos debtShare[${i}] changes wrong`, false, tokens[i])
         }
 
         // Check goblin states
-        // Lp amount
+        // - Lp amount
         let IncLpAmount = aSubB(afterStates.goblin.lpAmount, beforeStates.goblin.lpAmount);
         let IncLpTo0Amount = await SwapAllLpToToken0(tokens[0], tokens[1], IncLpAmount);
-        let targetTo0Amount = await swapAllToA(tokens, [depositAmounts[0].plus(borrowAmounts[0]), 
-                                                  depositAmounts[1].plus(borrowAmounts[1])]);
+        let targetTo0Amount = await swapToTarget(tokens, [aAddB(depositAmounts[0], borrowAmounts[0]), 
+                                                        aAddB(depositAmounts[1], borrowAmounts[1])]);
         
-        equal(IncLpTo0Amount, targetTo0Amount, `Lp amount changes wrong`, false, 1); //1 means not bnb
+        equal(IncLpTo0Amount, targetTo0Amount, `Lp amount changes wrong`, false);
+        
+        // - Principals
+        let [r0, r1] = await getR0R1(tokens[0], tokens[1]);
+        let targetPrincipal = [0, 0];
+        if (beforeStates.goblin.principals[0].toNumber() == 0 && 
+            beforeStates.goblin.principals[1].toNumber() == 0) {
+            // Create position
+            if (aMulB(depositAmounts[0], r1) > aMulB(depositAmounts[1], r0)) {
+                targetPrincipal[0] = await swapToTarget(tokens, depositAmounts, 0);
+            } else {
+                targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
+            }
+        } else {
+            if (beforeStates.goblin.principals[0].toNumber() > 0) {
+                targetPrincipal[0] = await swapToTarget(tokens, depositAmounts, 0);
+            } else {
+                targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
+            } 
+        }
+        for (i = 0; i < 2; ++i) {
+            let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
+            if (targetPrincipal[i] < 0) {
+                // It's a withdraw operation
+                if(BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) {
+                    targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
+                }
+            }
+            targetPrincipal[i] = targetPrincipal[i] > 
+            equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false); 
+        }
+            
 
         // Check global totalLp and user totalLp
         let userIncTotalLp = aSubB(afterStates.goblin.globalInfo.totalLp, beforeStates.goblin.globalInfo.totalLp);
@@ -569,22 +661,22 @@ contract("TestProduction", (accounts) => {
 
         // Health should be 10000 while there is no time elapse
         for (i = 0; i < afterStates.allPosId.length; ++i) {
-            if (afterStates.allPosId[i] == afterStates.posInfo.posId) {
+            if (afterStates.allPosId[i] == afterStates.posInfo.posId, false) {
                 equal(afterStates.allPosHealth[i], 10000, 'Health wrong');
                 break;
             }
         }
     }
 
-    async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
-
-    }
-
-    function equal(amount0, amount1, info, strictEqual, token) {
+    function equal(amount0, amount1, info, strictEqual=true, token=1) {
         amount0 = BigNumber(amount0);
         amount1 = BigNumber(amount1);
 
         info = info + ` actual: ${fromWei(amount0)}, expect: ${fromWei(amount1)}`;
+        
+        amount0 = amount0 >= 0 ? amount0 : BigNumber(-amount0);
+        amount1 = amount1 >= 0 ? amount1 : BigNumber(-amount1);
+
         let larger = amount0.isGreaterThan(amount1) ? amount0 : amount1
         let smaller =  amount0.isGreaterThan(amount1) ? amount1 : amount0
 
@@ -599,7 +691,7 @@ contract("TestProduction", (accounts) => {
             let delta = larger.minus(smaller)
             if (token == bnbAddress || token == addressJson.WBNB) {
                 assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
-                    .dividedToIntegerBy(1000).plus(1e16)), info)
+                    .dividedToIntegerBy(1000).plus(1e17)), info)
             } else {
                 assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
                     .dividedToIntegerBy(1000)), info)
@@ -662,28 +754,6 @@ contract("TestProduction", (accounts) => {
         await getR0R1(token0, token1, true);
     }
 
-    // Input token address
-    async function getR0R1(token0, token1, log = false) {
-        [token0, token1] = tokensFilter(token0, token1);
-        let lpAddress = await factory.getPair(token0, token1);
-        let lp = await MdexPair.at(lpAddress)
-
-        let token0InLp = await lp.token0()
-        res = await lp.getReserves();
-        let _r0, _r1
-        if (token0 == token0InLp ||
-            (token0 == bnbAddress && token0InLp == addressJson.WBNB))
-        {
-            [_r0, _r1] = [res[0], res[1]]
-        } else {
-            [_r0, _r1] = [res[1], res[0]]
-        }
-        if (log) {
-            console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
-        }
-        return [_r0, _r1];
-    }
-
     async function removeAllLiquidity(token0, token1, from) {
         [token0, token1] = tokensFilter(token0, token1);
         let lpAddress = await factory.getPair(token0, token1);
@@ -696,19 +766,63 @@ contract("TestProduction", (accounts) => {
         console.log(`After remove all liquidity:`)
         await getR0R1(token0, token1);
     }
-
-    async function swapAllToA(tokens, amounts) {
-        let _r0, _r1
-        [_r0, _r1] = await getR0R1(tokens[0], tokens[1])
-
-        return _swapAllToA(amounts[0], amounts[1], _r0, _r1);
-    }
-
-    async function _swapAllToA(na, nb, ra, rb) {
-        let deltaA = BigNumber(nb).multipliedBy(ra).dividedToIntegerBy(rb)
-        return BigNumber(na).plus(deltaA)
-    }
 })
+
+async function swapToTarget(tokens, amounts, which=0) {
+    let _r0, _r1
+    [_r0, _r1] = await getR0R1(tokens[0], tokens[1])
+
+    if (which == 0) {
+        return _swapAllToA(amounts[0], amounts[1], _r0, _r1);
+    } else {
+        return _swapAllToA(amounts[1], amounts[0], _r1, _r0);
+    }
+}
+
+async function _swapAllToA(na, nb, ra, rb) {
+    let deltaA = BigNumber(nb).multipliedBy(ra).dividedToIntegerBy(rb)
+    return aAddB(na, deltaA)
+}
+
+// Input token address
+async function getR0R1(token0, token1, log = false) {
+    [token0, token1] = tokensFilter(token0, token1);
+
+    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let lpAddress = await factory.getPair(token0, token1);
+    let lp = await MdexPair.at(lpAddress)
+
+    let token0InLp = await lp.token0()
+    res = await lp.getReserves();
+    let _r0, _r1
+    if (token0 == token0InLp ||
+        (token0 == bnbAddress && token0InLp == addressJson.WBNB))
+    {
+        [_r0, _r1] = [res[0], res[1]]
+    } else {
+        [_r0, _r1] = [res[1], res[0]]
+    }
+    if (log) {
+        console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
+    }
+    return [_r0, _r1];
+}
+
+async function getTokenAmountInLp(tokens, lpAmount) {
+    let [token0, token1] = tokensFilter(tokens[0], tokens[1]);
+    let [_r0, _r1] = await getR0R1(token0, token1)
+
+    // Get the value of incLp
+    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let lpAddress = await factory.getPair(token0, token1);
+    let lp = await MdexPair.at(lpAddress)
+    let totalLp = await lp.totalSupply();
+
+    let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
+    let token1AmountInLp = BigNumber(_r1).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
+
+    return [token0AmountInLp, token1AmountInLp]
+}
 
 function toWei(ether) {
     return BigNumber(web3.utils.toWei(BigNumber(ether).toString()))
@@ -720,6 +834,18 @@ function fromWei(wei) {
 
 function aSubB(a, b) {
     return BigNumber(a).minus(BigNumber(b));
+}
+
+function aAddB(a, b) {
+    return BigNumber(a).plus(BigNumber(b))
+}
+
+function aMulB(a, b) {
+    return BigNumber(a).multipliedBy(BigNumber(b))
+}
+
+function aDivB(a, b) {
+    return BigNumber(a).dividedToIntegerBy(BigNumber(b))
 }
 
 function tokensFilter(token0, token1) {
