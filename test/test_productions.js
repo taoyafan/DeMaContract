@@ -199,7 +199,7 @@ contract("TestProduction", (accounts) => {
         reinvestment = await Reinvestment.at(addressJson.Reinvestment);
 
         // Deposit token in bank.
-        let amount = toWei(100);
+        let amount = toWei(2000);
         await bank.deposit(bnbAddress, amount, {from: accounts[0], value: amount});
 
         await mdx.approve(bank.address, amount, {from: accounts[0]})
@@ -225,8 +225,8 @@ contract("TestProduction", (accounts) => {
 
         async function forEachTokenPair(tokensName, r) {
 
-            let depositArray = [[10, 10]];
-            let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 10]];
+            let depositArray = [[10, 100]];
+            let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 1000]];
 
             // for(borrows of borrowsArray) {
             //     forEachBorrow(tokensName, depositArray[0], borrows, r);
@@ -298,12 +298,54 @@ contract("TestProduction", (accounts) => {
                         let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
                         let backToken = [tokensName[0], tokensName[1], 'Optimal'];
 
-                        it(`Repay ${withdrawRate/100}%`, async () => {
+                        before(`Before`, async () => {
                             beforeStates = afterStates;
                             await repay(posId, tokensName, accounts[0], withdrawRate);
                             afterStates = await getStates(posId, accounts[0], tokensName);
                             saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
                                 backToken[whichWantBack]}`, afterStates)
+                        })
+
+                        it(`Repay ${withdrawRate/100}%`, async () => {
+                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
+                        })
+                    })
+
+                    // TODO, need to increase rate to let both ns is higher than both debts.
+                    describe(`\n\nTest repay`, async () => {
+
+                        let withdrawRate = 6000;   // 60%
+                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
+                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
+
+                        before(`Before`, async () => {
+                            beforeStates = afterStates;
+                            await repay(posId, tokensName, accounts[0], withdrawRate);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
+                                backToken[whichWantBack]}`, afterStates)
+                        })
+
+                        it(`Repay ${withdrawRate/100}%`, async () => {
+                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
+                        })
+                    })
+
+                    describe(`\n\nTest repay`, async () => {
+
+                        let withdrawRate = 9900;   // 99%
+                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
+                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
+
+                        before(`Before`, async () => {
+                            beforeStates = afterStates;
+                            await repay(posId, tokensName, accounts[0], withdrawRate);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
+                                backToken[whichWantBack]}`, afterStates)
+                        })
+
+                        it(`Repay ${withdrawRate/100}%`, async () => {
                             await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
                         })
                     })
@@ -548,36 +590,79 @@ contract("TestProduction", (accounts) => {
 
     async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
         const tokensAmountInLp = await getTokenAmountInLp(beforeStates.tokensAddress, beforeStates.goblin.lpAmount)
-        let toUserAmounts = [0, 0], toBankAmounts = [0, 0]; 
+        let toUser = [0, 0], toBank = [0, 0]; 
         const debts = beforeStates.posInfo.debts;
-        for (i = 0; i < 2; ++i) {
-            let withdrawAmount = aDivB(aMulB(tokensAmountInLp[i], withdrawRate), 10000);
-            // TODO It's not correct.
-            if (whichWantBack == 3) {
-                if (withdrawAmount > debts[i]) {
-                    toBankAmounts[i] = debts[i];     
-                } else {
-                    toBankAmounts[i] = withdrawAmount;
-                }
-            } else {
-                toBankAmounts[i] = aDivB(aMulB(debts[i], withdrawRate), 10000);
-            }
+
+        let ns = [aDivB(aMulB(tokensAmountInLp[0], withdrawRate), 10000),
+                  aDivB(aMulB(tokensAmountInLp[1], withdrawRate), 10000)];
+
+        // If repay
+        if (whichWantBack == 3) {
+            let rs = await getR0R1(beforeStates.tokensAddress[0], beforeStates.tokensAddress[1])
             
-            toUserAmounts[i] = aSubB(withdrawAmount, toBankAmounts[i]);
+            function repayFirstAmount(ds, ns, rs) {
+                if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
+                    return ds[0].multipliedBy(aMulB(rs[1], ns[0]).plus(aMulB(rs[0], ns[1]))).dividedToIntegerBy(
+                        aMulB(ds[0], rs[1]).plus(aMulB(ds[1], rs[0])));
+                } else {
+                    return ns[0];
+                }
+            }
+
+            toBank[0] = repayFirstAmount(debts, ns, rs);
+            toBank[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
+
+            for (i = 0; i < 2; ++i) {
+                if (toBank[i].isGreaterThan(debts[i])) {
+                    // We can repay all debts
+
+                    if (ns[i].isGreaterThan(debts[i])) {
+                        // Don't need to swap
+
+                        if (ns[i].isLessThan(toBank[i])) {
+                            // But swap to this from another, Then recover.
+                            toUser[i] = aSubB(ns[i], debts[i]);
+                            toUser[1-i] = aSubB(ns[1-i], debts[1-i]);
+                        } else {
+                            // Swap some token to another
+                            let redundant = aSubB(toBank[i], debts[i]);
+                            toUser[i] = aAddB(toUser[i], redundant);
+                        }
+
+                    } else {
+                        // Need to swap from another token, but swap a lot
+                        let redundant = aSubB(toBank[i], debts[i]);
+                        toUser[1-i] = aAddB(toUser[1-i], redundant.multipliedBy(rs[1-i]).dividedToIntegerBy(rs[i]));
+                        toUser[i] = 0;
+                    }
+
+                    toBank[i] = debts[i];  
+                } else {
+                    // All token used to repay, There are no left to user
+                }
+            }
+            console.log(`After repay, to bank: ${fromWei(toBank[0])}, ${fromWei(toBank[1])}, to user: ${
+                [fromWei(toUser[0]), fromWei(toUser[1])]}`);
+        } else {
+            toBank[0] = aDivB(aMulB(debts[0], withdrawRate), 10000);
+            toBank[1] = aDivB(aMulB(debts[1], withdrawRate), 10000);
+            
+            toUser[0] = aSubB(ns[0], toBank[0]);
+            toUser[1] = aSubB(ns[1], toBank[1]);
         }
         
         if (whichWantBack == 0) {
-            toUserAmounts[0] = await swapToTarget(beforeState.tokensAddress, toUserAmounts, 0);
-            toUserAmounts[1] = 0;
+            toUser[0] = await swapToTarget(beforeState.tokensAddress, toUser, 0);
+            toUser[1] = 0;
         } else if (whichWantBack == 1) {
-            toUserAmounts[0] = 0;
-            toUserAmounts[1] = await swapToTarget(beforeState.tokensAddress, toUserAmounts, 1);
+            toUser[0] = 0;
+            toUser[1] = await swapToTarget(beforeState.tokensAddress, toUser, 1);
         } else {
             // Don't swap
         }
 
-        let depositAmounts = [-toUserAmounts[0], -toUserAmounts[1]];
-        let borrowAmounts = [-toBankAmounts[0], -toBankAmounts[1]];
+        let depositAmounts = [-toUser[0], -toUser[1]];
+        let borrowAmounts = [-toBank[0], -toBank[1]];
 
         await checkPosAddResult(beforeStates, afterStates, depositAmounts, borrowAmounts)
     }
@@ -805,7 +890,7 @@ async function getR0R1(token0, token1, log = false) {
     if (log) {
         console.log(`r0 is: ${fromWei(_r0)}, r1 is: ${fromWei(_r1)}`);
     }
-    return [_r0, _r1];
+    return [BigNumber(_r0), BigNumber(_r1)];
 }
 
 async function getTokenAmountInLp(tokens, lpAmount) {
