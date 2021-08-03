@@ -621,12 +621,13 @@ contract("TestProduction", (accounts) => {
 
                         if (ns[i].isLessThan(toBank[i])) {
                             // But swap to this from another, Then recover.
+                            let redundant = aSubB(toBank[i], ns[i]);
                             toUser[i] = aSubB(ns[i], debts[i]);
-                            toUser[1-i] = aSubB(ns[1-i], debts[1-i]);
+                            toUser[1-i] = aAddB(toUser[1-i], redundant.multipliedBy(rs[1-i]).dividedToIntegerBy(rs[i]));
                         } else {
                             // Swap some token to another
-                            let redundant = aSubB(toBank[i], debts[i]);
-                            toUser[i] = aAddB(toUser[i], redundant);
+                            let leftAmount = aSubB(toBank[i], debts[i]);
+                            toUser[i] = aAddB(toUser[i], leftAmount);
                         }
 
                     } else {
