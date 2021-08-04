@@ -722,7 +722,7 @@ contract Bank is Ownable, ReentrancyGuard {
         TokenBank storage bank = banks[token];
 
         uint256 balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
-        if((bank.isOpen == false) || balance >= bank.totalVal.add(value)) {
+        if(balance >= bank.totalVal.add(value)) {
             // Received not by deposit
         } else {
             bank.totalReserve = bank.totalReserve.sub(value);
