@@ -163,7 +163,8 @@ function BankPosAdd(posId, pid, tokens, depositAmount, borrowAmount, minLPAmount
 function BankPosRepay(posId, tokens, withdrawRate, account) {
     // posId is the position id should be number
     // tokens should be array of two address string
-    // withdrawRate will divide by 10000, 5000 means withdraw 50%, 10000 means withdraw all, should less than 10000
+    // withdrawRate will divide by 10000, 5000 means withdraw 50%. The withdrawn token will be used to repay debts first.
+    //      It's better to set the upper bound of withdrawRate is total debts / total value.
 
     const bank = new web3.eth.Contract(bankAbi, bankAddress);
 
