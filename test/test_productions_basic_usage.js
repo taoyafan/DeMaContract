@@ -14,20 +14,13 @@ const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 const fs = require('fs')
 
-const bnbAddress = '0x0000000000000000000000000000000000000000'
-const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-const jsonString = fs.readFileSync("bin/contracts/address.json")
-const addressJson = JSON.parse(jsonString)
-
-const name2Address = {
-    'Bnb': bnbAddress,
-    'Busd': addressJson.BUSD,
-    'Mdx': addressJson.MdxToken,
-}
-
-const file = `test/log/log.json`;
+const file = `test/log/prod_basic_usage.json`;
 
 const {
+    bnbAddress,
+    MaxUint256,
+    addressJson,
+    name2Address,
     saveLogToFile,
     initFile,
     getStates,
@@ -102,20 +95,19 @@ contract("TestProduction", (accounts) => {
 
         for (i = 0; i < 3; i++) {
             forEachTokenPair(tokenPair[i], r0r1[i]);
-            break;  // TODO debug only, need to remove.
+            // break;  // TODO debug only, need to remove.
         }
 
         async function forEachTokenPair(tokensName, r) {
 
-            let depositArray = [[10, 100]];
-            let borrowsArray = [[0, 0], [0, 10], [10, 0], [10, 1000]];
+            let depositArray = [[1, 10]];
+            let borrowsArray = [[0, 0], [0, 1], [1, 0], [1, 100]];
 
-            // for(borrows of borrowsArray) {
-            //     forEachBorrow(tokensName, depositArray[0], borrows, r);
-            //     break;  //TODO debug only, need to remove.
-            // }
+            for(borrows of borrowsArray) {
+                forEachBorrow(tokensName, depositArray[0], borrows, r);
+            }
 
-            forEachBorrow(tokensName, depositArray[0], borrowsArray[3], r);
+            // forEachBorrow(tokensName, depositArray[0], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 
@@ -162,51 +154,28 @@ contract("TestProduction", (accounts) => {
                         })
                     })
 
-                    // describe(`\n\nTest replenishment`, async () => {
-                    //     before(`replenishment`, async () => {
-                    //         beforeStates = afterStates;
-                    //         await replenishment(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
-                    //         afterStates = await getStates(posId, accounts[0], tokensName);
-                    //         saveLogToFile(file, `After replenishment`, afterStates)
-                    //     })
-
-                    //     it(`Check replenishment result`, async () => {
-                    //         await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
-                    //     })
-                    // })
-
-                    describe(`\n\nTest repay`, async () => {
-
-                        let withdrawRate = 1000;   // 10%
-                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
-                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
-
-                        before(`Before`, async () => {
+                    describe(`\n\nTest replenishment`, async () => {
+                        before(`replenishment`, async () => {
                             beforeStates = afterStates;
-                            await repay(posId, tokensName, accounts[0], withdrawRate);
+                            await replenishment(posId, tokensName, accounts[0], [deposits[0], deposits[1]], borrows, 0);
                             afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
-                                backToken[whichWantBack]}`, afterStates)
+                            saveLogToFile(file, `After replenishment`, afterStates)
                         })
 
-                        it(`Repay ${withdrawRate/100}%`, async () => {
-                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
+                        it(`Check replenishment result`, async () => {
+                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
                         })
                     })
 
-                    // TODO, need to increase rate to let both ns is higher than both debts.
                     describe(`\n\nTest repay`, async () => {
 
-                        let withdrawRate = 8000;   // 80%
-                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
-                        let backToken = [tokensName[0], tokensName[1], 'Optimal'];
+                        let withdrawRate = Math.floor(Math.random()*10000);
 
                         before(`Before`, async () => {
                             beforeStates = afterStates;
                             await repay(posId, tokensName, accounts[0], withdrawRate);
                             afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After repay ${withdrawRate/100}%, back token ${
-                                backToken[whichWantBack]}`, afterStates)
+                            saveLogToFile(file, `After repay ${withdrawRate/100}%`, afterStates)
                         })
 
                         it(`Repay ${withdrawRate/100}%`, async () => {
@@ -216,18 +185,18 @@ contract("TestProduction", (accounts) => {
 
                     describe(`\n\nTest withdraw`, async () => {
 
-                        let withdrawRate = 1000;   // 10%
-                        let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
+                        let withdrawRate = Math.floor(Math.random()*10000);
+                        let whichWantBack = Math.floor(Math.random()*3);      // 0(token0), 1(token1), 2(token what surplus)
                         let backToken = [tokensName[0], tokensName[1], 'Optimal'];
 
-                        // it(`Withdraw ${withdrawRate/100}%`, async () => {
-                        //     beforeStates = afterStates;
-                        //     await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
-                        //     afterStates = await getStates(posId, accounts[0], tokensName);
-                        //     saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
-                        //         backToken[whichWantBack]}`, afterStates)
-                        //     await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
-                        // })
+                        it(`Withdraw ${withdrawRate/100}%`, async () => {
+                            beforeStates = afterStates;
+                            await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
+                                backToken[whichWantBack]}`, afterStates)
+                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
+                        })
 
                         it(`Withdraw 100%`, async () => {
                             withdrawRate = 10000;   // 100%
@@ -242,19 +211,6 @@ contract("TestProduction", (accounts) => {
 
                     after('Recover', async () => {
                         await removeAllLiquidity(token0Address, token1Address, accounts[0]);
-
-                        afterStates = await getStates(posId, accounts[0], tokensName);
-                        saveLogToFile(file, `After recover`, afterStates)
-
-                        let tokens = tokensFilter(token0Address, token1Address);
-                        let factory = await MdexFactory.at(addressJson.MdexFactory);
-                        let lpAddress = await factory.getPair(tokens[0], tokens[1]);
-
-                        let lpAmount = await getBalance(lpAddress, accounts[0]);
-                        assert.equal(lpAmount.toNumber(), 0, `lp amount should be 0`)
-
-                        wbnbAmount = await getBalance(addressJson.WBNB, accounts[0]);
-                        assert.equal(wbnbAmount.toNumber(), 0, `wbnb amount should be 0`)
                     })
 
                 })
@@ -327,11 +283,11 @@ contract("TestProduction", (accounts) => {
         }
         
         if (whichWantBack == 0) {
-            toUser[0] = await swapToTarget(beforeState.tokensAddress, toUser, 0);
+            toUser[0] = await swapToTarget(beforeStates.tokensAddress, toUser, 0);
             toUser[1] = 0;
         } else if (whichWantBack == 1) {
             toUser[0] = 0;
-            toUser[1] = await swapToTarget(beforeState.tokensAddress, toUser, 1);
+            toUser[1] = await swapToTarget(beforeStates.tokensAddress, toUser, 1);
         } else {
             // Don't swap
         }

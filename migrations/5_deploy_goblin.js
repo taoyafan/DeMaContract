@@ -94,5 +94,6 @@ module.exports = async function (deployer, network, accounts) {
         );
         prod.prodId = (await bank.currentPid()) - 1;
         saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId);
+        saveToJson(`Mdx${prod.token1}${prod.token0}ProdId`, prod.prodId);
     }
 };
