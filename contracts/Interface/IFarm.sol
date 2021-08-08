@@ -26,9 +26,6 @@ interface IFarm {
     // Rewards amount for bonus in all pools.
     function bonusEarned(address account) external view returns (uint256);
 
-    // Total shares of bonus.
-    function bonusShares(address account) external view returns (uint256);
-
     /* ----------------- Inviter Bonus Info  ----------------- */
 
     // Rewards amount for inviter bonus in one pool.
@@ -36,9 +33,6 @@ interface IFarm {
 
     // Rewards amount for inviter bonus in all pools.
     function inviterBonusEarned(address account) external view returns (uint256);
-
-    // Total shares of inviter shares.
-    function inviterBonusShares(address account) external view returns (uint256);
 
 
     /* ==================================== Write ==================================== */

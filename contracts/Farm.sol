@@ -102,6 +102,17 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         return pool.rewardRate.mul(pool.periodDuration);
     }
 
+    function totalPaidRewards() external view returns (uint256) {
+        uint256 totalPaid = 0;
+
+        for (uint256 i = 0; i < nextPoolId; ++i) {
+            PoolInfo storage pool = poolInfo[i];
+            totalPaid = totalPaid.add(pool.rewardsPaid);
+        }
+
+        return totalPaid;
+    }
+
     /* ----------------- User Staked Info ----------------- */
 
     // Rewards amount for user in one pool.
@@ -127,21 +138,12 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     // Rewards amount for bonus in all pools.
-    function bonusEarned(address account) public view override returns (uint256) {
+    function bonusEarned(address account) external view override returns (uint256) {
         uint256 totalEarned = 0;
         for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
             totalEarned = totalEarned.add(bonusEarnedPerPool(bonusPoolsId(account, index), account));
         }
         return totalEarned;
-    }
-
-    // Total shares of bonus.
-    function bonusShares(address account) external view override returns (uint256) {
-        uint256 _totalShares = 0;
-        for (uint256 index = 0; index < bonusPoolsLength(account); ++index) {
-            _totalShares = _totalShares.add(bonus[bonusPoolsId(account, index)][account].shares);
-        }
-        return _totalShares;
     }
 
     /* ----------------- Inviter Bonus Info  ----------------- */
@@ -161,7 +163,7 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     // Rewards amount for inviter bonus in all pools.
-    function inviterBonusEarned(address account) public view override returns (uint256) {
+    function inviterBonusEarned(address account) external view override returns (uint256) {
         uint256 totalEarned = 0;
         for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
             totalEarned = totalEarned.add(inviterBonusEarnedPerPool(inviterBonusPoolsId(account, index), account));
@@ -170,12 +172,19 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
     }
 
     // Total shares of inviter shares.
-    function inviterBonusShares(address account) external view override returns (uint256) {
-        uint256 _totalShares = 0;
-        for (uint256 index = 0; index < inviterBonusPoolsLength(account); ++index) {
-            _totalShares = _totalShares.add(inviterBonus[inviterBonusPoolsId(account, index)][account].shares);
+    function inviterBonusSharesAndIds(address account) external view returns (uint256[] memory, uint256[] memory) {
+        uint256 len = inviterBonusPoolsLength(account);
+        
+        uint256[] memory shares = new uint256[](len);
+        uint256[] memory ids = new uint256[](len);
+
+        for (uint256 index = 0; index < len; ++index) {
+            uint256 poolId = inviterBonusPoolsId(account, index);
+            ids[index] = poolId;
+            shares[index] = inviterBonus[poolId][account].shares;
         }
-        return _totalShares;
+
+        return (shares, ids);
     }
 
 
