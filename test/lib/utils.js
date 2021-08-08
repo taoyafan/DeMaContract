@@ -228,10 +228,10 @@ function equal(amount0, amount1, info, strictEqual=true, token=1) {
     } else {
         let delta = larger.minus(smaller)
         if (token == bnbAddress || token == addressJson.WBNB) {
-            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
+            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
                 .dividedToIntegerBy(1000).plus(1e17)), info)
         } else {
-            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(6)
+            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
                 .dividedToIntegerBy(1000)), info)
         }
     }
@@ -298,8 +298,9 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 async function removeAllLiquidity(token0, token1, from) {
     [token0, token1] = tokensFilter(token0, token1);
     let factory = await MdexFactory.at(addressJson.MdexFactory);
+
     let lpAddress = await factory.getPair(token0, token1);
-    let lpAmount = await getBalance(lpAddress, from)
+    let lpAmount = await getBalance(lpAddress, from);
 
     let router = await MdexRouter.at(addressJson.MdexRouter);
     await approve(lpAddress, router.address, lpAmount, from)
@@ -307,7 +308,13 @@ async function removeAllLiquidity(token0, token1, from) {
         lpAmount, 0, 0, from, MaxUint256, {from: from});
 
     console.log(`After remove all liquidity:`)
-    await getR0R1(token0, token1);
+    await getR0R1(token0, token1, true);
+
+    let wbnb = await WBNB.at(addressJson.WBNB);
+    let wbnbAmount = await wbnb.balanceOf(from)
+    if (wbnbAmount > 0) {
+        await wbnb.withdraw(wbnbAmount, {from: from});
+    }
 }
 
 async function swapToTarget(tokens, amounts, which=0) {
@@ -405,6 +412,10 @@ function logObj(obj, name) {
 }
 
 module.exports = {
+    bnbAddress,
+    MaxUint256,
+    addressJson,
+    name2Address,
     erc20TokenGetBalance,
     saveLogToFile,
     initFile,

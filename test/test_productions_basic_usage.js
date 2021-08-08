@@ -46,7 +46,15 @@ const {
     aAddB,
     aMulB,
     aDivB,
+    tokensFilter,
 } = require("./lib/utils");
+
+const {
+    createPosition,
+    replenishment,
+    repay,
+    withdraw,
+} = require("./lib/prod_interface");
 
 contract("TestProduction", (accounts) => {
 
@@ -65,7 +73,7 @@ contract("TestProduction", (accounts) => {
         initFile(file);
 
         // factory = await MdexFactory.at(addressJson.MdexFactory);
-        // wbnb = await WBNB.at(addressJson.WBNB);
+        wbnb = await WBNB.at(addressJson.WBNB);
         busd = await ERC20Token.at(addressJson.BUSD);
         // router = await MdexRouter.at(addressJson.MdexRouter);
         mdx = await MdxToken.at(addressJson.MdxToken);
@@ -122,14 +130,15 @@ contract("TestProduction", (accounts) => {
                     deposits = [toWei(deposits[0]), toWei(deposits[1])]
                     r = [toWei(r[0]), toWei(r[1])];
 
+                    let token0Address = name2Address[tokensName[0]];
+                    let token1Address = name2Address[tokensName[1]];
+
                     before(`Init`, async () => {
                         saveLogToFile(file, `Test with ${tokensName[0]} and ${
                             tokensName[1]}, deposits ${fromWei(deposits[0])}, ${
                             fromWei(deposits[1])}, borrow ${fromWei(borrows[0])} and ${fromWei(borrows[1])}`)
 
                         // Add liquidate first
-                        let token0Address = name2Address[tokensName[0]];
-                        let token1Address = name2Address[tokensName[1]];
                         await addLiquidate(token0Address, token1Address, r[0], r[1], accounts[0]);
 
                     })
@@ -188,7 +197,7 @@ contract("TestProduction", (accounts) => {
                     // TODO, need to increase rate to let both ns is higher than both debts.
                     describe(`\n\nTest repay`, async () => {
 
-                        let withdrawRate = 6000;   // 60%
+                        let withdrawRate = 8000;   // 80%
                         let whichWantBack = 2;      // 0(token0), 1(token1), 2(token what surplus)
                         let backToken = [tokensName[0], tokensName[1], 'Optimal'];
 
@@ -232,17 +241,19 @@ contract("TestProduction", (accounts) => {
                     })
 
                     after('Recover', async () => {
-                        await removeAllLiquidity(token0, token1, accounts[0])
+                        await removeAllLiquidity(token0Address, token1Address, accounts[0]);
 
-                        let wbnbAmount = await wbnb.balanceOf(accounts[0])
-                        if (wbnbAmount > 0) {
-                            wbnb.withdraw(wbnbAmount)
-                        }
+                        afterStates = await getStates(posId, accounts[0], tokensName);
+                        saveLogToFile(file, `After recover`, afterStates)
+
+                        let tokens = tokensFilter(token0Address, token1Address);
+                        let factory = await MdexFactory.at(addressJson.MdexFactory);
+                        let lpAddress = await factory.getPair(tokens[0], tokens[1]);
 
                         let lpAmount = await getBalance(lpAddress, accounts[0]);
                         assert.equal(lpAmount.toNumber(), 0, `lp amount should be 0`)
 
-                        wbnbAmount = await wbnb.balanceOf(accounts[0])
+                        wbnbAmount = await getBalance(addressJson.WBNB, accounts[0]);
                         assert.equal(wbnbAmount.toNumber(), 0, `wbnb amount should be 0`)
                     })
 
@@ -250,69 +261,6 @@ contract("TestProduction", (accounts) => {
             }
         }
     })
-
-    // ------------------------------------- Interface -------------------------------------
-
-    async function createPosition(tokensName, userAddress, amounts, borrows, minDebt) {
-        await addLp(0, userAddress, tokensName, amounts, borrows, minDebt)
-        return (await bank.currentPos() - 1);
-    }
-
-    async function replenishment(posId, tokensName, userAddress, amounts, borrows, minDebt) {
-        await addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
-    }
-
-    async function repay(posId, tokensName, userAddress, withdrawRate) {
-        await withdraw(posId, tokensName, userAddress, withdrawRate, 3);
-    }
-
-    async function withdraw(posId, tokensName, userAddress, withdrawRate, whichWantBack) {
-        let token0Address = name2Address[tokensName[0]];
-        let token1Address = name2Address[tokensName[1]];
-
-        let withdrawStrategyAddress = addressJson.MdxStrategyWithdrawMinimizeTrading;
-
-        let strategyDate = web3.eth.abi.encodeParameters(
-            ["address", "address", "uint256", "uint256"],
-            [token0Address, token1Address, withdrawRate, whichWantBack]);
-            
-        let data = web3.eth.abi.encodeParameters(
-            ["address", "bytes" ],
-            [withdrawStrategyAddress, strategyDate]);
-    
-        await bank.opPosition(posId, 0, [0, 0], data, {from: userAddress});
-    }
-
-    async function addLp(posId, userAddress, tokensName, amounts, borrows, minDebt) {
-        let token0Address = name2Address[tokensName[0]];
-        let token1Address = name2Address[tokensName[1]];
-
-        let bnbValue = 0;
-        if (token0Address == bnbAddress) {
-            bnbValue = amounts[0];
-        } else if (token1Address == bnbAddress) {
-            bnbValue = amounts[1];
-        }
-
-        let pid = addressJson[`Mdx${tokensName[0]}${tokensName[1]}ProdId`]
-        let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
-
-        let strategyDate = web3.eth.abi.encodeParameters(
-            ["address", "address", "uint256", "uint256", "uint256"],
-            [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
-
-        let data = web3.eth.abi.encodeParameters(
-            ["address", "bytes" ],
-            [addStrategyAddress, strategyDate]);
-
-        await approve(token0Address, addStrategyAddress, amounts[0], userAddress);
-        await approve(token1Address, addStrategyAddress, amounts[1], userAddress);
-
-        console.log(`opPosition, posId: ${posId}, pid: ${pid}`);
-        await bank.opPosition(posId, pid, borrows, data, {from: userAddress, value: bnbValue});
-    }
-
-    // ------------------------------------- Utils -------------------------------------
 
     async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
         const tokensAmountInLp = await getTokenAmountInLp(beforeStates.tokensAddress, beforeStates.goblin.lpAmount)
@@ -447,6 +395,7 @@ contract("TestProduction", (accounts) => {
                 targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
             } 
         }
+        
         for (i = 0; i < 2; ++i) {
             let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
             if (targetPrincipal[i] < 0) {
@@ -455,7 +404,6 @@ contract("TestProduction", (accounts) => {
                     targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
                 }
             }
-            targetPrincipal[i] = targetPrincipal[i] > 
             equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false); 
         }
             

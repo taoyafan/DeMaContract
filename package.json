@@ -30,7 +30,7 @@
     "testwds": "truffle test ./test/test_withdraw_strategy.js",
     "testreinvestment": "truffle test ./test/TestReinvestment.test.js",
     "testrewardspershare": "truffle test ./test/TestRewardsPerShare.test.js",
-    "testprod": "truffle test ./test/test_productions.js"
+    "testprod": "truffle test ./test/test_productions_basic_usage.js"
   },
   "repository": {
     "type": "git",
