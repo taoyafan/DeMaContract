@@ -9,6 +9,7 @@
   "scripts": {
     "compile": "truffle compile",
 
+    "minit": "truffle migrate --f 1 --to 1",
     "muser": "truffle migrate --f 2 --to 2",
     "muserbsctest": "truffle migrate --f 2 --to 2 --network bsctest",
     "muserbscmain": "truffle migrate --f 2 --to 2 --network bscmain",

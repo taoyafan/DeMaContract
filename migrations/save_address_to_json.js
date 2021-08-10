@@ -1,11 +1,24 @@
 const fs = require('fs')
 const path = require('path');
 
-function saveToJson(name, date) {
+function saveToJson(name, date, chain='development') {
     let json;
+    let fileName;
+
+    if (chain == 'development') {
+        fileName = 'address.json'
+    } else if (chain == 'matic') {
+        fileName = 'addressMatic.json'
+    } else if (chain == 'bsctest') {
+        fileName = 'addressBscTest.json'
+    } else if (chain == 'bscmain') {
+        fileName = 'addressBscMain.json'
+    } else {
+        throw new Error('Network not support');
+    }
 
     const uplevelDir = path.resolve(__dirname, '..');
-    const file = path.join(uplevelDir, `bin/contracts/address.json`);
+    const file = path.join(uplevelDir, `bin/contracts/${fileName}`);
 
     const fileDir = path.resolve(file, '..');
     
