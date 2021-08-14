@@ -103,7 +103,7 @@ contract("TestProduction", (accounts) => {
         //     // break;  // TODO debug only, need to remove.
         // }
         
-        forEachTokenPair(tokenPair[1]);
+        forEachTokenPair(tokenPair[2]);
 
 
         async function forEachTokenPair(tokenPair) {
@@ -332,6 +332,18 @@ contract("TestProduction", (accounts) => {
         for (i = 0; i < 2; ++i) {
             // Check user balance
             let userIncBalance = aSubB(afterStates.userBalance[i], beforeStates.userBalance[i]);
+            if (tokens[i] == addressJson.MdxToken && afterStates.mdxPoolLpAmount.toNumber() == 0) {
+                userIncBalance = aSubB(userIncBalance, 
+                    aAddB(beforeStates.goblin.userInfo.earnedMdxStored, 
+                        aDivB(
+                            aMulB(beforeStates.mdxPoolLpAmount, 
+                                aSubB(afterStates.goblin.userInfo.accMdxPerLpStored, 
+                                    beforeStates.goblin.userInfo.accMdxPerLpStored)
+                            ), 1e18
+                        )
+                    )
+                );
+            }
             equal(userIncBalance, -depositAmounts[i], `User balance[${i}] changes wrong`, false, tokens[i])
             
             // Check bank balance

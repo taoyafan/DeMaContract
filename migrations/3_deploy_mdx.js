@@ -16,6 +16,7 @@ const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffff
 
 module.exports = async function (deployer, network, accounts) {
     
+    // TODO read correct address from different network
     const jsonString = fs.readFileSync("bin/contracts/address.json")
     const addressJson = JSON.parse(jsonString)
     const busdAddress = addressJson.BUSD;
@@ -25,8 +26,8 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson("MdxToken", (await MdxToken.deployed()).address, network);
 
         await deployer.deploy(
-                MdexFactory,            // Factory
-                accounts[0]
+            MdexFactory,            // Factory
+            accounts[0]
         );
         saveToJson("MdexFactory", (await MdexFactory.deployed()).address, network);
 
@@ -40,44 +41,44 @@ module.exports = async function (deployer, network, accounts) {
         }
 
         await deployer.deploy(
-                MdexRouter,             // MdexRouter, @todo need to setSwapMining
-                MdexFactory.address,
-                wbnb.address
+            MdexRouter,             // MdexRouter, @todo need to setSwapMining
+            MdexFactory.address,
+            wbnb.address
         );
         saveToJson("MdexRouter", (await MdexRouter.deployed()).address, network);
 
         await deployer.deploy(
-                Oracle,                 // Oracle
-                MdexFactory.address
+            Oracle,                 // Oracle
+            MdexFactory.address
         );
         saveToJson("Oracle", (await Oracle.deployed()).address, network);
 
         await deployer.deploy(
-                SwapMining,             // SwapMining
-                MdxToken.address,
-                MdexFactory.address,
-                Oracle.address,
-                MdexRouter.address,
-                busdAddress,
-                BigNumber(1e18),    //_mdxPerBlock,
-                0                   // startBlock
+            SwapMining,             // SwapMining
+            MdxToken.address,
+            MdexFactory.address,
+            Oracle.address,
+            MdexRouter.address,
+            busdAddress,
+            BigNumber(1e18),    //_mdxPerBlock,
+            0                   // startBlock
         );
         saveToJson("SwapMining", (await SwapMining.deployed()).address, network);
 
         await deployer.deploy(
-                BSCPool,                // BSCPool
-                MdxToken.address,
-                BigNumber(1e18),        //_mdxPerBlock, 1 mdx per block
-                0                       // startBlock
+            BSCPool,                // BSCPool
+            MdxToken.address,
+            BigNumber(1e18),        //_mdxPerBlock, 1 mdx per block
+            0                       // startBlock
         );
         saveToJson("BSCPool", (await BSCPool.deployed()).address, network);
 
         let rewardsPerCycle = BigNumber(1e17);
         let cycles = 1000;
         let boardRoom = await deployer.deploy(
-                BoardRoomMDX,
-                MdxToken.address,
-                cycles       // how many
+            BoardRoomMDX,
+            MdxToken.address,
+            cycles       // how many
         );
         saveToJson("BoardRoomMDX", (await BoardRoomMDX.deployed()).address, network);
 
