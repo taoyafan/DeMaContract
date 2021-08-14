@@ -72,7 +72,7 @@ contract Bank is Ownable, ReentrancyGuard {
     mapping(address => UserPPInfo) userPPInfo;      // User Productions, Positions Info.
 
     mapping(uint256 => Production) productions;
-    uint256 public currentPid = 1;
+    uint256 public currentProdId = 1;
 
     mapping(uint256 => Position) positions;     // pos info can read in positionInfo()
     uint256 public currentPos = 1;
@@ -123,7 +123,7 @@ contract Bank is Ownable, ReentrancyGuard {
     function allPosIdAndHealth() external view returns (uint256[] memory, uint256[] memory) {
         uint256 len = EnumerableSet.length(allPosId);
         uint256[] memory posId = new uint256[](len);
-        uint256[] memory posHealth = new uint256[](len);
+        uint256[] memory posHealth = new uint256[](2);
 
         for (uint256 i = 0; i < len; ++i) {
             uint256 tempPosId = EnumerableSet.at(allPosId, i);
@@ -360,7 +360,7 @@ contract Bank is Ownable, ReentrancyGuard {
      * note: rate means how many LP will be removed liquidity. max rate is 10000 means 100%.
      *       All withdrawn LP will used to repay debts.
      */
-    function opPosition(uint256 posId, uint256 pid, uint256[2] calldata borrow, bytes calldata data)
+    function opPosition(uint256 posId, uint256 prodId, uint256[2] calldata borrow, bytes calldata data)
         external
         payable
         onlyEOA
@@ -372,21 +372,21 @@ contract Bank is Ownable, ReentrancyGuard {
             posId = currentPos;
             currentPos ++;
             positions[posId].owner = msg.sender;
-            positions[posId].productionId = pid;
+            positions[posId].productionId = prodId;
 
             EnumerableSet.add(user.posId, posId);
-            EnumerableSet.add(user.prodId, pid);
-            EnumerableSet.add(allPosId, pid);
-            user.posNum[pid] = user.posNum[pid].add(1);
+            EnumerableSet.add(allPosId, posId);
+            EnumerableSet.add(user.prodId, prodId);
+            user.posNum[prodId] = user.posNum[prodId].add(1);
 
         } else {
             require(posId < currentPos, "bad position id");
             require(positions[posId].owner == msg.sender, "not position owner");
 
-            pid = positions[posId].productionId;
+            prodId = positions[posId].productionId;
         }
 
-        Production storage production = productions[pid];
+        Production storage production = productions[prodId];
 
         require(production.isOpen, 'Production not exists');
 
@@ -468,8 +468,8 @@ contract Bank is Ownable, ReentrancyGuard {
         // If the lp amount in current pos is 0, delete the pos.
         else if (production.goblin.posLPAmount(posId) == 0) {
             EnumerableSet.remove(user.posId, posId);
-            EnumerableSet.remove(allPosId, pid);
-            user.posNum[pid] = user.posNum[pid].sub(1);
+            EnumerableSet.remove(allPosId, prodId);
+            user.posNum[prodId] = user.posNum[prodId].sub(1);
 
             // Get all rewards. Note that it MUST after user.posNum update.
             getRewardsAllProd();
@@ -676,7 +676,7 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     function opProduction(
-        uint256 pid,
+        uint256 prodId,
         bool isOpen,
         bool[2] calldata canBorrow,
         address[2] calldata borrowToken,
@@ -694,14 +694,14 @@ contract Bank is Ownable, ReentrancyGuard {
         require(openFactor < 10000, "Open factor should less than 10000");
         require(liquidateFactor < 9000, "Liquidate factor should less than 9000");
 
-        if(pid == 0){
-            pid = currentPid;
-            currentPid ++;
+        if(prodId == 0){
+            prodId = currentProdId;
+            currentProdId ++;
         } else {
-            require(pid < currentPid, "bad production id");
+            require(prodId < currentProdId, "bad production id");
         }
 
-        Production storage production = productions[pid];
+        Production storage production = productions[prodId];
         production.isOpen = isOpen;
         production.canBorrow = canBorrow;
 
