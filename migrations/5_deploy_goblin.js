@@ -34,6 +34,13 @@ module.exports = async function (deployer, network, accounts) {
             token1Address: addressJson.BUSD, 
             rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
         },
+        {
+            token0: "Usdt", 
+            token1: "Busd", 
+            token0Address: addressJson.USDT,
+            token1Address: addressJson.BUSD, 
+            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
+        },
     ];
 
     await deployer.deploy(Reinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 1000);
@@ -69,7 +76,7 @@ module.exports = async function (deployer, network, accounts) {
             MdxStrategyWithdrawMinimizeTrading.address
         );
 
-        saveToJson(`MdxGoblin${prod.token0}${prod.token1}`, prod.goblin.address);
+        saveToJson(`Mdx${prod.token0}${prod.token1}Goblin`, prod.goblin.address);
 
         // Set strategy ok, MdxStrategyWithdrawMinimizeTrading will be set true when deploy
         prod.goblin.setStrategyOk([MdxStrategyAddTwoSidesOptimal.address], true)
@@ -92,8 +99,10 @@ module.exports = async function (deployer, network, accounts) {
             9000,                                       // uint256 openFactor,
             6000,                                       // uint256 liquidateFactor
         );
-        prod.prodId = (await bank.currentPid()) - 1;
+        prod.prodId = (await bank.currentProdId()) - 1;
         saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId);
         saveToJson(`Mdx${prod.token1}${prod.token0}ProdId`, prod.prodId);
+
+        saveToJson(`MdxProd${prod.prodId}Tokens`, [prod.token0, prod.token1]);
     }
 };

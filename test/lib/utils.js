@@ -22,6 +22,7 @@ const addressJson = JSON.parse(jsonString)
 
 const name2Address = {
     'Bnb': bnbAddress,
+    'Usdt': addressJson.USDT,
     'Busd': addressJson.BUSD,
     'Mdx': addressJson.MdxToken,
 }
@@ -133,7 +134,7 @@ async function getStates(posId, userAddress, tokensName) {
     states.userProdId = await bank.userAllProdId(userAddress);
 
     // Goblin info
-    let goblinAddress = addressJson[`MdxGoblin${tokensName[0]}${tokensName[1]}`];
+    let goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
     let goblin = await MdxGoblin.at(goblinAddress);
     {
         states.goblin = {}
@@ -151,18 +152,19 @@ async function getStates(posId, userAddress, tokensName) {
         let userInfo = await goblin.userInfo(userAddress);
         states.goblin.userInfo = {
             totalLp: BigNumber(userInfo.totalLp),
+            tokensAmountInLp: await getTokenAmountInLp(tokensAddress, userInfo.totalLp),
             earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
             accMdxPerLpStored: BigNumber(userInfo.accMdxPerLpStored),
             lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
         }
 
         states.goblin.lpAmount = BigNumber(await goblin.posLPAmount(posId));   // It will be 0 if posId is 0
+        states.goblin.tokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount);
+
         states.goblin.principals = [BigNumber(await goblin.principal(posId, 0)), 
                                     BigNumber(await goblin.principal(posId, 1))];
+                                    
     }
-
-    // Tokens amount in lp
-    states.posTokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount)
 
     // mdx pool lp amount
     {
@@ -256,6 +258,15 @@ async function swapAllLpToToken0(token0, token1, lpAmount) {
     return to0Amount
 }
 
+async function transfer(tokenAddress, to, amount, from) {
+    if (tokenAddress == bnbAddress) {
+        await web3.eth.sendTransaction({from: from, to: to, value: amount})
+    } else {
+        let token = await ERC20Token.at(tokenAddress);
+        await token.transfer(to, amount, {from: from});
+    }
+}
+
 async function approve(tokenAddress, to, amount, from) {
     if (tokenAddress == bnbAddress)
         return
@@ -288,8 +299,12 @@ async function addLiquidate(token0, token1, r0, r1, from) {
     await approve(token0, router.address, r0, from)
     await approve(token1, router.address, r1, from)
 
-    await router.addLiquidity(token0, token1,
-        r0, r1, 0, 0, from, MaxUint256, {from: from});
+    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let lpAddress = await factory.getPair(token0, token1);
+    let lp = await MdexPair.at(lpAddress)
+    await transfer(token0, lpAddress, r0, from)
+    await transfer(token1, lpAddress, r1, from)
+    await lp.mint(from)
 
     console.log(`After init add liquidity:`)
     await getR0R1(token0, token1, true);
