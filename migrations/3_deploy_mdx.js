@@ -1,7 +1,4 @@
 const WBNB = artifacts.require("WBNB");
-
-const fs = require("fs");
-
 const MdexRouter = artifacts.require("MdexRouter");
 const MdxToken = artifacts.require("MdxToken");
 const MdexFactory = artifacts.require("MdexFactory");
@@ -11,25 +8,24 @@ const BSCPool = artifacts.require("BSCPool");
 const BoardRoomMDX = artifacts.require("BoardRoomMDX");
 
 const BigNumber = require("bignumber.js");
-let saveToJson = require('./save_address_to_json.js');
+let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
+let getProdInfo = require('../js_utils/config.js');
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 module.exports = async function (deployer, network, accounts) {
     
-    // TODO read correct address from different network
-    const jsonString = fs.readFileSync("bin/contracts/address.json")
-    const addressJson = JSON.parse(jsonString)
-    const busdAddress = addressJson.BUSD;
-
     if (network == 'development' || network == 'bsctest') {
+        const addressJson = readAddressJson(network)
+        const busdAddress = addressJson.BUSD;
+
         await deployer.deploy(MdxToken)      // Mdex Token
-        saveToJson("MdxToken", (await MdxToken.deployed()).address, network);
+        saveToJson("MdxToken", MdxToken.address, network);
 
         await deployer.deploy(
             MdexFactory,            // Factory
             accounts[0]
         );
-        saveToJson("MdexFactory", (await MdexFactory.deployed()).address, network);
+        saveToJson("MdexFactory", MdexFactory.address, network);
 
         // Test network don't deploy wbnb
         let wbnb;
@@ -40,18 +36,18 @@ module.exports = async function (deployer, network, accounts) {
             wbnb = await WBNB.at(addressJson.WBNB)
         }
 
-        await deployer.deploy(
-            MdexRouter,             // MdexRouter, @todo need to setSwapMining
+        let router = await deployer.deploy(
+            MdexRouter,             // MdexRouter
             MdexFactory.address,
             wbnb.address
         );
-        saveToJson("MdexRouter", (await MdexRouter.deployed()).address, network);
+        saveToJson("MdexRouter", router.address, network);
 
         await deployer.deploy(
             Oracle,                 // Oracle
             MdexFactory.address
         );
-        saveToJson("Oracle", (await Oracle.deployed()).address, network);
+        saveToJson("Oracle", Oracle.address, network);
 
         await deployer.deploy(
             SwapMining,             // SwapMining
@@ -63,7 +59,10 @@ module.exports = async function (deployer, network, accounts) {
             BigNumber(1e18),    //_mdxPerBlock,
             0                   // startBlock
         );
-        saveToJson("SwapMining", (await SwapMining.deployed()).address, network);
+        saveToJson("SwapMining", SwapMining.address, network);
+        
+        // Set swap ming for router, TODO SwapMining need to config.
+        await router.setSwapMining(SwapMining.address);
 
         await deployer.deploy(
             BSCPool,                // BSCPool
@@ -71,7 +70,7 @@ module.exports = async function (deployer, network, accounts) {
             BigNumber(1e18),        //_mdxPerBlock, 1 mdx per block
             0                       // startBlock
         );
-        saveToJson("BSCPool", (await BSCPool.deployed()).address, network);
+        saveToJson("BSCPool", BSCPool.address, network);
 
         let rewardsPerCycle = BigNumber(1e17);
         let cycles = 1000;
@@ -80,7 +79,7 @@ module.exports = async function (deployer, network, accounts) {
             MdxToken.address,
             cycles       // how many
         );
-        saveToJson("BoardRoomMDX", (await BoardRoomMDX.deployed()).address, network);
+        saveToJson("BoardRoomMDX", BoardRoomMDX.address, network);
 
         // BoardRoom add pool
         let mdxToken = await MdxToken.deployed();
@@ -96,27 +95,28 @@ module.exports = async function (deployer, network, accounts) {
         
         // Factory related operations
         let factory = await MdexFactory.deployed();
-        await factory.createPair(wbnb.address, busdAddress);
-        await factory.createPair(MdxToken.address, busdAddress);
-        await factory.createPair(addressJson.USDT, busdAddress);
 
         // BSC pool related operations
         // - Add minter to BSC pool
         let mdx = await MdxToken.deployed();
         await mdx.addMinter(BSCPool.address);
 
-        // - Add wbnb-busd and mdx-busd pool to bsc pool
+        // Initialize each lp pool
         let bscPool = await BSCPool.deployed();
-        let wbnbBusdLp = await factory.getPair(wbnb.address, busdAddress);
-        let mdxBusdLp = await factory.getPair(MdxToken.address, busdAddress);
-        let usdtBusdLp = await factory.getPair(addressJson.USDT, busdAddress);
+        let productions = getProdInfo(network);
+        let poolId = 0;
         
-        await bscPool.add(1000, wbnbBusdLp, false);
-        await bscPool.add(1000, mdxBusdLp, false);
-        await bscPool.add(1000, usdtBusdLp, false);
+        for (prod of productions) {
+            prod.token0Address = prod.token0 == 'Bnb' ? wbnb.address : prod.token0Address;
+            prod.token1Address = prod.token1 == 'Bnb' ? wbnb.address : prod.token1Address;
 
-        saveToJson("MdxBnbBusdPoolId", 0, network);
-        saveToJson("MdxMdxBusdPoolId", 1, network);
-        saveToJson("MdxUsdtBusdPoolId", 2, network);
+            await factory.createPair(prod.token0Address, prod.token1Address);
+            let lp = await factory.getPair(prod.token0Address, prod.token1Address);
+            await bscPool.add(1000, lp, false);
+            saveToJson(`Mdx${prod.token0}${prod.token1}PoolId`, poolId++, network);
+        }
+
+    } else {
+        throw new Error('Init for other network unfinished');
     }
 };

@@ -7,41 +7,16 @@ const Bank = artifacts.require("Bank");
 const{ time } = require('@openzeppelin/test-helpers');
 
 const { assert } = require('console');
-const BigNumber = require("bignumber.js");
-const fs = require('fs')
-let saveToJson = require('./save_address_to_json.js')
+let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
+let getProdInfo = require('../js_utils/config.js');
 
 module.exports = async function (deployer, network, accounts) {
 
-    const jsonString = fs.readFileSync("bin/contracts/address.json")
-    const addressJson = JSON.parse(jsonString)
+    const addressJson = readAddressJson(network)
 
-    // TODO found the right mdx pool id. and rewardFirstPeriod
-    assert(network == 'development')
+    assert(network == 'development' || network == 'bsctest')
 
-    productions = [
-        {
-            token0: "Bnb", 
-            token1: "Busd", 
-            token0Address: "0x0000000000000000000000000000000000000000",
-            token1Address: addressJson.BUSD, 
-            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
-        },
-        {
-            token0: "Mdx", 
-            token1: "Busd", 
-            token0Address: addressJson.MdxToken,
-            token1Address: addressJson.BUSD, 
-            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
-        },
-        {
-            token0: "Usdt", 
-            token1: "Busd", 
-            token0Address: addressJson.USDT,
-            token1Address: addressJson.BUSD, 
-            rewardFirstPeriod: BigNumber(60*60*24*30).multipliedBy(1e18),    // 1 DEMA per second.
-        },
-    ];
+    let productions = getProdInfo(network);
 
     await deployer.deploy(Reinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 1000);
     await deployer.deploy(MdxStrategyWithdrawMinimizeTrading, addressJson.MdexRouter);
@@ -85,7 +60,7 @@ module.exports = async function (deployer, network, accounts) {
         // rewardFirstPeriod, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = goblin address.
         await farm.addPool(prod.rewardFirstPeriod, 23, time.duration.days(30), 90, prod.goblin.address);
-        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, prod.farmPoolId);
+        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, +prod.farmPoolId);
 
         // bank add production
         bank = await Bank.at(addressJson.Bank);

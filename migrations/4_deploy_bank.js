@@ -7,14 +7,12 @@ const Farm = artifacts.require("Farm");
 const BigNumber = require("bignumber.js");
 const{ time } = require('@openzeppelin/test-helpers');
 
-let saveToJson = require('./save_address_to_json.js')
-const fs = require('fs')
+let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
 
 module.exports = async function (deployer, network, accounts) {
 
     // Read address
-    const jsonString = fs.readFileSync("bin/contracts/address.json")
-    const addressJson = JSON.parse(jsonString)
+    const addressJson = readAddressJson(network)
 
     await deployer.deploy(TripleSlopeModel);
     const bankConfig = await deployer.deploy(BankConfig);
@@ -23,8 +21,8 @@ module.exports = async function (deployer, network, accounts) {
         Farm,
         UserProfile.address,
         DEMA.address,
-        500,
-        500
+        500,    // inviterBonusRatio 5%
+        500     // bonusRatio 5%
     );
     const bank = await deployer.deploy(
         Bank,
@@ -34,14 +32,13 @@ module.exports = async function (deployer, network, accounts) {
     // Add minter of dema for farm.
     dema.addMinter(farm.address);
 
-    saveToJson("TripleSlopeModel", TripleSlopeModel.address);
-    saveToJson("BankConfig", bankConfig.address);
-    saveToJson("DEMA", dema.address);
-    saveToJson("Farm", farm.address);
-    saveToJson("Bank", bank.address);
+    saveToJson("TripleSlopeModel", TripleSlopeModel.address, network);
+    saveToJson("BankConfig", bankConfig.address, network);
+    saveToJson("DEMA", dema.address, network);
+    saveToJson("Farm", farm.address, network);
+    saveToJson("Bank", bank.address, network);
 
-    // TODO add farm and get the correct pool id
-    if (network == 'development') {
+    if (network == 'development' || network == 'bsctest') {
 
         // Add bank config
         let setReserveBps = 1000;   // 10%
@@ -61,10 +58,10 @@ module.exports = async function (deployer, network, accounts) {
         await bank.addToken(addressJson.MdxToken, 2);
         await bank.addToken(addressJson.BUSD, 3);
 
-        saveToJson(`BankBnbFarmPoolId`, 0);
-        saveToJson(`BankUsdtFarmPoolId`, 1);
-        saveToJson(`BankMdxFarmPoolId`, 2);
-        saveToJson(`BankBusdFarmPoolId`, 3);
+        saveToJson(`BankBnbFarmPoolId`, 0, network);
+        saveToJson(`BankUsdtFarmPoolId`, 1, network);
+        saveToJson(`BankMdxFarmPoolId`, 2, network);
+        saveToJson(`BankBusdFarmPoolId`, 3, network);
     } else {
         throw new Error('Add token for other network unfinished');
     }

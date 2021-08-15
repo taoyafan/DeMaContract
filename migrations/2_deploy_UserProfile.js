@@ -1,6 +1,6 @@
 let UserProfile = artifacts.require("./UserProfile.sol");
 let PlgUserIntroduction = artifacts.require("./PlgUserIntroduction.sol");
-let saveToJson = require('./save_address_to_json.js')
+let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
 
 module.exports = async function(deployer, network) {
     await deployer.deploy(UserProfile);
