@@ -123,7 +123,7 @@ contract Bank is Ownable, ReentrancyGuard {
     function allPosIdAndHealth() external view returns (uint256[] memory, uint256[] memory) {
         uint256 len = EnumerableSet.length(allPosId);
         uint256[] memory posId = new uint256[](len);
-        uint256[] memory posHealth = new uint256[](2);
+        uint256[] memory posHealth = new uint256[](len);
 
         for (uint256 i = 0; i < len; ++i) {
             uint256 tempPosId = EnumerableSet.at(allPosId, i);
@@ -468,7 +468,7 @@ contract Bank is Ownable, ReentrancyGuard {
         // If the lp amount in current pos is 0, delete the pos.
         else if (production.goblin.posLPAmount(posId) == 0) {
             EnumerableSet.remove(user.posId, posId);
-            EnumerableSet.remove(allPosId, prodId);
+            EnumerableSet.remove(allPosId, posId);
             user.posNum[prodId] = user.posNum[prodId].sub(1);
 
             // Get all rewards. Note that it MUST after user.posNum update.
