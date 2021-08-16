@@ -8,7 +8,7 @@ const{ time } = require('@openzeppelin/test-helpers');
 
 const { assert } = require('console');
 let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
-let getProdInfo = require('../js_utils/config.js');
+let {getProdInfo} = require('../js_utils/config.js');
 
 module.exports = async function (deployer, network, accounts) {
 
@@ -18,13 +18,13 @@ module.exports = async function (deployer, network, accounts) {
 
     let productions = getProdInfo(network);
 
-    await deployer.deploy(Reinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 1000);
+    await deployer.deploy(Reinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 2000);
     await deployer.deploy(MdxStrategyWithdrawMinimizeTrading, addressJson.MdexRouter);
     await deployer.deploy(MdxStrategyAddTwoSidesOptimal, addressJson.MdexRouter);
 
-    saveToJson(`Reinvestment`, Reinvestment.address);
-    saveToJson(`MdxStrategyWithdrawMinimizeTrading`, MdxStrategyWithdrawMinimizeTrading.address);
-    saveToJson(`MdxStrategyAddTwoSidesOptimal`, MdxStrategyAddTwoSidesOptimal.address);
+    saveToJson(`Reinvestment`, Reinvestment.address, network);
+    saveToJson(`MdxStrategyWithdrawMinimizeTrading`, MdxStrategyWithdrawMinimizeTrading.address, network);
+    saveToJson(`MdxStrategyAddTwoSidesOptimal`, MdxStrategyAddTwoSidesOptimal.address, network);
 
     let farm = await Farm.at(addressJson.Farm);
 
@@ -51,7 +51,7 @@ module.exports = async function (deployer, network, accounts) {
             MdxStrategyWithdrawMinimizeTrading.address
         );
 
-        saveToJson(`Mdx${prod.token0}${prod.token1}Goblin`, prod.goblin.address);
+        saveToJson(`Mdx${prod.token0}${prod.token1}Goblin`, prod.goblin.address, network);
 
         // Set strategy ok, MdxStrategyWithdrawMinimizeTrading will be set true when deploy
         prod.goblin.setStrategyOk([MdxStrategyAddTwoSidesOptimal.address], true)
@@ -60,7 +60,7 @@ module.exports = async function (deployer, network, accounts) {
         // rewardFirstPeriod, leftPeriodTimes = 23, periodDuration = 1 month, 
         // leftRatioNextPeriod = 90, operator = goblin address.
         await farm.addPool(prod.rewardFirstPeriod, 23, time.duration.days(30), 90, prod.goblin.address);
-        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, +prod.farmPoolId);
+        saveToJson(`Mdx${prod.token0}${prod.token1}FarmPoolId`, +prod.farmPoolId, network);
 
         // bank add production
         bank = await Bank.at(addressJson.Bank);
@@ -75,9 +75,9 @@ module.exports = async function (deployer, network, accounts) {
             6000,                                       // uint256 liquidateFactor
         );
         prod.prodId = (await bank.currentProdId()) - 1;
-        saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId);
-        saveToJson(`Mdx${prod.token1}${prod.token0}ProdId`, prod.prodId);
+        saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId, network);
+        saveToJson(`Mdx${prod.token1}${prod.token0}ProdId`, prod.prodId, network);
 
-        saveToJson(`MdxProd${prod.prodId}Tokens`, [prod.token0, prod.token1]);
+        saveToJson(`MdxProd${prod.prodId}Tokens`, [prod.token0, prod.token1], network);
     }
 };

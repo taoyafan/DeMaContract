@@ -8,6 +8,7 @@ const BigNumber = require("bignumber.js");
 const{ time } = require('@openzeppelin/test-helpers');
 
 let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
+let {getBanksInfo} = require('../js_utils/config.js');
 
 module.exports = async function (deployer, network, accounts) {
 
@@ -38,32 +39,19 @@ module.exports = async function (deployer, network, accounts) {
     saveToJson("Farm", farm.address, network);
     saveToJson("Bank", bank.address, network);
 
-    if (network == 'development' || network == 'bsctest') {
+    // Add bank config
+    let setReserveBps = 1000;   // 10%
+    let setLiquidateBps = 1000;     // 10%
+    await bankConfig.setParams(setReserveBps, setLiquidateBps, TripleSlopeModel.address);
+    await bank.updateConfig(bankConfig.address);
 
-        // Add bank config
-        let setReserveBps = 1000;   // 10%
-        let setLiquidateBps = 1000;     // 10%
-        await bankConfig.setParams(setReserveBps, setLiquidateBps, TripleSlopeModel.address);
-        await bank.updateConfig(bankConfig.address);
+    let banksInfo = getBanksInfo(network);
+    let farmId = 0;
 
-        // Farm add pools
-        farm.addPool(BigNumber(19200*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
-        farm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
-        farm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
-        farm.addPool(BigNumber(15360*30).multipliedBy(1e18), 23, time.duration.days(30), 90, bank.address);
-
-        // Bank add tokens
-        await bank.addToken(`0x0000000000000000000000000000000000000000`, 0);
-        await bank.addToken(addressJson.USDT, 1);
-        await bank.addToken(addressJson.MdxToken, 2);
-        await bank.addToken(addressJson.BUSD, 3);
-
-        saveToJson(`BankBnbFarmPoolId`, 0, network);
-        saveToJson(`BankUsdtFarmPoolId`, 1, network);
-        saveToJson(`BankMdxFarmPoolId`, 2, network);
-        saveToJson(`BankBusdFarmPoolId`, 3, network);
-    } else {
-        throw new Error('Add token for other network unfinished');
+    for (info of banksInfo) {
+        farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
+        await bank.addToken(info.tokenAddress, farmId);
+        saveToJson(`Bank${info.token}FarmPoolId`, farmId, network);
+        ++farmId;
     }
-
 };

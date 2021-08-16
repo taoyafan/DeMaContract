@@ -9,7 +9,7 @@ const BoardRoomMDX = artifacts.require("BoardRoomMDX");
 
 const BigNumber = require("bignumber.js");
 let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
-let getProdInfo = require('../js_utils/config.js');
+let {getProdInfo} = require('../js_utils/config.js');
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 module.exports = async function (deployer, network, accounts) {

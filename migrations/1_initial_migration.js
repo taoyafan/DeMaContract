@@ -1,4 +1,3 @@
-const Migrations = artifacts.require("./Migrations.sol");
 const ERC20Token = artifacts.require("ERC20Token");
 const BigNumber = require("bignumber.js");
 

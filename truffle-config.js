@@ -66,7 +66,7 @@ module.exports = {
     // },
     // Useful for private networks
     bsctest: {
-      provider: () => new HDWalletProvider(privateKey, "https://data-seed-prebsc-1-s1.binance.org:8545/"),
+      provider: () => new HDWalletProvider(privateKey, "https://data-seed-prebsc-2-s3.binance.org:8545/"),
       network_id: 97,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
       gasPrice: 20000000000,   // 20 gwei (in wei)
@@ -95,7 +95,7 @@ module.exports = {
       network_id: 256,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
       gasPrice: 1000000000,   // 1 gwei (in wei)
-      production: true        // Treats this network as if it was a public net. (default: false)
+      // production: true        // Treats this network as if it was a public net. (default: false)
     },
   },
 

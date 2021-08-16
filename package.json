@@ -17,7 +17,7 @@
     "mmdx": "truffle migrate --f 3 --to 3",
     "mbank": "truffle migrate --f 4 --to 4",
     "mgoblin": "truffle migrate --f 5 --to 5",
-    "migratebsc": "truffle migrate --network bsctest",
+    "mbsctest": "truffle migrate --compile-none --network bsctest",
 
     "bankinit": "truffle exec ./scripts/bank_init.js",
     "bankinitbsc": "truffle exec ./scripts/bank_init.js --network bsctest",
