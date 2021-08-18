@@ -60,7 +60,6 @@ contract("TestProduction", (accounts) => {
     let bank;
     let reinvestment;
 
-    // [tokenName[0], tokenName[1], revise?]
     let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
     let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
 
@@ -95,28 +94,28 @@ contract("TestProduction", (accounts) => {
         // for (i = 0; i < 3; i++) {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
-        
+
         forEachTokenPair(tokenPairs[3], r[3]);
 
 
         async function forEachTokenPair(tokensName, r) {
             let depositArray = [[2, 1], [1, 2], [2, 0], [0, 2]];
             let borrowsArray = [[0, 0], [0, 1], [1, 0], [2, 1], [1, 2]];
-            
+
             depositArray.forEach((deposits) => {
                 deposits.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
-            
+
             borrowsArray.forEach((borrows) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
-            
+
             for (deposits of depositArray) {
                 for (borrows of borrowsArray) {
                     forEachBorrow(tokensName, deposits, borrows, r);
                 }
             }
-                
+
             // forEachBorrow(tokensName, depositArray[0], borrowsArray[2], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
@@ -146,7 +145,7 @@ contract("TestProduction", (accounts) => {
                     })
 
                     describe(`\n\nTest create position`, async () => {
-                        
+
                         before(`Create position`, async () => {
                             beforeStates = await getStates(0, accounts[0], tokensName);
                             // logObj(beforeStates, "beforeStates");
@@ -236,7 +235,7 @@ contract("TestProduction", (accounts) => {
 
     async function checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack) {
         const tokensAmountInLp = beforeStates.goblin.userInfo.tokensAmountInLp;
-        let toUser = [0, 0], toBank = [0, 0]; 
+        let toUser = [0, 0], toBank = [0, 0];
         const debts = beforeStates.posInfo.debts;
 
         let ns = [aDivB(aMulB(tokensAmountInLp[0], withdrawRate), 10000),
@@ -245,7 +244,7 @@ contract("TestProduction", (accounts) => {
         // If repay
         if (whichWantBack == 3) {
             let rs = await getR0R1(beforeStates.tokensAddress[0], beforeStates.tokensAddress[1])
-            
+
             // Swap the token as the depts ratio. return the first token amount after swaping.
             function repayFirstAmount(ds, ns, rs) {
                 if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
@@ -284,7 +283,7 @@ contract("TestProduction", (accounts) => {
                         toUser[i] = 0;
                     }
 
-                    toBank[i] = debts[i];  
+                    toBank[i] = debts[i];
                 } else {
                     // All token used to repay, There are no left to user
                 }
@@ -294,7 +293,7 @@ contract("TestProduction", (accounts) => {
         } else {
             toBank[0] = aDivB(aMulB(debts[0], withdrawRate), 10000);
             toBank[1] = aDivB(aMulB(debts[1], withdrawRate), 10000);
-            
+
             toUser[0] = aSubB(ns[0], toBank[0]);
             toUser[1] = aSubB(ns[1], toBank[1]);
 
@@ -302,7 +301,7 @@ contract("TestProduction", (accounts) => {
                 fromWei(toBank[0])}, ${fromWei(toBank[1])}, to user: ${
                 [fromWei(toUser[0]), fromWei(toUser[1])]}`);
         }
-        
+
         if (whichWantBack == 0) {
             toUser[0] = await swapToTarget(beforeStates.tokensAddress, toUser, 0);
             toUser[1] = 0;
@@ -322,16 +321,16 @@ contract("TestProduction", (accounts) => {
     // Assuming there is no time elapse
     async function checkPosAddResult(beforeStates, afterStates, depositAmounts, borrowAmounts) {
         const tokens = afterStates.tokensAddress;
-        
+
         for (i = 0; i < 2; ++i) {
             // Check user balance
             let userIncBalance = aSubB(afterStates.userBalance[i], beforeStates.userBalance[i]);
             if (tokens[i] == addressJson.MdxToken && afterStates.mdxPoolLpAmount.toNumber() == 0) {
-                userIncBalance = aSubB(userIncBalance, 
-                    aAddB(beforeStates.goblin.userInfo.earnedMdxStored, 
+                userIncBalance = aSubB(userIncBalance,
+                    aAddB(beforeStates.goblin.userInfo.earnedMdxStored,
                         aDivB(
-                            aMulB(beforeStates.mdxPoolLpAmount, 
-                                aSubB(afterStates.goblin.userInfo.accMdxPerLpStored, 
+                            aMulB(beforeStates.mdxPoolLpAmount,
+                                aSubB(afterStates.goblin.userInfo.accMdxPerLpStored,
                                     beforeStates.goblin.userInfo.accMdxPerLpStored)
                             ), 1e18
                         )
@@ -339,7 +338,7 @@ contract("TestProduction", (accounts) => {
                 );
             }
             equal(userIncBalance, -depositAmounts[i], `User balance[${i}] changes wrong`, false, tokens[i])
-            
+
             // Check bank balance
             let bankIncBalance = aSubB(afterStates.bankBalance[i], beforeStates.bankBalance[i]);
             equal(bankIncBalance, -borrowAmounts[i], `Bank balance[${i}] changes wrong`, false, tokens[i])
@@ -347,7 +346,7 @@ contract("TestProduction", (accounts) => {
             // Check bank total val
             let bankIncVal = aSubB(afterStates.banksInfo[i].totalVal, beforeStates.banksInfo[i].totalVal);
             equal(bankIncVal, bankIncBalance, `Bank val[${i}] changes wrong`, true, tokens[i])
-            
+
             // Check bank total debt
             let bankIncDebt = aSubB(afterStates.banksInfo[i].totalDebt, beforeStates.banksInfo[i].totalDebt);
             equal(bankIncDebt, -bankIncBalance, `Bank debt[${i}] changes wrong`, false, tokens[i])
@@ -361,15 +360,15 @@ contract("TestProduction", (accounts) => {
         // - Lp amount
         let IncLpAmount = aSubB(afterStates.goblin.lpAmount, beforeStates.goblin.lpAmount);
         let IncLpTo0Amount = await swapAllLpToToken0(tokens[0], tokens[1], IncLpAmount);
-        let targetTo0Amount = await swapToTarget(tokens, [aAddB(depositAmounts[0], borrowAmounts[0]), 
+        let targetTo0Amount = await swapToTarget(tokens, [aAddB(depositAmounts[0], borrowAmounts[0]),
                                                         aAddB(depositAmounts[1], borrowAmounts[1])]);
-        
+
         equal(IncLpTo0Amount, targetTo0Amount, `Lp amount changes wrong`, false);
-        
+
         // - Principals
         let [r0, r1] = await getR0R1(tokens[0], tokens[1]);
         let targetPrincipal = [0, 0];
-        if (beforeStates.goblin.principals[0].toNumber() == 0 && 
+        if (beforeStates.goblin.principals[0].toNumber() == 0 &&
             beforeStates.goblin.principals[1].toNumber() == 0) {
             // Create position
             if (aMulB(depositAmounts[0], r1).isGreaterThan(aMulB(depositAmounts[1], r0))) {
@@ -382,9 +381,9 @@ contract("TestProduction", (accounts) => {
                 targetPrincipal[0] = await swapToTarget(tokens, depositAmounts, 0);
             } else {
                 targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
-            } 
+            }
         }
-        
+
         for (i = 0; i < 2; ++i) {
             let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
             if (targetPrincipal[i] < 0) {
@@ -393,9 +392,9 @@ contract("TestProduction", (accounts) => {
                     targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
                 }
             }
-            equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false); 
+            equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false);
         }
-            
+
 
         // Check global totalLp and user totalLp
         let userIncTotalLp = aSubB(afterStates.goblin.globalInfo.totalLp, beforeStates.goblin.globalInfo.totalLp);
@@ -403,7 +402,7 @@ contract("TestProduction", (accounts) => {
 
         equal(userIncTotalLp, IncLpAmount, `Global LP amounts changes wrong`, true, 1); //1 means not bnb
         equal(globalIncTotalLp, IncLpAmount, `User Lp amount changes wrong`, true, 1); //1 means not bnb
-        
+
         // Check mdx pool lp amount
         let mdxPoolIncLp = aSubB(afterStates.mdxPoolLpAmount, beforeStates.mdxPoolLpAmount);
         equal(mdxPoolIncLp, IncLpAmount, `Mdx pool amounts changes wrong`, true, 1); //1 means not bnb
