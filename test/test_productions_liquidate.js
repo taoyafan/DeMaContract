@@ -28,6 +28,8 @@ const {
     swapAllLpToToken0,
     approve,
     getBalance,
+    swapExactTo,
+    swapToExact,
     addLiquidate,
     removeAllLiquidity,
     swapToTarget,
@@ -48,6 +50,7 @@ const {
     repay,
     withdraw,
 } = require("./lib/prod_interface");
+const { assert } = require("console");
 
 contract("TestProductionLiquidate", (accounts) => {
 
@@ -238,36 +241,66 @@ contract("TestProductionLiquidate", (accounts) => {
     })
 })
 
-async function checkHealth(beforeStates, afterStates, withdrawRate, whichWantBack) {
+async function checkHealth(afterStates) {
+    let rs = await getR0R1(afterStates.tokensAddress[0], afterStates.tokensAddress[1]);
 
-    // Check health
-    {
-        let rs = await getR0R1(afterStates.tokensAddress[0], afterStates.tokensAddress[1])
-
-        // Swap the token as the depts ratio. return the first token amount after swaping.
-        function repayFirstAmount(ds, ns, rs) {
-            if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
-                return ds[0].multipliedBy(aMulB(rs[1], ns[0]).plus(aMulB(rs[0], ns[1]))).dividedToIntegerBy(
-                    aMulB(ds[0], rs[1]).plus(aMulB(ds[1], rs[0])));
-            } else {
-                return ns[0];
-            }
+    // Swap the token as the depts ratio. return the first token amount after swaping.
+    function repayFirstAmount(ds, ns, rs) {
+        if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
+            return ds[0].multipliedBy(aMulB(rs[1], ns[0]).plus(aMulB(rs[0], ns[1]))).dividedToIntegerBy(
+                aMulB(ds[0], rs[1]).plus(aMulB(ds[1], rs[0])));
+        } else {
+            return ns[0];
         }
-
-        const debts = afterStates.posInfo.debts;
-        const tokensAmountInLp = afterStates.goblin.userInfo.tokensAmountInLp;
-        let ns = [tokensAmountInLp[0], tokensAmountInLp[1]];
-
-        let health = [0, 0]
-        health[0] = repayFirstAmount(debts, ns, rs);
-        health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
-
-        equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
-        equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
     }
 
-    // Check newHealth
-    {
+    const debts = afterStates.posInfo.debts;
+    const tokensAmountInLp = afterStates.goblin.userInfo.tokensAmountInLp;
+    let ns = [tokensAmountInLp[0], tokensAmountInLp[1]];
 
+    let health = [0, 0]
+    health[0] = repayFirstAmount(debts, ns, rs);
+    health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
+
+    equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
+    equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
+}
+
+async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
+    let tokens = afterStates.tokensAddress;
+    let targetNewHealth = [0, 0];
+    
+    if (beforeStates.posInfo.posId == 0) {
+        // Create position
+        let [largerIdx, value] = await swapToTarget(tokens, depositAmounts, 2);
+        targetNewHealth[largerIdx] = value;
+    } else {
+        // Add, repay, withdraw, swap the other amounts to target
+        targetNewHealth = beforeStates.posInfo.newHealth;
+        let base = targetNewHealth[0].toNumber() == 0 ? 1 : 0;
+        let newHealthInc = await swapToTarget(tokens, depositAmounts, base);
+        targetNewHealth[base] = aAddB(targetNewHealth[base], newHealthInc)
+    }
+
+    equal(afterStates.posInfo.newHealth, targetNewHealth, false);
+}
+
+async function swapToTargetNewHealth(states, targetNewHealth, from) {
+    assert(states.posInfo.posId != 0, "Pos id not exist");
+    
+    let rs = await getR0R1(states.tokensAddress[0], states.tokensAddress[1]);
+    let amountsInLp = states.goblin.tokensAmountInLp;
+    let base = amountsInLp[0] == 0 ? 1 : 0;
+    let principals = states.goblin.principals;
+
+    let rDivN = aDivB(rs[base], amountsInLp[base]);
+    let targetRBase = targetNewHealth.multipliedBy(principals[base]).multipliedBy(rDivN).dividedToIntegerBy(20000);
+
+    // Swap to move r[base] equal target r[base]
+    let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
+    if (swapFromBaseAmount > 0) {
+        await swapExactTo(tokens, base, swapFromBaseAmount, from);
+    } else if (swapFromBaseAmount < 0) {
+        await swapToExact(tokens, 1-base, aMulB(swapFromBaseAmount, -1), from);
     }
 }

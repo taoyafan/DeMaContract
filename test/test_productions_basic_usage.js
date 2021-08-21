@@ -406,13 +406,5 @@ contract("TestProduction", (accounts) => {
         // Check mdx pool lp amount
         let mdxPoolIncLp = aSubB(afterStates.mdxPoolLpAmount, beforeStates.mdxPoolLpAmount);
         equal(mdxPoolIncLp, IncLpAmount, `Mdx pool amounts changes wrong`, true, 1); //1 means not bnb
-
-        // Health should be 10000 while there is no time elapse
-        for (i = 0; i < afterStates.allPosId.length; ++i) {
-            if (afterStates.allPosId[i] == afterStates.posInfo.posId, false) {
-                equal(afterStates.allPosHealth[i], 10000, 'Health wrong');
-                break;
-            }
-        }
     }
 })
