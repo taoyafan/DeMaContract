@@ -284,15 +284,55 @@ async function getBalance(tokenAddress, account) {
     }
 }
 
+async function swapExactTo(tokens, fromIdx, amount, from) {
+    let wbnb = await WBNB.at(addressJson.WBNB);
+    if (tokens[fromIdx] == bnbAddress) {
+        tokens[fromIdx] = addressJson.WBNB;
+        await wbnb.deposit({from: from, value: amount});
+    } else if (tokens[1-fromIdx] == bnbAddress) {
+        tokens[1-fromIdx] = addressJson.WBNB;
+    }
+
+    let router = await MdexRouter.at(addressJson.MdexRouter);
+    await router.swapExactTokensForTokens(amount, 0, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
+
+    if (tokens[1-fromIdx] == addressJson.WBNB) {
+        let wbnbAmount = await wbnb.balanceOf(from)
+        if (wbnbAmount > 0) {
+            await wbnb.withdraw(wbnbAmount, {from: from});
+        }
+    }
+}
+
+async function swapToExact(tokens, fromIdx, amount) {
+    let wbnb = await WBNB.at(addressJson.WBNB);
+    if (tokens[fromIdx] == bnbAddress) {
+        tokens[fromIdx] = addressJson.WBNB;
+        await wbnb.deposit({from: from, value: amount});
+    } else if (tokens[1-fromIdx] == bnbAddress) {
+        tokens[1-fromIdx] = addressJson.WBNB;
+    }
+
+    let router = await MdexRouter.at(addressJson.MdexRouter);
+    await router.swapTokensForExactTokens(amount, MaxUint256, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
+
+    if (tokens[1-fromIdx] == addressJson.WBNB) {
+        let wbnbAmount = await wbnb.balanceOf(from)
+        if (wbnbAmount > 0) {
+            await wbnb.withdraw(wbnbAmount, {from: from});
+        }
+    }
+}
+
 // Input token address
 async function addLiquidate(token0, token1, r0, r1, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
     if (token0 == bnbAddress) {
         token0 = addressJson.WBNB
-        wbnb.deposit({from: from, value: r0})
+        await wbnb.deposit({from: from, value: r0})
     } else if (token1 == bnbAddress) {
         token1 = addressJson.WBNB
-        wbnb.deposit({from: from, value: r1})
+        await wbnb.deposit({from: from, value: r1})
     }
 
     let router = await MdexRouter.at(addressJson.MdexRouter);
@@ -332,14 +372,24 @@ async function removeAllLiquidity(token0, token1, from) {
     }
 }
 
+// which = 2 means swap to larger, 3 means to smaller
 async function swapToTarget(tokens, amounts, which=0) {
     let _r0, _r1
     [_r0, _r1] = await getR0R1(tokens[0], tokens[1])
+    
+    let swapAllToOne = [
+        _swapAllToA(amounts[0], amounts[1], _r0, _r1),
+        _swapAllToA(amounts[1], amounts[0], _r1, _r0)
+    ]
 
     if (which == 0) {
-        return _swapAllToA(amounts[0], amounts[1], _r0, _r1);
+        return swapAllToOne[0];
+    } else if (which == 1) {
+        return swapAllToOne[1];
     } else {
-        return _swapAllToA(amounts[1], amounts[0], _r1, _r0);
+        let larger = swapAllToOne[0].isGreaterThan(swapAllToOne[1]) ? 0 : 1;   
+        let target = (which - 2) ^ larger;
+        return [target, swapAllToOne[target]];
     }
 }
 
@@ -439,6 +489,8 @@ module.exports = {
     swapAllLpToToken0,
     approve,
     getBalance,
+    swapExactTo,
+    swapToExact,
     addLiquidate,
     removeAllLiquidity,
     swapToTarget,
