@@ -319,10 +319,10 @@ contract("TestAddStrategy", (accounts) => {
             async function addLiquidate(token0, token1, r0, r1, from) {
                 if (token0 == bnbAddress) {
                     token0 = wbnb.address
-                    wbnb.deposit({from: from, value: r0})
+                    await wbnb.deposit({from: from, value: r0})
                 } else if (token1 == bnbAddress) {
                     token1 = wbnb.address
-                    wbnb.deposit({from: from, value: r1})
+                    await wbnb.deposit({from: from, value: r1})
                 }
 
                 await approve(token0, router.address, r0, from)
@@ -338,10 +338,10 @@ contract("TestAddStrategy", (accounts) => {
             async function addLiquidate(token0, token1, r0, r1, from) {
                 if (token0 == bnbAddress) {
                     token0 = wbnb.address
-                    wbnb.deposit({from: from, value: r0})
+                    await wbnb.deposit({from: from, value: r0})
                 } else if (token1 == bnbAddress) {
                     token1 = wbnb.address
-                    wbnb.deposit({from: from, value: r1})
+                    await wbnb.deposit({from: from, value: r1})
                 }
 
                 await approve(token0, router.address, r0, from)
