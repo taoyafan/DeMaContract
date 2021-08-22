@@ -9,6 +9,7 @@ const Bank = artifacts.require("Bank");
 const DEMA = artifacts.require("DEMA");
 const Farm = artifacts.require("Farm");
 const Reinvestment = artifacts.require("Reinvestment");
+const{ expectRevert  } = require('@openzeppelin/test-helpers');
 
 const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
@@ -37,6 +38,7 @@ const {
     getTokenAmountInLp,
     toWei,
     fromWei,
+    toNum,
     aSubB,
     aAddB,
     aMulB,
@@ -50,6 +52,7 @@ const {
     repay,
     withdraw,
 } = require("./lib/prod_interface");
+
 const { assert } = require("console");
 
 contract("TestProductionLiquidate", (accounts) => {
@@ -153,6 +156,7 @@ contract("TestProductionLiquidate", (accounts) => {
 
                     })
 
+                    // 1. Check health and new health
                     describe(`\n\nTest create position`, async () => {
 
                         before(`Create position`, async () => {
@@ -166,10 +170,34 @@ contract("TestProductionLiquidate", (accounts) => {
                         })
 
                         it(`Check create position result`, async () => {
-                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                            await checkHealth(afterStates);
+                            await checkNewHealth(beforeStates, afterStates, [deposits[0], deposits[1]]);
+                        })
+
+                        it(`Liquidate should failed`, async () => {
+                            let errorInfo = borrows[0] == 0 && borrows[1] == 0 ? `no debts` : `can't liquidate`
+                            await expectRevert(bank.liquidate(posId), errorInfo);
                         })
                     })
 
+                    // 2. Swap to make new health to 50%, check new health
+                    describe(`\n\nTest new health after swap`, async () => {
+
+                        before(`Swap to target newHealth equal to 50%`, async () => {
+                            beforeStates = afterStates;
+                            await swapToTargetNewHealth(beforeStates, 5000, accounts[0]);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After move new health to 50%`, afterStates);
+                        })
+
+                        it(`Check health and new health`, async () => {
+                            await checkHealth(afterStates);
+                            await checkNewHealth(beforeStates, afterStates, [0, 0]);
+                            equal(toWei(afterStates.posInfo.newHealth), toWei(5000), `New health changes wrong`, false);
+                        })
+                    })
+
+                    // 3. Replenishment same as init, new health should be around 75%
                     describe(`\n\nTest replenishment`, async () => {
                         before(`replenishment`, async () => {
                             beforeStates = afterStates;
@@ -179,29 +207,15 @@ contract("TestProductionLiquidate", (accounts) => {
                         })
 
                         it(`Check replenishment result`, async () => {
-                            await checkPosAddResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                            await checkHealth(afterStates);
+                            await checkNewHealth(beforeStates, afterStates, [deposits[0], deposits[1]]);
                         })
                     })
 
-                    describe(`\n\nTest repay`, async () => {
-
-                        let withdrawRate = Math.floor(Math.random()*10000);
-
-                        before(`Before`, async () => {
-                            beforeStates = afterStates;
-                            await repay(posId, tokensName, accounts[0], withdrawRate);
-                            afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After repay ${withdrawRate/100}%`, afterStates)
-                        })
-
-                        it(`Repay ${withdrawRate/100}%`, async () => {
-                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, 3);
-                        })
-                    })
-
+                    // 4. Withdraw 50%, new health should be 75%, check health
                     describe(`\n\nTest withdraw`, async () => {
 
-                        let withdrawRate = Math.floor(Math.random()*10000);
+                        let withdrawRate = 5000;
                         let whichWantBack = Math.floor(Math.random()*3);      // 0(token0), 1(token1), 2(token what surplus)
                         let backToken = [tokensName[0], tokensName[1], 'Optimal'];
 
@@ -214,20 +228,51 @@ contract("TestProductionLiquidate", (accounts) => {
                         })
 
                         it(`Check withdraw ${withdrawRate/100}%`, async () => {
-                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
+                            await checkHealth(afterStates);
+                            equal(toWei(afterStates.posInfo.newHealth), toWei(7500), `New health changes wrong`, false);
                         })
+                    })
 
-                        it(`Withdraw 100%`, async () => {
-                            withdrawRate = 10000;   // 100%
+                    // 5. Repay 10%， new health should be 75%, check health
+                    describe(`\n\nTest repay`, async () => {
+
+                        let withdrawRate = 1000;
+
+                        before(`Before`, async () => {
                             beforeStates = afterStates;
-                            await withdraw(posId, tokensName, accounts[0], withdrawRate, whichWantBack);
+                            await repay(posId, tokensName, accounts[0], withdrawRate);
                             afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After withdraw ${withdrawRate/100}%, back token ${
-                                backToken[whichWantBack]}`, afterStates)
+                            saveLogToFile(file, `After repay ${withdrawRate/100}%`, afterStates)
                         })
 
-                        it(`Check withdraw 100%`, async () => {
-                            await checkPosWithdrawResult(beforeStates, afterStates, withdrawRate, whichWantBack);
+                        it(`Repay ${withdrawRate/100}%`, async () => {
+                            await checkHealth(afterStates);
+                            equal(toWei(afterStates.posInfo.newHealth), toWei(7500), `New health changes wrong`, false);
+                        })
+                    })
+
+                    // 6. Swap to make new health to 50%, Liquidate
+                    describe(`\n\nLiquidate test`, async () => {
+
+                        before(`Swap to target newHealth equal to 50%`, async () => {
+                            beforeStates = afterStates;
+                            await swapToTargetNewHealth(beforeStates, 5000, accounts[0]);
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After move new health to 50%`, afterStates);
+                        })
+
+                        it(`Check health and new health`, async () => {
+                            await checkHealth(afterStates);
+                            await checkNewHealth(beforeStates, afterStates, [0, 0]);
+                            equal(toWei(afterStates.posInfo.newHealth), toWei(5000), `New health changes wrong`, false);
+                        })
+
+                        // TODO token0 not return. allPosId not clear, need to check again.
+                        it(`Liquidate test`, async () => {
+                            beforeStates = afterStates;
+                            await bank.liquidate(posId)
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After liquidate`, afterStates);
                         })
                     })
 
@@ -262,42 +307,103 @@ async function checkHealth(afterStates) {
     health[0] = repayFirstAmount(debts, ns, rs);
     health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
 
-    equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
-    equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
+    equal(toWei(afterStates.posInfo.health[0]), toWei(health[0]), `Health[${0}] changes wrong`, false)
+    equal(toWei(afterStates.posInfo.health[1]), toWei(health[1]), `Health[${1}] changes wrong`, false)
 }
 
 async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
-    let tokens = afterStates.tokensAddress;
+    let tokens = beforeStates.tokensAddress;
     let targetNewHealth = [0, 0];
-    
+    let targetPrincipals = 0;
+    let principals = beforeStates.goblin.principals;
+    let largerIdx;
+
     if (beforeStates.posInfo.posId == 0) {
         // Create position
-        let [largerIdx, value] = await swapToTarget(tokens, depositAmounts, 2);
-        targetNewHealth[largerIdx] = value;
+        [largerIdx, value] = await swapToTarget(tokens, depositAmounts, 2);
+        targetPrincipals = value;
+        targetNewHealth[largerIdx] = 10000;
     } else {
         // Add, repay, withdraw, swap the other amounts to target
-        targetNewHealth = beforeStates.posInfo.newHealth;
-        let base = targetNewHealth[0].toNumber() == 0 ? 1 : 0;
-        let newHealthInc = await swapToTarget(tokens, depositAmounts, base);
-        targetNewHealth[base] = aAddB(targetNewHealth[base], newHealthInc)
+        // Calc target principals
+        largerIdx = toNum(principals[0]) == 0 ? 1 : 0;
+        let targetAmount = await swapToTarget(tokens, depositAmounts, largerIdx);
+        targetPrincipals = aAddB(principals[largerIdx], targetAmount);
+        
+        // Calc target new health
+        let amountsInLp = afterStates.goblin.tokensAmountInLp;
+        let debts = afterStates.posInfo.debts;
+        let rs = await getR0R1(tokens[0], tokens[1]);
+        targetNewHealth[largerIdx] = _newHealth(amountsInLp[largerIdx], amountsInLp[1-largerIdx], 
+            debts[largerIdx], debts[1-largerIdx], rs[largerIdx], rs[1-largerIdx], targetPrincipals);
     }
 
-    equal(afterStates.posInfo.newHealth, targetNewHealth, false);
+    equal(toWei(afterStates.goblin.principals[largerIdx]), toWei(targetPrincipals), `Principals changes wrong`, false);
+    equal(toWei(afterStates.posInfo.newHealth), toWei(targetNewHealth[largerIdx]), `New health changes wrong`, false);
+}
+
+function _newHealth(na, nb, da, db, ra, rb, pa) {
+    na = toNum(fromWei(na))
+    nb = toNum(fromWei(nb))
+    da = toNum(fromWei(da))
+    db = toNum(fromWei(db))
+    ra = toNum(fromWei(ra))
+    rb = toNum(fromWei(rb))
+    pa = toNum(fromWei(pa))
+    
+    console.log(`na: ${na}, nb: ${nb} da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}`)
+
+    let h = (na - da + (nb - db) * ra / rb) / pa;
+    h = aDivB(aMulB(h, 10000), 1);
+
+    console.log(`New health: ${h}`)
+
+    return h
+}
+
+function _newRa(na, da, db, ra, rb, pa, h) {
+    na = toNum(fromWei(na))
+    da = toNum(fromWei(da))
+    db = toNum(fromWei(db))
+    ra = toNum(fromWei(ra))
+    rb = toNum(fromWei(rb))
+    pa = toNum(fromWei(pa))
+
+    console.log(`na: ${na}, da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}, h: ${h}`)
+
+    k = ra * rb;
+    eta = na / ra;
+
+    a = db / k;
+    b = -2 * eta;
+    c = da + pa * h;
+
+    newRa = (-b - (b*b - 4*a*c) ** 0.5) / (2*a);
+    
+    console.log(`new ra: ${newRa}`)
+    
+    return toWei(newRa)
 }
 
 async function swapToTargetNewHealth(states, targetNewHealth, from) {
     assert(states.posInfo.posId != 0, "Pos id not exist");
     
-    let rs = await getR0R1(states.tokensAddress[0], states.tokensAddress[1]);
-    let amountsInLp = states.goblin.tokensAmountInLp;
-    let base = amountsInLp[0] == 0 ? 1 : 0;
+    let tokens = states.tokensAddress;
+
+    // Get the base idx
     let principals = states.goblin.principals;
+    let base = principals[0] == 0 ? 1 : 0;
 
-    let rDivN = aDivB(rs[base], amountsInLp[base]);
-    let targetRBase = targetNewHealth.multipliedBy(principals[base]).multipliedBy(rDivN).dividedToIntegerBy(20000);
-
+    // Calc target r[base]
+    let amountsInLp = states.goblin.tokensAmountInLp;
+    let debts = states.posInfo.debts;
+    let rs = await getR0R1(tokens[0], tokens[1]);
+    let targetRBase = _newRa(amountsInLp[base], debts[base], debts[1-base], 
+        rs[base], rs[1-base], principals[base], aDivB(targetNewHealth, 10000, false));
+    
     // Swap to move r[base] equal target r[base]
     let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
+    
     if (swapFromBaseAmount > 0) {
         await swapExactTo(tokens, base, swapFromBaseAmount, from);
     } else if (swapFromBaseAmount < 0) {
