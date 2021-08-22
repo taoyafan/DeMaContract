@@ -294,6 +294,10 @@ async function swapExactTo(tokens, fromIdx, amount, from) {
     }
 
     let router = await MdexRouter.at(addressJson.MdexRouter);
+    await approve(tokens[fromIdx], router.address, 0, from);
+    await approve(tokens[fromIdx], router.address, MaxUint256, from);
+
+    console.log(`Swap ${fromWei(amount)} token ${fromIdx} to token ${1-fromIdx}`);
     await router.swapExactTokensForTokens(amount, 0, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
 
     if (tokens[1-fromIdx] == addressJson.WBNB) {
@@ -304,7 +308,7 @@ async function swapExactTo(tokens, fromIdx, amount, from) {
     }
 }
 
-async function swapToExact(tokens, fromIdx, amount) {
+async function swapToExact(tokens, fromIdx, amount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
@@ -314,6 +318,10 @@ async function swapToExact(tokens, fromIdx, amount) {
     }
 
     let router = await MdexRouter.at(addressJson.MdexRouter);
+    await approve(tokens[fromIdx], router.address, 0, from)
+    await approve(tokens[fromIdx], router.address, MaxUint256, from)
+
+    console.log(`Swap token ${fromIdx} to ${fromWei(amount)} token ${1-fromIdx}`);
     await router.swapTokensForExactTokens(amount, MaxUint256, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
 
     if (tokens[1-fromIdx] == addressJson.WBNB) {
@@ -374,12 +382,12 @@ async function removeAllLiquidity(token0, token1, from) {
 
 // which = 2 means swap to larger, 3 means to smaller
 async function swapToTarget(tokens, amounts, which=0) {
-    let _r0, _r1
-    [_r0, _r1] = await getR0R1(tokens[0], tokens[1])
+    let r0, r1
+    [r0, r1] = await getR0R1(tokens[0], tokens[1])
     
     let swapAllToOne = [
-        _swapAllToA(amounts[0], amounts[1], _r0, _r1),
-        _swapAllToA(amounts[1], amounts[0], _r1, _r0)
+        _swapAllToA(amounts[0], amounts[1], r0, r1),
+        _swapAllToA(amounts[1], amounts[0], r1, r0)
     ]
 
     if (which == 0) {
@@ -387,14 +395,14 @@ async function swapToTarget(tokens, amounts, which=0) {
     } else if (which == 1) {
         return swapAllToOne[1];
     } else {
-        let larger = swapAllToOne[0].isGreaterThan(swapAllToOne[1]) ? 0 : 1;   
+        let larger = aMulB(amounts[0], r1) > aMulB(amounts[1], r0) ? 0 : 1;   
         let target = (which - 2) ^ larger;
         return [target, swapAllToOne[target]];
     }
 }
 
-async function _swapAllToA(na, nb, ra, rb) {
-    let deltaA = BigNumber(nb).multipliedBy(ra).dividedToIntegerBy(rb)
+function _swapAllToA(na, nb, ra, rb) {
+    let deltaA = aMulB(nb, 0.997).multipliedBy(ra).dividedToIntegerBy(rb)
     return aAddB(na, deltaA)
 }
 
@@ -446,6 +454,10 @@ function fromWei(wei) {
     return BigNumber(web3.utils.fromWei(BigNumber(wei).toString()))
 }
 
+function toNum(v) {
+    return BigNumber(v).toNumber();
+}
+
 function aSubB(a, b) {
     return BigNumber(a).minus(BigNumber(b));
 }
@@ -458,8 +470,12 @@ function aMulB(a, b) {
     return BigNumber(a).multipliedBy(BigNumber(b))
 }
 
-function aDivB(a, b) {
-    return BigNumber(a).dividedToIntegerBy(BigNumber(b))
+function aDivB(a, b, fix=true) {
+    if (fix) {
+        return BigNumber(a).dividedToIntegerBy(BigNumber(b))
+    } else {
+        return BigNumber(a).dividedBy(BigNumber(b))
+    }
 }
 
 function tokensFilter(token0, token1) {
@@ -498,6 +514,7 @@ module.exports = {
     getTokenAmountInLp,
     toWei,
     fromWei,
+    toNum,
     aSubB,
     aAddB,
     aMulB,
