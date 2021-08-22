@@ -505,6 +505,7 @@ contract Bank is Ownable, ReentrancyGuard {
         // Delete the pos from owner, posNum -= 1.
         UserPPInfo storage owner = userPPInfo[pos.owner];
         EnumerableSet.remove(owner.posId, posId);
+        EnumerableSet.remove(allPosId, posId);
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
