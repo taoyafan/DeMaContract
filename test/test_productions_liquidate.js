@@ -51,6 +51,8 @@ const {
     replenishment,
     repay,
     withdraw,
+    convertWithdrawFormat,
+    checkPosResult,
 } = require("./lib/prod_interface");
 
 const { assert } = require("console");
@@ -229,7 +231,8 @@ contract("TestProductionLiquidate", (accounts) => {
 
                         it(`Check withdraw ${withdrawRate/100}%`, async () => {
                             await checkHealth(afterStates);
-                            equal(toWei(afterStates.posInfo.newHealth), toWei(7500), `New health changes wrong`, false);
+                            let [deposits, borrows] = await convertWithdrawFormat(beforeStates, withdrawRate, whichWantBack);
+                            await checkNewHealth(beforeStates, afterStates, [deposits[0], deposits[1]]);
                         })
                     })
 
@@ -247,7 +250,8 @@ contract("TestProductionLiquidate", (accounts) => {
 
                         it(`Repay ${withdrawRate/100}%`, async () => {
                             await checkHealth(afterStates);
-                            equal(toWei(afterStates.posInfo.newHealth), toWei(7500), `New health changes wrong`, false);
+                            let [deposits, borrows] = await convertWithdrawFormat(beforeStates, withdrawRate, 3);
+                            await checkNewHealth(beforeStates, afterStates, [deposits[0], deposits[1]]);
                         })
                     })
 
@@ -264,16 +268,23 @@ contract("TestProductionLiquidate", (accounts) => {
                         it(`Check health and new health`, async () => {
                             await checkHealth(afterStates);
                             await checkNewHealth(beforeStates, afterStates, [0, 0]);
-                            equal(toWei(afterStates.posInfo.newHealth), toWei(5000), `New health changes wrong`, false);
                         })
 
-                        // TODO token0 not return. allPosId not clear, need to check again.
-                        it(`Liquidate test`, async () => {
+                        // TODO Token1 balance is not correct
+                        it(`Liquidate`, async () => {
                             beforeStates = afterStates;
-                            await bank.liquidate(posId)
+                            await bank.liquidate(posId);
+                            await bank.getRewardsAllProd();
                             afterStates = await getStates(posId, accounts[0], tokensName);
                             saveLogToFile(file, `After liquidate`, afterStates);
+                            let [deposits, borrows] = await convertWithdrawFormat(beforeStates, 10000, 2);
+                            await checkPosResult(beforeStates, afterStates, deposits, borrows);
                         })
+
+                        // it(`Check liquidate result`, async () => {
+                        //     let [deposits, borrows] = await convertWithdrawFormat(beforeStates, 10000, 2);
+                        //     await checkPosResult(beforeStates, afterStates, deposits, borrows);
+                        // })
                     })
 
                     after('Recover', async () => {
@@ -307,8 +318,8 @@ async function checkHealth(afterStates) {
     health[0] = repayFirstAmount(debts, ns, rs);
     health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
 
-    equal(toWei(afterStates.posInfo.health[0]), toWei(health[0]), `Health[${0}] changes wrong`, false)
-    equal(toWei(afterStates.posInfo.health[1]), toWei(health[1]), `Health[${1}] changes wrong`, false)
+    equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
+    equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
 }
 
 async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
@@ -338,7 +349,7 @@ async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
             debts[largerIdx], debts[1-largerIdx], rs[largerIdx], rs[1-largerIdx], targetPrincipals);
     }
 
-    equal(toWei(afterStates.goblin.principals[largerIdx]), toWei(targetPrincipals), `Principals changes wrong`, false);
+    equal(afterStates.goblin.principals[largerIdx], targetPrincipals, `Principals changes wrong`, false);
     equal(toWei(afterStates.posInfo.newHealth), toWei(targetNewHealth[largerIdx]), `New health changes wrong`, false);
 }
 
