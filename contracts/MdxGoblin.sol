@@ -528,12 +528,22 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);
 
+        uint256 returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute
+
         // address token0, address token1, uint256 rate, uint256 whichWantBack
         liqStrategy.execute(address(this), borrowTokens, uint256[2]([uint256(0), uint256(0)]), debts, abi.encode(
             lpToken.token0(), lpToken.token1(), 10000, 2));
 
+        if (mdx.myBalance() > returnMdxAmount) {
+            // There are return mdx, that means it's a withdraw
+            returnMdxAmount = mdx.myBalance() - returnMdxAmount;
+        } else {
+            // No return or Mdx amount decrease which means it's an add.
+            returnMdxAmount = 0;
+        }
+
         // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance());
+        reinvestment.deposit(mdx.myBalance().sub(temp.returnMdxAmount));
 
         // 2. transfer borrowTokens and user want back to bank.
         uint256[2] memory tokensLiquidate;
