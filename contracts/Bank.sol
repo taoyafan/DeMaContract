@@ -490,9 +490,6 @@ contract Bank is Ownable, ReentrancyGuard {
         temp.health = production.goblin.newHealth(posId, production.borrowToken, temp.debts);
         require(temp.health < production.liquidateFactor, "can't liquidate");
 
-        temp.isBnb;
-        temp.before;
-
         // Save before amount
         uint256 i;
         for (i = 0; i < 2; ++i) {
@@ -509,12 +506,6 @@ contract Bank is Ownable, ReentrancyGuard {
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
         // Check back amount. Send reward to sender, and send rest token back to pos.owner.
-        temp.back;   // To save memory.
-        temp.rest;   // To save memory.
-
-        temp.prize;
-        temp.left;
-
         for (i = 0; i < 2; ++i) {
             temp.back = temp.isBnb[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
             temp.back = temp.back.sub(temp.before[i]);
