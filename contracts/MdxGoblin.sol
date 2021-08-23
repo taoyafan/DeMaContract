@@ -543,7 +543,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
 
         // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance().sub(temp.returnMdxAmount));
+        reinvestment.deposit(mdx.myBalance().sub(returnMdxAmount));
 
         // 2. transfer borrowTokens and user want back to bank.
         uint256[2] memory tokensLiquidate;
