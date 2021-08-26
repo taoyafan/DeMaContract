@@ -494,7 +494,7 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 i;
         for (i = 0; i < 2; ++i) {
             temp.isBnb[i] = production.borrowToken[i] == address(0);
-            temp.before[i] = temp.isBnb[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[0]);
+            temp.before[i] = temp.isBnb[i] ? address(this).balance : SafeToken.myBalance(production.borrowToken[i]);
         }
 
         production.goblin.liquidate(posId, pos.owner, production.borrowToken, temp.debts);
