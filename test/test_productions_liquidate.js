@@ -103,7 +103,7 @@ contract("TestProductionLiquidate", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[3], r[3]);
+        forEachTokenPair(tokenPairs[1], r[1]);
 
 
         async function forEachTokenPair(tokensName, r) {

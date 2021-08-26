@@ -235,10 +235,13 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
         let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
         if (targetPrincipal[i] < 0) {
             // It's a withdraw operation
-            if(BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) {
+            if(BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i]) || 
+               afterStates.goblin.lpAmount.toNumber() == 0) 
+            {
                 targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
             }
         }
+
         equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false);
     }
 
