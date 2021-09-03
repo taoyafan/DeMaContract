@@ -27,6 +27,7 @@ const {
     getStates,
     equal,
     swapAllLpToToken0,
+    transfer,
     approve,
     getBalance,
     swapExactTo,
@@ -103,7 +104,7 @@ contract("TestProductionLiquidate", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[1], r[1]);
+        forEachTokenPair(tokenPairs[0], r[0]);
 
 
         async function forEachTokenPair(tokensName, r) {
@@ -118,13 +119,15 @@ contract("TestProductionLiquidate", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            // for (deposits of depositArray) {
-            //     for (borrows of borrowsArray) {
-            //         forEachBorrow(tokensName, deposits, borrows, r);
-            //     }
-            // }
+            for (deposits of depositArray) {
+                for (borrows of borrowsArray) {
+                    forEachBorrow(tokensName, deposits, borrows, r);
+                }
+                break
+            }
 
-            forEachBorrow(tokensName, depositArray[0], borrowsArray[3], r);
+            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
+            // forEachBorrow(tokensName, depositArray[3], borrowsArray[4], r);
 
             // 1. Check health and new health
             // 2. Swap to make new health to 50%, check new health
@@ -177,8 +180,7 @@ contract("TestProductionLiquidate", (accounts) => {
                         })
 
                         it(`Liquidate should failed`, async () => {
-                            let errorInfo = borrows[0] == 0 && borrows[1] == 0 ? `no debts` : `can't liquidate`
-                            await expectRevert(bank.liquidate(posId), errorInfo);
+                            await expectRevert(bank.liquidate(posId), `can't liquidate`);
                         })
                     })
 
@@ -257,6 +259,8 @@ contract("TestProductionLiquidate", (accounts) => {
 
                     // 6. Swap to make new health to 50%, Liquidate
                     describe(`\n\nLiquidate test`, async () => {
+                        let killer = accounts[1];
+                        let killerbeforeStates;
 
                         before(`Swap to target newHealth equal to 50%`, async () => {
                             beforeStates = afterStates;
@@ -270,21 +274,40 @@ contract("TestProductionLiquidate", (accounts) => {
                             await checkNewHealth(beforeStates, afterStates, [0, 0]);
                         })
 
-                        // TODO Token1 balance is not correct
                         it(`Liquidate`, async () => {
                             beforeStates = afterStates;
-                            await bank.liquidate(posId);
+                            killerbeforeStates = await getStates(posId, killer, tokensName);
+                            // saveLogToFile(file, `Killer before liquidate`, killerbeforeStates);
+
+                            await bank.liquidate(posId, {from: killer});
                             await bank.getRewardsAllProd();
-                            afterStates = await getStates(posId, accounts[0], tokensName);
-                            saveLogToFile(file, `After liquidate`, afterStates);
-                            let [deposits, borrows] = await convertWithdrawFormat(beforeStates, 10000, 2);
-                            await checkPosResult(beforeStates, afterStates, deposits, borrows);
                         })
 
-                        // it(`Check liquidate result`, async () => {
-                        //     let [deposits, borrows] = await convertWithdrawFormat(beforeStates, 10000, 2);
-                        //     await checkPosResult(beforeStates, afterStates, deposits, borrows);
-                        // })
+                        it(`Check liquidate result`, async () => {
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After liquidate`, afterStates);
+
+                            let killerAfterStates = await getStates(posId, killer, tokensName);
+                            // saveLogToFile(file, `Killer After liquidate`, killerAfterStates);
+                            
+                            let [deposits, borrows] = await convertWithdrawFormat(beforeStates, 10000, 2);
+                            let killerRewards = [aSubB(killerAfterStates.userBalance[0], killerbeforeStates.userBalance[0]),
+                                                 aSubB(killerAfterStates.userBalance[1], killerbeforeStates.userBalance[1])];
+                            
+                            console.log(`Killer rewards: ${[fromWei(killerRewards[0]), fromWei(killerRewards[1])]}`);
+                            console.log(`Return to owner: ${[fromWei(-deposits[0]), fromWei(-deposits[1])]}`);
+                            
+                            equal(killerRewards[0], aDivB(-deposits[0], 10), "Killer reward[0] not correct", false, token0Address);
+                            equal(killerRewards[1], aDivB(-deposits[1], 10), "Killer reward[1] not correct", false, token1Address);
+                            
+                            await transfer(afterStates.tokensAddress[0], accounts[0], killerRewards[0], killer);
+                            await transfer(afterStates.tokensAddress[1], accounts[0], killerRewards[1], killer);
+                            
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After receive killer's reward`, afterStates);
+
+                            await checkPosResult(beforeStates, afterStates, deposits, borrows);
+                        })
                     })
 
                     after('Recover', async () => {
@@ -389,11 +412,17 @@ function _newRa(na, da, db, ra, rb, pa, h) {
     b = -2 * eta;
     c = da + pa * h;
 
-    newRa = (-b - (b*b - 4*a*c) ** 0.5) / (2*a);
+    let newRa;
+
+    if (a == 0) {
+        newRa = (da + pa * h) / (2 * eta);
+    } else {
+        newRa = (-b - (b*b - 4*a*c) ** 0.5) / (2*a);
+    }
     
     console.log(`new ra: ${newRa}`)
     
-    return toWei(newRa)
+    return toWei(newRa);
 }
 
 async function swapToTargetNewHealth(states, targetNewHealth, from) {
@@ -413,11 +442,17 @@ async function swapToTargetNewHealth(states, targetNewHealth, from) {
         rs[base], rs[1-base], principals[base], aDivB(targetNewHealth, 10000, false));
     
     // Swap to move r[base] equal target r[base]
-    let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
-    
-    if (swapFromBaseAmount > 0) {
-        await swapExactTo(tokens, base, swapFromBaseAmount, from);
-    } else if (swapFromBaseAmount < 0) {
-        await swapToExact(tokens, 1-base, aMulB(swapFromBaseAmount, -1), from);
+    if (targetRBase) {
+        let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
+        
+        if (swapFromBaseAmount > 0) {
+            await swapExactTo(tokens, base, swapFromBaseAmount, from);
+        } else if (swapFromBaseAmount < 0) {
+            await swapToExact(tokens, 1-base, aMulB(swapFromBaseAmount, -1), from);
+        }
+
+        return true
+    } else {
+        return false
     }
 }

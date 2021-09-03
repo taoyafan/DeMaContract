@@ -144,6 +144,14 @@ async function convertWithdrawFormat(beforeStates, withdrawRate, whichWantBack) 
         toUser[0] = aSubB(ns[0], toBank[0]);
         toUser[1] = aSubB(ns[1], toBank[1]);
 
+        if (toUser[0].isLessThan(0)) {
+            toUser[1] = aSubB(toUser[1], await swapToTarget(beforeStates.tokensAddress, [-toUser[0], 0], 1));
+            toUser[0] = 0;
+        } else if (toUser[1].isLessThan(0)) {
+            toUser[0] = aSubB(toUser[0], await swapToTarget(beforeStates.tokensAddress, [0, -toUser[1]], 0));
+            toUser[1] = 0;
+        }
+
         console.log(`After withdraw, before swap to target, to bank: ${
             fromWei(toBank[0])}, ${fromWei(toBank[1])}, to user: ${
             [fromWei(toUser[0]), fromWei(toUser[1])]}`);

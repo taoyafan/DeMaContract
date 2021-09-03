@@ -503,6 +503,7 @@ module.exports = {
     getStates,
     equal,
     swapAllLpToToken0,
+    transfer,
     approve,
     getBalance,
     swapExactTo,

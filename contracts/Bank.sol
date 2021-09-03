@@ -102,7 +102,6 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 health;
         uint256[2] before;
         uint256 back;           // Only one item is to save memory.
-        uint256 rest;           // Only one item is to save memory.
         uint256[2] prize;
         uint256[2] left;
         bool[2] isBnb;
@@ -481,7 +480,8 @@ contract Bank is Ownable, ReentrancyGuard {
     function liquidate(uint256 posId) external onlyEOA nonReentrant {
         Position storage pos = positions[posId];
 
-        require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debts");
+        // While using new health, if user loss too much, it also can be liquidated.
+        // require(pos.debtShare[0] > 0 || pos.debtShare[1] > 0, "no debts");
         Production storage production = productions[pos.productionId];
         liqTemp memory temp;
 
@@ -505,31 +505,31 @@ contract Bank is Ownable, ReentrancyGuard {
         EnumerableSet.remove(allPosId, posId);
         owner.posNum[pos.productionId] = owner.posNum[pos.productionId].sub(1);
 
-        // Check back amount. Send reward to sender, and send rest token back to pos.owner.
+        // Check back amount. Repay first then send reward to sender, finally send left token back to pos.owner.
         for (i = 0; i < 2; ++i) {
             temp.back = temp.isBnb[i] ? address(this).balance: SafeToken.myBalance(production.borrowToken[i]);
             temp.back = temp.back.sub(temp.before[i]);
+            
+            if (temp.back > temp.debts[i]) {
+                temp.back = temp.back.sub(temp.debts[i]);
+                temp.prize[i] = temp.back.mul(config.getLiquidateBps()).div(10000);
+                temp.left[i] = temp.back.sub(temp.prize[i]);
 
-            temp.prize[i] = temp.back.mul(config.getLiquidateBps()).div(10000);
-            temp.rest = temp.back.sub(temp.prize[i]);
-            temp.left[i] = 0;
-
-            // Send reward to sender
-            if (temp.prize[i] > 0) {
-                temp.isBnb[i] ?
-                    SafeToken.safeTransferETH(msg.sender, temp.prize[i]) :
-                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, temp.prize[i]);
-            }
-
-            // Send rest token to pos.owner.
-            if (temp.rest > temp.debts[i]) {
-                temp.left[i] = temp.rest.sub(temp.debts[i]);
-                temp.isBnb[i] ?
-                    SafeToken.safeTransferETH(pos.owner, temp.left[i]) :
-                    SafeToken.safeTransfer(production.borrowToken[i], pos.owner, temp.left[i]);
+                // Send reward to sender
+                if (temp.prize[i] > 0) {
+                    temp.isBnb[i] ?
+                        SafeToken.safeTransferETH(msg.sender, temp.prize[i]) :
+                        SafeToken.safeTransfer(production.borrowToken[i], msg.sender, temp.prize[i]);
+                }
+                // Send left token to pos.owner.
+                if (temp.left[i] > 0) {
+                    temp.isBnb[i] ?
+                        SafeToken.safeTransferETH(pos.owner, temp.left[i]) :
+                        SafeToken.safeTransfer(production.borrowToken[i], pos.owner, temp.left[i]);
+                }
             } else {
                 banks[production.borrowToken[i]].totalVal =
-                    banks[production.borrowToken[i]].totalVal.sub(temp.debts[i]).add(temp.rest);
+                    banks[production.borrowToken[i]].totalVal.sub(temp.debts[i]).add(temp.back);
             }
         }
 
