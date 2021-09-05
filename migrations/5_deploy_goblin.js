@@ -51,6 +51,8 @@ module.exports = async function (deployer, network, accounts) {
             MdxStrategyWithdrawMinimizeTrading.address
         );
 
+        // The order of token are same as production.borrowToken in Bank.
+        // When call opPosition the order of borrows is same as this tokens. 
         saveToJson(`Mdx${prod.token0}${prod.token1}Goblin`, prod.goblin.address, network);
 
         // Set strategy ok, MdxStrategyWithdrawMinimizeTrading will be set true when deploy
@@ -78,6 +80,8 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson(`Mdx${prod.token0}${prod.token1}ProdId`, prod.prodId, network);
         saveToJson(`Mdx${prod.token1}${prod.token0}ProdId`, prod.prodId, network);
 
+        // The order of tokens are same as production.borrowToken in Bank.
+        // When call opPosition the order of borrows is same as this tokens. 
         saveToJson(`MdxProd${prod.prodId}Tokens`, [prod.token0, prod.token1], network);
     }
 };

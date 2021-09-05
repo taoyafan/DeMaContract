@@ -159,7 +159,7 @@ async function getStates(posId, userAddress, tokensName) {
         }
 
         states.goblin.lpAmount = BigNumber(await goblin.posLPAmount(posId));   // It will be 0 if posId is 0
-        states.goblin.tokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount);
+        // states.goblin.tokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount);
 
         states.goblin.principals = [BigNumber(await goblin.principal(posId, 0)), 
                                     BigNumber(await goblin.principal(posId, 1))];
