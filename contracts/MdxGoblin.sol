@@ -310,7 +310,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     /// @return Earned MDX and DEMA amount.
-    function userEarnedAmount(address account) public view  returns (uint256, uint256) {
+    function userEarnedAmount(address account) public view override returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
 
         return (user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored),

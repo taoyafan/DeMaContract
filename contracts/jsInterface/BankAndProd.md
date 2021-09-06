@@ -442,6 +442,7 @@ function definition:
 ``` javascript
     positionInfo(uint256 posId) returns (
         uint256,            // production id
+        uint256,            // lp amount
         uint256,            // newHealth
         uint256[2] memory,  // health[2]
         uint256[2] memory,  // debts[2]
@@ -456,14 +457,14 @@ async function ProdGetPositionInfo(posId, account) {
     // posId is position id, is number
     // account should be address string
     const bank = new web3.eth.Contract(bankAbi, bankAddress);
-    let [prodId, newHealth, health, debts, owner] = await bank.methods.positionInfo(posId).call({from: account});
+    let [prodId, lpAmount, newHealth, health, debts, owner] = await bank.methods.positionInfo(posId).call({from: account});
     let risk = 0;
     if (debts[0]) {
         risk = debts[0] / health[0];
     } else if (debts[1] {
         risk = debts[1] / health[1];
     })
-    return [prodId, newHealth, risk, debts, owner];
+    return [prodId, lpAmount, newHealth, risk, debts, owner];
 }
 ```
 

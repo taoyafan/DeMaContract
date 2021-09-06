@@ -141,7 +141,14 @@ contract Bank is Ownable, ReentrancyGuard {
     function positionInfo(uint256 posId)
         external
         view
-        returns (uint256, uint256, uint256[2] memory, uint256[2] memory, address)
+        returns (
+            uint256,                // prod id 
+            uint256,                // lp amount
+            uint256,                // new health
+            uint256[2] memory,      // health
+            uint256[2] memory,      // debts
+            address                 // owner
+        )
     {
         Position storage pos = positions[posId];
         Production storage prod = productions[pos.productionId];
@@ -151,6 +158,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
         return (
             pos.productionId,
+            prod.goblin.posLPAmount(posId),
             prod.goblin.newHealth(posId, prod.borrowToken, [debt0, debt1]),
             prod.goblin.health(posId, prod.borrowToken, [debt0, debt1]),
             [debt0, debt1],
@@ -280,6 +288,11 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function userProdId(address account, uint256 index) public view returns (uint256) {
         return EnumerableSet.at(userPPInfo[account].prodId, index);
+    }
+
+    function userEarnPerProd(address account, uint256 prodId) external view returns (uint256, uint256) {
+        Production storage prod = productions[prodId];
+        return prod.goblin.userEarnedAmount(account);
     }
 
     /* ==================================== Write ==================================== */
