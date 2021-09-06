@@ -11,11 +11,13 @@ module.exports = async function(deployer, network) {
         let busd = await deployer.deploy(ERC20Token, "BUSD", "BUSD", BigNumber(1e25));    //1e7
         let eth = await deployer.deploy(ERC20Token, "ETH", "ETH", BigNumber(1e25));    //1e7
         let btc = await deployer.deploy(ERC20Token, "BTC", "BTC", BigNumber(1e25));    //1e7
+        const dema = await deployer.deploy(DEMA);
 
         saveToJson("USDT", usdt.address, network);
         saveToJson("BUSD", busd.address, network);
         saveToJson("ETH", eth.address, network);
         saveToJson("BTC", btc.address, network);
+        saveToJson("DEMA", dema.address, network);
     } else {
         throw new Error('Init for other network unfinished');
     }

@@ -17,11 +17,11 @@ module.exports = async function (deployer, network, accounts) {
 
     await deployer.deploy(TripleSlopeModel);
     const bankConfig = await deployer.deploy(BankConfig);
-    const dema = await deployer.deploy(DEMA);
+    const dema = await DEMA.at(addressJson.DEMA);
     const farm = await deployer.deploy(
         Farm,
         UserProfile.address,
-        DEMA.address,
+        dema.address,
         500,    // inviterBonusRatio 5%
         500     // bonusRatio 5%
     );
@@ -35,7 +35,6 @@ module.exports = async function (deployer, network, accounts) {
 
     saveToJson("TripleSlopeModel", TripleSlopeModel.address, network);
     saveToJson("BankConfig", bankConfig.address, network);
-    saveToJson("DEMA", dema.address, network);
     saveToJson("Farm", farm.address, network);
     saveToJson("Bank", bank.address, network);
 
