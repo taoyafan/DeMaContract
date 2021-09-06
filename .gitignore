@@ -6,9 +6,9 @@ soljson*
 package-lock.json
 *.xlsx
 test/log/*
-bin/*
-!bin/contracts/addressBscMain.json
+bin/contracts/*
 !bin/contracts/addressBscTest.json
+!bin/contracts/addressBscMain.json
 !bin/contracts/addressBscMatic.json
 !bin/contracts/Bank.abi
 !bin/contracts/DEMA.abi
