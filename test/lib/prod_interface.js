@@ -213,7 +213,7 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
 
     // Check goblin states
     // - Lp amount
-    let IncLpAmount = aSubB(afterStates.goblin.lpAmount, beforeStates.goblin.lpAmount);
+    let IncLpAmount = aSubB(afterStates.posInfo.lpAmount, beforeStates.posInfo.lpAmount);
     let IncLpTo0Amount = await swapAllLpToToken0(tokens[0], tokens[1], IncLpAmount);
     let targetTo0Amount = await swapToTarget(tokens, [aAddB(depositAmounts[0], borrowAmounts[0]),
                                                     aAddB(depositAmounts[1], borrowAmounts[1])]);
@@ -244,7 +244,7 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
         if (targetPrincipal[i] < 0) {
             // It's a withdraw operation
             if(BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i]) || 
-               afterStates.goblin.lpAmount.toNumber() == 0) 
+               afterStates.posInfo.lpAmount.toNumber() == 0) 
             {
                 targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
             }

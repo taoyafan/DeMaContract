@@ -109,6 +109,7 @@ async function getStates(posId, userAddress, tokensName) {
         states.posInfo = {debts: [BigNumber(0), BigNumber(0)]}
     } else {
         // pos.productionId,
+        // lp amount,
         // newHealth,
         // health,
         // [debt0, debt1],
@@ -116,10 +117,11 @@ async function getStates(posId, userAddress, tokensName) {
         let info = await bank.positionInfo(posId);
         states.posInfo = {
             prodId: info[0],
-            newHealth: BigNumber(info[1]),
-            health: [BigNumber(info[2][0]), BigNumber(info[2][1])],
-            debts: [BigNumber(info[3][0]),BigNumber(info[3][1])],
-            owner: info[4]
+            lpAmount: BigNumber(info[1]),
+            newHealth: BigNumber(info[2]),
+            health: [BigNumber(info[3][0]), BigNumber(info[3][1])],
+            debts: [BigNumber(info[4][0]),BigNumber(info[4][1])],
+            owner: info[5]
         }
     }
     states.posInfo.posId = posId;
@@ -158,7 +160,6 @@ async function getStates(posId, userAddress, tokensName) {
             lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
         }
 
-        states.goblin.lpAmount = BigNumber(await goblin.posLPAmount(posId));   // It will be 0 if posId is 0
         // states.goblin.tokensAmountInLp = await getTokenAmountInLp(tokensAddress, states.goblin.lpAmount);
 
         states.goblin.principals = [BigNumber(await goblin.principal(posId, 0)), 
