@@ -11,6 +11,7 @@ bin/contracts/*
 !bin/contracts/addressBscMain.json
 !bin/contracts/addressBscMatic.json
 !bin/contracts/Bank.abi
+!bin/contracts/BankConfig.abi
 !bin/contracts/DEMA.abi
 !bin/contracts/ERC20.abi
 !bin/contracts/UserProfile.abi
