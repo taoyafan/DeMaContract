@@ -1,5 +1,6 @@
 const ERC20Token = artifacts.require("ERC20Token");
 const BigNumber = require("bignumber.js");
+const DEMA = artifacts.require("DEMA");
 
 let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
 
