@@ -11,7 +11,7 @@ function _getFile(network) {
     } else if (network == 'bscmain') {
         fileName = 'addressBscMain.json'
     } else {
-        throw new Error('Network not support');
+        throw new Error(`Network not support: ${network}`);
     }
 
     const uplevelDir = path.resolve(__dirname, '..');
