@@ -40,7 +40,7 @@ const {
     aMulB,
     aDivB,
     tokensFilter,
-} = require("./lib/utils");
+} = require("../js_utils/utils");
 
 const {
     createPosition,
@@ -49,7 +49,7 @@ const {
     withdraw,
     convertWithdrawFormat,
     checkPosResult,
-} = require("./lib/prod_interface");
+} = require("../js_utils/prod_interface");
 
 contract("TestProduction", (accounts) => {
 

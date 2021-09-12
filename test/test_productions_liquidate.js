@@ -20,8 +20,7 @@ const file = `test/log/prod_liquidate.json`;
 const {
     bnbAddress,
     MaxUint256,
-    addressJson,
-    name2Address,
+    setNetwork,
     saveLogToFile,
     initFile,
     getStates,
@@ -45,7 +44,9 @@ const {
     aMulB,
     aDivB,
     tokensFilter,
-} = require("./lib/utils");
+} = require("../js_utils/utils");
+
+const {addressJson, name2Address} = setNetwork('development')
 
 const {
     createPosition,
@@ -54,20 +55,17 @@ const {
     withdraw,
     convertWithdrawFormat,
     checkPosResult,
-} = require("./lib/prod_interface");
+} = require("../js_utils/prod_interface");
 
 const { assert } = require("console");
 
 contract("TestProductionLiquidate", (accounts) => {
 
-    let factory;
     let wbnb;
     let usdt;
     let busd;
-    let router;
     let mdx;
     let bank;
-    let reinvestment;
 
     let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
     let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
@@ -104,7 +102,7 @@ contract("TestProductionLiquidate", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[0], r[0]);
+        forEachTokenPair(tokenPairs[3], r[3]);
 
 
         async function forEachTokenPair(tokensName, r) {
@@ -119,14 +117,14 @@ contract("TestProductionLiquidate", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            for (deposits of depositArray) {
-                for (borrows of borrowsArray) {
-                    forEachBorrow(tokensName, deposits, borrows, r);
-                }
-                break
-            }
+            // for (deposits of depositArray) {
+            //     for (borrows of borrowsArray) {
+            //         forEachBorrow(tokensName, deposits, borrows, r);
+            //     }
+            //     // break
+            // }
 
-            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
+            forEachBorrow(tokensName, depositArray[1], borrowsArray[0], r);
             // forEachBorrow(tokensName, depositArray[3], borrowsArray[4], r);
 
             // 1. Check health and new health
@@ -318,141 +316,141 @@ contract("TestProductionLiquidate", (accounts) => {
             }
         }
     })
-})
 
-async function checkHealth(afterStates) {
-    let rs = await getR0R1(afterStates.tokensAddress[0], afterStates.tokensAddress[1]);
-
-    // Swap the token as the depts ratio. return the first token amount after swaping.
-    function repayFirstAmount(ds, ns, rs) {
-        if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
-            return ds[0].multipliedBy(aMulB(rs[1], ns[0]).plus(aMulB(rs[0], ns[1]))).dividedToIntegerBy(
-                aMulB(ds[0], rs[1]).plus(aMulB(ds[1], rs[0])));
+    async function checkHealth(afterStates) {
+        let rs = await getR0R1(afterStates.tokensAddress[0], afterStates.tokensAddress[1]);
+    
+        // Swap the token as the depts ratio. return the first token amount after swaping.
+        function repayFirstAmount(ds, ns, rs) {
+            if (ds[0].isGreaterThan(0) || ds[1].isGreaterThan(0)) {
+                return ds[0].multipliedBy(aMulB(rs[1], ns[0]).plus(aMulB(rs[0], ns[1]))).dividedToIntegerBy(
+                    aMulB(ds[0], rs[1]).plus(aMulB(ds[1], rs[0])));
+            } else {
+                return ns[0];
+            }
+        }
+    
+        const debts = afterStates.posInfo.debts;
+        const tokensAmountInLp = afterStates.goblin.userInfo.tokensAmountInLp;
+        let ns = [tokensAmountInLp[0], tokensAmountInLp[1]];
+    
+        let health = [0, 0]
+        health[0] = repayFirstAmount(debts, ns, rs);
+        health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
+    
+        equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
+        equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
+    }
+    
+    async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
+        let tokens = beforeStates.tokensAddress;
+        let targetNewHealth = [0, 0];
+        let targetPrincipals = 0;
+        let principals = beforeStates.goblin.principals;
+        let largerIdx;
+    
+        if (beforeStates.posInfo.posId == 0) {
+            // Create position
+            [largerIdx, value] = await swapToTarget(tokens, depositAmounts, 2);
+            targetPrincipals = value;
+            targetNewHealth[largerIdx] = 10000;
         } else {
-            return ns[0];
+            // Add, repay, withdraw, swap the other amounts to target
+            // Calc target principals
+            largerIdx = toNum(principals[0]) == 0 ? 1 : 0;
+            let targetAmount = await swapToTarget(tokens, depositAmounts, largerIdx);
+            targetPrincipals = aAddB(principals[largerIdx], targetAmount);
+            
+            // Calc target new health
+            let amountsInLp = afterStates.goblin.userInfo.tokensAmountInLp;
+            let debts = afterStates.posInfo.debts;
+            let rs = await getR0R1(tokens[0], tokens[1]);
+            targetNewHealth[largerIdx] = _newHealth(amountsInLp[largerIdx], amountsInLp[1-largerIdx], 
+                debts[largerIdx], debts[1-largerIdx], rs[largerIdx], rs[1-largerIdx], targetPrincipals);
         }
+    
+        equal(afterStates.goblin.principals[largerIdx], targetPrincipals, `Principals changes wrong`, false);
+        equal(toWei(afterStates.posInfo.newHealth), toWei(targetNewHealth[largerIdx]), `New health changes wrong`, false);
     }
-
-    const debts = afterStates.posInfo.debts;
-    const tokensAmountInLp = afterStates.goblin.userInfo.tokensAmountInLp;
-    let ns = [tokensAmountInLp[0], tokensAmountInLp[1]];
-
-    let health = [0, 0]
-    health[0] = repayFirstAmount(debts, ns, rs);
-    health[1] = repayFirstAmount([debts[1], debts[0]], [ns[1], ns[0]], [rs[1], rs[0]]);
-
-    equal(afterStates.posInfo.health[0], health[0], `Health[${0}] changes wrong`, false)
-    equal(afterStates.posInfo.health[1], health[1], `Health[${1}] changes wrong`, false)
-}
-
-async function checkNewHealth(beforeStates, afterStates, depositAmounts) {
-    let tokens = beforeStates.tokensAddress;
-    let targetNewHealth = [0, 0];
-    let targetPrincipals = 0;
-    let principals = beforeStates.goblin.principals;
-    let largerIdx;
-
-    if (beforeStates.posInfo.posId == 0) {
-        // Create position
-        [largerIdx, value] = await swapToTarget(tokens, depositAmounts, 2);
-        targetPrincipals = value;
-        targetNewHealth[largerIdx] = 10000;
-    } else {
-        // Add, repay, withdraw, swap the other amounts to target
-        // Calc target principals
-        largerIdx = toNum(principals[0]) == 0 ? 1 : 0;
-        let targetAmount = await swapToTarget(tokens, depositAmounts, largerIdx);
-        targetPrincipals = aAddB(principals[largerIdx], targetAmount);
+    
+    function _newHealth(na, nb, da, db, ra, rb, pa) {
+        na = toNum(fromWei(na))
+        nb = toNum(fromWei(nb))
+        da = toNum(fromWei(da))
+        db = toNum(fromWei(db))
+        ra = toNum(fromWei(ra))
+        rb = toNum(fromWei(rb))
+        pa = toNum(fromWei(pa))
         
-        // Calc target new health
-        let amountsInLp = afterStates.goblin.tokensAmountInLp;
-        let debts = afterStates.posInfo.debts;
+        console.log(`na: ${na}, nb: ${nb} da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}`)
+    
+        let h = (na - da + (nb - db) * ra / rb) / pa;
+        h = aDivB(aMulB(h, 10000), 1);
+    
+        console.log(`New health: ${h}`)
+    
+        return h
+    }
+    
+    function _newRa(na, da, db, ra, rb, pa, h) {
+        na = toNum(fromWei(na))
+        da = toNum(fromWei(da))
+        db = toNum(fromWei(db))
+        ra = toNum(fromWei(ra))
+        rb = toNum(fromWei(rb))
+        pa = toNum(fromWei(pa))
+    
+        console.log(`na: ${na}, da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}, h: ${h}`)
+    
+        k = ra * rb;
+        eta = na / ra;
+    
+        a = db / k;
+        b = -2 * eta;
+        c = da + pa * h;
+    
+        let newRa;
+    
+        if (a == 0) {
+            newRa = (da + pa * h) / (2 * eta);
+        } else {
+            newRa = (-b - (b*b - 4*a*c) ** 0.5) / (2*a);
+        }
+        
+        console.log(`new ra: ${newRa}`)
+        
+        return toWei(newRa);
+    }
+    
+    async function swapToTargetNewHealth(states, targetNewHealth, from) {
+        assert(states.posInfo.posId != 0, "Pos id not exist");
+        
+        let tokens = states.tokensAddress;
+    
+        // Get the base idx
+        let principals = states.goblin.principals;
+        let base = principals[0] == 0 ? 1 : 0;
+    
+        // Calc target r[base]
+        let amountsInLp = states.goblin.userInfo.tokensAmountInLp;
+        let debts = states.posInfo.debts;
         let rs = await getR0R1(tokens[0], tokens[1]);
-        targetNewHealth[largerIdx] = _newHealth(amountsInLp[largerIdx], amountsInLp[1-largerIdx], 
-            debts[largerIdx], debts[1-largerIdx], rs[largerIdx], rs[1-largerIdx], targetPrincipals);
-    }
-
-    equal(afterStates.goblin.principals[largerIdx], targetPrincipals, `Principals changes wrong`, false);
-    equal(toWei(afterStates.posInfo.newHealth), toWei(targetNewHealth[largerIdx]), `New health changes wrong`, false);
-}
-
-function _newHealth(na, nb, da, db, ra, rb, pa) {
-    na = toNum(fromWei(na))
-    nb = toNum(fromWei(nb))
-    da = toNum(fromWei(da))
-    db = toNum(fromWei(db))
-    ra = toNum(fromWei(ra))
-    rb = toNum(fromWei(rb))
-    pa = toNum(fromWei(pa))
-    
-    console.log(`na: ${na}, nb: ${nb} da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}`)
-
-    let h = (na - da + (nb - db) * ra / rb) / pa;
-    h = aDivB(aMulB(h, 10000), 1);
-
-    console.log(`New health: ${h}`)
-
-    return h
-}
-
-function _newRa(na, da, db, ra, rb, pa, h) {
-    na = toNum(fromWei(na))
-    da = toNum(fromWei(da))
-    db = toNum(fromWei(db))
-    ra = toNum(fromWei(ra))
-    rb = toNum(fromWei(rb))
-    pa = toNum(fromWei(pa))
-
-    console.log(`na: ${na}, da: ${da}, db: ${db}, ra: ${ra}, rb: ${rb}, pa: ${pa}, h: ${h}`)
-
-    k = ra * rb;
-    eta = na / ra;
-
-    a = db / k;
-    b = -2 * eta;
-    c = da + pa * h;
-
-    let newRa;
-
-    if (a == 0) {
-        newRa = (da + pa * h) / (2 * eta);
-    } else {
-        newRa = (-b - (b*b - 4*a*c) ** 0.5) / (2*a);
-    }
-    
-    console.log(`new ra: ${newRa}`)
-    
-    return toWei(newRa);
-}
-
-async function swapToTargetNewHealth(states, targetNewHealth, from) {
-    assert(states.posInfo.posId != 0, "Pos id not exist");
-    
-    let tokens = states.tokensAddress;
-
-    // Get the base idx
-    let principals = states.goblin.principals;
-    let base = principals[0] == 0 ? 1 : 0;
-
-    // Calc target r[base]
-    let amountsInLp = states.goblin.tokensAmountInLp;
-    let debts = states.posInfo.debts;
-    let rs = await getR0R1(tokens[0], tokens[1]);
-    let targetRBase = _newRa(amountsInLp[base], debts[base], debts[1-base], 
-        rs[base], rs[1-base], principals[base], aDivB(targetNewHealth, 10000, false));
-    
-    // Swap to move r[base] equal target r[base]
-    if (targetRBase) {
-        let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
+        let targetRBase = _newRa(amountsInLp[base], debts[base], debts[1-base], 
+            rs[base], rs[1-base], principals[base], aDivB(targetNewHealth, 10000, false));
         
-        if (swapFromBaseAmount > 0) {
-            await swapExactTo(tokens, base, swapFromBaseAmount, from);
-        } else if (swapFromBaseAmount < 0) {
-            await swapToExact(tokens, 1-base, aMulB(swapFromBaseAmount, -1), from);
+        // Swap to move r[base] equal target r[base]
+        if (targetRBase) {
+            let swapFromBaseAmount = aSubB(targetRBase, rs[base]);
+            
+            if (swapFromBaseAmount > 0) {
+                await swapExactTo(tokens, base, swapFromBaseAmount, from);
+            } else if (swapFromBaseAmount < 0) {
+                await swapToExact(tokens, 1-base, aMulB(swapFromBaseAmount, -1), from);
+            }
+    
+            return true
+        } else {
+            return false
         }
-
-        return true
-    } else {
-        return false
     }
-}
+})

@@ -2,7 +2,7 @@
 
 const BigNumber = require("bignumber.js");
 const BN = web3.utils.BN;
-const erc20TokenGetBalance = require("./lib/utils");
+const erc20TokenGetBalance = require("../js_utils/utils");
 const bankInit = require("../scripts/bank_init.js");
 const{ expectEvent, shouldFail, time } = require('@openzeppelin/test-helpers');
 
