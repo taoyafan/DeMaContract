@@ -124,7 +124,7 @@ function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, ac
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256", "uint256"],
-        [tokens[0], tokens[1], depositAmount[0], depositAmount[0], minLPAmount]);
+        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount]);
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);
@@ -152,7 +152,7 @@ function BankPosAdd(posId, pid, tokens, depositAmount, borrowAmount, minLPAmount
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256", "uint256"],
-        [tokens[0], tokens[1], depositAmount[0], depositAmount[0], minLPAmount]);
+        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount]);
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);
