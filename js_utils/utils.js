@@ -1,4 +1,3 @@
-const erc20ABI = require('./abi.js');
 const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
@@ -18,20 +17,38 @@ const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 const jsonString = fs.readFileSync("bin/contracts/address.json")
-const addressJson = JSON.parse(jsonString)
 
-const name2Address = {
-    'Bnb': bnbAddress,
-    'Usdt': addressJson.USDT,
-    'Busd': addressJson.BUSD,
-    'Mdx': addressJson.MdxToken,
+let {saveToJson, readAddressJson} = require('./jsonRW.js');
+
+let addressJson = null;
+let name2Address = null;
+
+function setNetwork(network) {
+    addressJson = readAddressJson(network);
+
+    name2Address = {
+        'Bnb': bnbAddress,
+        'Usdt': addressJson.USDT,
+        'Busd': addressJson.BUSD,
+        'Mdx': addressJson.MdxToken,
+    };
+
+    return {addressJson, name2Address}
+}
+
+function getConfig() {
+    if (!addressJson) {
+        throw new Error('Haven\'t set network');
+    }
+
+    return {addressJson, name2Address}
 }
 
 // Return a BigNumber of balance that has divided decimals
 async function erc20TokenGetBalance(tokenAddress, accountAddress) {
-    let contract = new web3.eth.Contract(erc20ABI, tokenAddress);
-    let balance = BigNumber(await contract.methods.balanceOf(accountAddress).call());
-    let decimals = await contract.methods.decimals().call();
+    let token = await ERC20Token.at(tokenAddress);
+    let balance = BigNumber(await token.balanceOf(accountAddress).call());
+    let decimals = await token.decimals().call();
 
     // divided by decimals
     balance = balance.div(10**decimals)
@@ -260,6 +277,10 @@ async function swapAllLpToToken0(token0, token1, lpAmount) {
 }
 
 async function transfer(tokenAddress, to, amount, from) {
+    if (amount < 0) {
+        return
+    }
+
     if (tokenAddress == bnbAddress) {
         await web3.eth.sendTransaction({from: from, to: to, value: amount})
     } else {
@@ -285,11 +306,11 @@ async function getBalance(tokenAddress, account) {
     }
 }
 
-async function swapExactTo(tokens, fromIdx, amount, from) {
+async function swapExactTo(tokens, fromIdx, fromAmount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
-        await wbnb.deposit({from: from, value: amount});
+        await wbnb.deposit({from: from, value: fromAmount});
     } else if (tokens[1-fromIdx] == bnbAddress) {
         tokens[1-fromIdx] = addressJson.WBNB;
     }
@@ -298,8 +319,8 @@ async function swapExactTo(tokens, fromIdx, amount, from) {
     await approve(tokens[fromIdx], router.address, 0, from);
     await approve(tokens[fromIdx], router.address, MaxUint256, from);
 
-    console.log(`Swap ${fromWei(amount)} token ${fromIdx} to token ${1-fromIdx}`);
-    await router.swapExactTokensForTokens(amount, 0, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
+    console.log(`Swap ${fromWei(fromAmount)} token ${fromIdx} to token ${1-fromIdx}`);
+    await router.swapExactTokensForTokens(fromAmount, 0, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
 
     if (tokens[1-fromIdx] == addressJson.WBNB) {
         let wbnbAmount = await wbnb.balanceOf(from)
@@ -309,27 +330,27 @@ async function swapExactTo(tokens, fromIdx, amount, from) {
     }
 }
 
-async function swapToExact(tokens, fromIdx, amount, from) {
+async function swapToExact(tokens, fromIdx, toAmount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
+    let router = await MdexRouter.at(addressJson.MdexRouter);
+
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
-        await wbnb.deposit({from: from, value: amount});
+        amounts = await router.getAmountsIn(toAmount, [tokens[fromIdx], tokens[1-fromIdx]]);
+        await wbnb.deposit({from: from, value: amounts[0]});
     } else if (tokens[1-fromIdx] == bnbAddress) {
         tokens[1-fromIdx] = addressJson.WBNB;
     }
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
     await approve(tokens[fromIdx], router.address, 0, from)
     await approve(tokens[fromIdx], router.address, MaxUint256, from)
 
-    console.log(`Swap token ${fromIdx} to ${fromWei(amount)} token ${1-fromIdx}`);
-    await router.swapTokensForExactTokens(amount, MaxUint256, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
+    console.log(`Swap token ${fromIdx} to ${fromWei(toAmount)} token ${1-fromIdx}`);
+    await router.swapTokensForExactTokens(toAmount, MaxUint256, [tokens[fromIdx], tokens[1-fromIdx]], from, MaxUint256);
 
-    if (tokens[1-fromIdx] == addressJson.WBNB) {
-        let wbnbAmount = await wbnb.balanceOf(from)
-        if (wbnbAmount > 0) {
-            await wbnb.withdraw(wbnbAmount, {from: from});
-        }
+    let wbnbAmount = await wbnb.balanceOf(from);
+    if (wbnbAmount > 0) {
+        await wbnb.withdraw(wbnbAmount, {from: from});
     }
 }
 
@@ -496,8 +517,8 @@ function logObj(obj, name) {
 module.exports = {
     bnbAddress,
     MaxUint256,
-    addressJson,
-    name2Address,
+    setNetwork,
+    getConfig,
     erc20TokenGetBalance,
     saveLogToFile,
     initFile,

@@ -4,8 +4,7 @@ const Bank = artifacts.require("Bank");
 
 const {
     bnbAddress,
-    addressJson,
-    name2Address,
+    getConfig,
     equal,
     swapAllLpToToken0,
     approve,
@@ -17,6 +16,8 @@ const {
     aMulB,
     aDivB,
 } = require("./utils");
+
+const { addressJson, name2Address } = getConfig();
 
 async function createPosition(tokensName, userAddress, amounts, borrows, minDebt) {
     bank = await Bank.at(addressJson.Bank);
