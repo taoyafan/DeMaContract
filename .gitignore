@@ -16,3 +16,4 @@ bin/contracts/*
 !bin/contracts/ERC20.abi
 !bin/contracts/UserProfile.abi
 !bin/contracts/Farm.abi
+!bin/contracts/MdxGoblin.abi
