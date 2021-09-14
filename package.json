@@ -30,6 +30,7 @@
     "vfdematest": "truffle run verify DEMA@0x2fEcE6A082cd156cE0e0ecd58bf6F0f3a21527d1 --network bsctest",
     "vfroutertest": "truffle run verify MdexRouter@0x9e148eaaD7A1111Ba6C2CFB546C60a996c5EF539 --network bsctest",
     "vfbanktest": "truffle run verify Bank@0x9b4e82A5D2D6Bb5F446dd10a9381814970Cd3358 --network bsctest",
+    "vffarmtest": "truffle run verify Farm@0xfA77fB177fA7aB9254bE19FD4c7E1DC22F9446B4 --network bsctest",
 
     "testbank": "truffle test ./test/test_bank.js",
     "testuser": "truffle test ./test/test_UserProfile.js --show-events",
