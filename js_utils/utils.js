@@ -3,6 +3,7 @@ BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
 const path = require('path');
+const web3 = require('web3');
 
 const MdxGoblin = artifacts.require("MdxGoblin");
 const MdexFactory = artifacts.require("MdexFactory");
@@ -16,7 +17,7 @@ const Reinvestment = artifacts.require("Reinvestment");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-const jsonString = fs.readFileSync("bin/contracts/address.json")
+const jsonString = fs.readFileSync("../bin/contracts/address.json")
 
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
@@ -30,6 +31,8 @@ function setNetwork(network) {
         'Bnb': bnbAddress,
         'Usdt': addressJson.USDT,
         'Busd': addressJson.BUSD,
+        'Eth': addressJson.ETH,
+        'Btc': addressJson.BTC,
         'Mdx': addressJson.MdxToken,
     };
 
@@ -294,7 +297,11 @@ async function approve(tokenAddress, to, amount, from) {
         return
 
     let token = await ERC20Token.at(tokenAddress);
-    await token.approve(to, amount, {from: from});
+
+    let allowance = await token.allowance(from, to);
+    if (allowance < amount) {
+        await token.approve(to, amount, {from: from});
+    }
 }
 
 async function getBalance(tokenAddress, account) {
