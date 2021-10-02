@@ -29,6 +29,7 @@ function setNetwork(network) {
 
     name2Address = {
         'Bnb': bnbAddress,
+        'Wbnb': addressJson.WBNB,
         'Usdt': addressJson.USDT,
         'Busd': addressJson.BUSD,
         'Eth': addressJson.ETH,

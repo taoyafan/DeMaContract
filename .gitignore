@@ -5,7 +5,7 @@ build/
 soljson*
 package-lock.json
 *.xlsx
-test/log/*
+test/log/
 bin/contracts/*
 !bin/contracts/addressBscTest.json
 !bin/contracts/addressBscMain.json
@@ -17,3 +17,5 @@ bin/contracts/*
 !bin/contracts/UserProfile.abi
 !bin/contracts/Farm.abi
 !bin/contracts/MdxGoblin.abi
+!bin/contracts/MdexFactory.abi
+!bin/contracts/MdexPair.abi

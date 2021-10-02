@@ -24,6 +24,7 @@
     "bankinittest": "truffle exec ./scripts/bank_init.js --network bsctest",
     "mdxinittest": "truffle exec ./scripts/mdx_init.js --network bsctest",
     "openpostest": "truffle exec ./scripts/open_position.js --network bsctest",
+    "pricetest": "truffle exec ./scripts/get_price.js --network bsctest",
   
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
