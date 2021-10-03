@@ -532,3 +532,22 @@ async function GoblinGetUserEarned(account) {
     return [dexToken, dema];
 }
 ```
+
+2. Get user's principal of position
+
+function definition: `principal(uint256 posId, uint256 index) returns (uint256)`
+
+javascript calling example:
+
+``` javascript
+async function GoblinGetUserPrincipal(posId, goblinAddress, account) {
+    // account should be address string
+    const goblin = new web3.eth.Contract(goblinAbi, goblinAddress);
+    let principal = [BigNumber(await goblin.methods.principal(account, 0).call({from: account})),
+                     BigNumber(await goblin.methods.principal(account, 1).call({from: account}))];
+    return principal;
+}
+```
+
+Note that the order of principal is same as `MdxProd[ProdId]Tokens` in `bin/contracts/address[BscMain/BscTest/Matic].json`
+
