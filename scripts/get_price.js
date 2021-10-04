@@ -53,7 +53,7 @@ function main(callback) {
 
         const accounts = await web3.eth.getAccounts();
         
-        tokenNames = ['Btc', 'Eth', 'Bnb']
+        tokenNames = ['Btc', 'Eth', 'Bnb', 'Dema']
 
         for (let name of tokenNames) {
             console.log(`------------------------------ ${name} ------------------------------`);

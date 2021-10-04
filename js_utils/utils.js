@@ -35,6 +35,7 @@ function setNetwork(network) {
         'Eth': addressJson.ETH,
         'Btc': addressJson.BTC,
         'Mdx': addressJson.MdxToken,
+        'Dema': addressJson.DEMA,
     };
 
     return {addressJson, name2Address}

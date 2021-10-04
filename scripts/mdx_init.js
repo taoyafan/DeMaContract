@@ -22,6 +22,7 @@ function mdxInit(callback) {
         await addLiquidate(bnbAddress, addressJson.USDT, BigNumber(5e18), BigNumber(2000e18), accounts[0]);
         await addLiquidate(addressJson.BTC, addressJson.USDT, BigNumber(10e18), BigNumber(500000e18), accounts[0]);
         await addLiquidate(addressJson.ETH, addressJson.USDT, BigNumber(100e18), BigNumber(400000e18), accounts[0]);
+        await addLiquidate(addressJson.DEMA, addressJson.USDT, BigNumber(250000e18), BigNumber(500000e18), accounts[0]);
     }
 
     fun().then(callback);
@@ -43,6 +44,16 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
     let factory = await MdexFactory.at(addressJson.MdexFactory);
     let lpAddress = await factory.getPair(token0, token1);
+    
+    if (lpAddress == bnbAddress) {
+        // Pair not exist, Create pair first
+        await factory.createPair(token0, token1);
+        lpAddress = await factory.getPair(token0, token1);
+
+        assert(lpAddress != bnbAddress, 'Create pair failed');
+        console.log(`Pair not exist. Create a new pair`)
+    }
+    
     let lp = await MdexPair.at(lpAddress)
     await transfer(token0, lpAddress, r0, from)
     await transfer(token1, lpAddress, r1, from)
