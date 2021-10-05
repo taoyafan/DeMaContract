@@ -7,6 +7,8 @@
     "test": "test"
   },
   "scripts": {
+    "decode" : "node scripts/opPos_params_decode.js",
+
     "compile": "truffle compile",
     "minit": "truffle migrate --f 1 --to 1",
     "muser": "truffle migrate --f 2 --to 2",
