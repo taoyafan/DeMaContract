@@ -42,6 +42,8 @@ async function getPrice(tokenAddr, USDTAddr) {
     const lpAmounts = await lp.methods.totalSupply().call();
     const lpPrice = rUSDT.multipliedBy(2).dividedBy(lpAmounts);
 
+    console.log(`r_token is ${fromWei(rToken)}, r_usdt is ${fromWei(rUSDT)}, lp total is ${fromWei(lpAmounts)}`);
+
     return [tokenPrice, lpPrice]
 }
 
