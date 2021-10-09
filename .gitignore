@@ -6,6 +6,7 @@ soljson*
 package-lock.json
 *.xlsx
 test/log/
+scripts/log/
 bin/contracts/*
 !bin/contracts/addressBscTest.json
 !bin/contracts/addressBscMain.json
