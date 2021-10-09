@@ -435,7 +435,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                     if (N[0] > deltaN[0].add(decN0)) {
                         N[0] = N[0].sub(deltaN[0]).sub(decN0);
                     } else {
-                        N[0] = 0;
+                        N[0] = 1;   // Never return to 0
                     }
                 } else {
                     // N[1] >= 0
@@ -443,7 +443,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
                     } else {
-                        N[1] = 0;
+                        N[1] = 1;   // Never return to 0
                     }
                 }
             }
