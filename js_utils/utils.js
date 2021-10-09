@@ -38,7 +38,13 @@ function setNetwork(network) {
         'Dema': addressJson.DEMA,
     };
 
-    return {addressJson, name2Address}
+    let address2Name = {};
+    for (let key in name2Address) {
+        let value = name2Address[key];
+        address2Name[value] = key;
+    }
+
+    return {addressJson, name2Address, address2Name}
 }
 
 function getConfig() {
@@ -101,7 +107,6 @@ async function getStates(posId, userAddress, tokensName) {
     states.bankBalance = [
         await getBalance(tokensAddress[0], bank.address), 
         await getBalance(tokensAddress[1], bank.address),
-        await getBalance(addressJson.WBNB, userAddress)
     ];
 
     async function getBank(tokenAddress) {
@@ -143,7 +148,8 @@ async function getStates(posId, userAddress, tokensName) {
             newHealth: BigNumber(info[2]),
             health: [BigNumber(info[3][0]), BigNumber(info[3][1])],
             debts: [BigNumber(info[4][0]),BigNumber(info[4][1])],
-            owner: info[5]
+            owner: info[5],
+            tokensAmountInLp: await getTokenAmountInLp(tokensAddress, info[1]),
         }
     }
     states.posInfo.posId = posId;
