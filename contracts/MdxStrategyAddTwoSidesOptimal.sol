@@ -14,6 +14,8 @@ import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 
 contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
+    event posDeposit(uint256[2] amount);
+
     using SafeToken for address;
     using SafeMath for uint256;
 
@@ -167,8 +169,10 @@ contract MdxStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStrategy {
 
         if (borrowTokens[0] == token0 || (borrowTokens[0] == address(0) && token0 == wBNB))
         {
+            emit posDeposit([token0Amount, token1Amount]);
             return [token0Amount, token1Amount];
         } else {
+            emit posDeposit([token1Amount, token0Amount]);
             return [token1Amount, token0Amount];
         }
     }
