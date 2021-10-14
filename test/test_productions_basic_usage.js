@@ -19,8 +19,7 @@ const file = `test/log/prod_basic_usage.json`;
 const {
     bnbAddress,
     MaxUint256,
-    addressJson,
-    name2Address,
+    setNetwork,
     saveLogToFile,
     initFile,
     getStates,
@@ -41,6 +40,7 @@ const {
     aDivB,
     tokensFilter,
 } = require("../js_utils/utils");
+const {addressJson, name2Address} = setNetwork('development')
 
 const {
     createPosition,
@@ -63,7 +63,7 @@ contract("TestProduction", (accounts) => {
     let reinvestment;
 
     let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
-    let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
+    let r = [[10000, 2000000], [20, 20], [2000000, 10000], [10000, 2000000]]
 
     before('Init', async () => {
         initFile(file);
@@ -78,7 +78,7 @@ contract("TestProduction", (accounts) => {
         // reinvestment = await Reinvestment.at(addressJson.Reinvestment);
 
         // Deposit token in bank.
-        let amount = toWei(2000);
+        let amount = toWei(20000);
         await bank.deposit(bnbAddress, amount, {from: accounts[0], value: amount});
 
         await mdx.approve(bank.address, amount, {from: accounts[0]});
@@ -97,7 +97,7 @@ contract("TestProduction", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[3], r[3]);
+        forEachTokenPair(tokenPairs[1], r[1]);
 
 
         async function forEachTokenPair(tokensName, r) {
@@ -105,20 +105,20 @@ contract("TestProduction", (accounts) => {
             let borrowsArray = [[0, 0], [0, 1], [1, 0], [2, 1], [1, 2]];
 
             depositArray.forEach((deposits) => {
-                deposits.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
+                deposits.forEach((a, i, arr) => { arr[i] = r[i] * 100 * a })
             })
 
             borrowsArray.forEach((borrows) => {
-                borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
+                borrows.forEach((a, i, arr) => { arr[i] = r[i] * 100 * a })
             })
 
-            for (deposits of depositArray) {
-                for (borrows of borrowsArray) {
-                    forEachBorrow(tokensName, deposits, borrows, r);
-                }
-            }
+            // for (deposits of depositArray) {
+            //     for (borrows of borrowsArray) {
+            //         forEachBorrow(tokensName, deposits, borrows, r);
+            //     }
+            // }
 
-            // forEachBorrow(tokensName, depositArray[0], borrowsArray[2], r);
+            forEachBorrow(tokensName, depositArray[2], borrowsArray[2], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 

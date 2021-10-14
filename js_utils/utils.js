@@ -17,7 +17,6 @@ const Reinvestment = artifacts.require("Reinvestment");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-const jsonString = fs.readFileSync("../bin/contracts/address.json")
 
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
@@ -133,7 +132,11 @@ async function getStates(posId, userAddress, tokensName) {
     // position info, ids, health
     if (posId == 0) {
         // no pos
-        states.posInfo = {debts: [BigNumber(0), BigNumber(0)]}
+        states.posInfo = {
+            debts: [BigNumber(0), BigNumber(0)], 
+            lpAmount: BigNumber(0),
+            tokensAmountInLp: [BigNumber(0), BigNumber(0)],
+        }
     } else {
         // pos.productionId,
         // lp amount,
