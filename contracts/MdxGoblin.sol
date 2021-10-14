@@ -134,6 +134,17 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     /* ==================================== Read ==================================== */
 
     /**
+     * @dev Return equivalent output given the input amount and the status of Uniswap reserves.
+     * @param aIn The amount of asset to market sell.
+     * @param rIn the amount of asset in reserve for input.
+     * @param rOut The amount of asset in reserve for output.
+     */
+    function getEqAmount(uint256 aIn, uint256 rIn, uint256 rOut) public pure returns (uint256) {
+        if (aIn == 0) return 0;
+        require(rIn > 0 && rOut > 0, "bad reserve values");
+        return rIn.mul(rOut).div(aIn);
+    }
+    /**
      * @dev Return maximum output given the input amount and the status of Uniswap reserves.
      * @param aIn The amount of asset to market sell.
      * @param rIn the amount of asset in reserve for input.
@@ -156,7 +167,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      */
     function getMktSellInAmount(uint256 aOut, uint256 rIn, uint256 rOut) public pure returns (uint256) {
         if (aOut == 0) return 0;
-        require(rIn > 0 && rOut > 0, "bad reserve values");
+        require(rIn > 0, "Get sell in amount, rIn must > 0");
+        require(rOut > aOut, "Get sell in amount, rOut must > aOut");
         uint256 numerator = rIn.mul(aOut).mul(1000);
         uint256 denominator = rOut.sub(aOut).mul(997);
         return numerator.div(denominator);
@@ -431,19 +443,19 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             if (deltaN[0] > 0 || deltaN[1] > 0){
                 // Decrease some principal.
                 if (N[0] > 0) {
-                    uint256 decN0 = getMktSellInAmount(deltaN[1], ra, rb);
+                    uint256 decN0 = getEqAmount(deltaN[1], ra, rb);
                     if (N[0] > deltaN[0].add(decN0)) {
                         N[0] = N[0].sub(deltaN[0]).sub(decN0);
                     } else {
-                        N[0] = 0;
+                        N[0] = 1;
                     }
                 } else {
                     // N[1] >= 0
-                    uint256 decN1 = getMktSellInAmount(deltaN[0], rb, ra);
+                    uint256 decN1 = getEqAmount(deltaN[0], rb, ra);
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
                     } else {
-                        N[1] = 0;
+                        N[1] = 1;
                     }
                 }
             }
@@ -654,12 +666,18 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // nb <= db, swap A to B
         } else {
-            uint256 decA = getMktSellInAmount(db-nb, ra, rb);
-            if (na > da.add(decA)) {
-                na = na.sub(decA).sub(da);
-            } else {
-                // The left amount is not enough to repay debts.
+            if (db-nb > rb) {
+                // There are not enough token B in DEX, no left A.
                 na = 0;
+            }
+            else {
+                uint256 decA = getMktSellInAmount(db-nb, ra, rb);
+                if (na > da.add(decA)) {
+                    na = na.sub(decA).sub(da);
+                } else {
+                    // The left amount is not enough to repay debts.
+                    na = 0;
+                }
             }
         }
         return na;
