@@ -20,3 +20,4 @@ bin/contracts/*
 !bin/contracts/MdxGoblin.abi
 !bin/contracts/MdexFactory.abi
 !bin/contracts/MdexPair.abi
+!bin/contracts/BSCPool.abi
