@@ -28,6 +28,7 @@
     "openpostest": "truffle exec ./scripts/open_position.js --network bsctest",
     "pricetest": "truffle exec ./scripts/get_price.js --network bsctest",
     "getstatustest": "truffle exec ./scripts/get_status.js --network bsctest",
+    "misctest": "truffle exec ./scripts/misc.js --network bsctest",
   
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
