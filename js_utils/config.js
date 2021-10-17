@@ -99,6 +99,8 @@ function getProdInfo(network) {
                 token0Address: "0x0000000000000000000000000000000000000000",
                 token1Address: addressJson.USDT, 
                 rewardFirstPeriod: BigNumber(3610).multipliedBy(1e18),    // 1 DEMA per second.
+                r0: 10e18,
+                r1: 3000e18,        // 300
             },
             {
                 token0: "Btc", 
@@ -106,6 +108,8 @@ function getProdInfo(network) {
                 token0Address: addressJson.BTC,
                 token1Address: addressJson.USDT, 
                 rewardFirstPeriod: BigNumber(3610).multipliedBy(1e18),    // 1 DEMA per second.
+                r0: 1000e18,
+                r1: 60000000e18,    // 6 W
             },
             {
                 token0: "Eth", 
@@ -113,6 +117,8 @@ function getProdInfo(network) {
                 token0Address: addressJson.ETH,
                 token1Address: addressJson.USDT, 
                 rewardFirstPeriod: BigNumber(3610).multipliedBy(1e18),    // 1 DEMA per second.
+                r0: 1000e18,
+                r1: 4000000e18,     // 4000
             },
         ];
     } else {

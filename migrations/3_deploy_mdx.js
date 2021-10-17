@@ -10,12 +10,18 @@ const BoardRoomMDX = artifacts.require("BoardRoomMDX");
 const BigNumber = require("bignumber.js");
 let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
 let {getProdInfo} = require('../js_utils/config.js');
-const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+
+const {
+    bnbAddress,
+    MaxUint256,
+    getConfig,
+    addLiquidate,
+} = require("../js_utils/utils");
 
 module.exports = async function (deployer, network, accounts) {
     
     if (network == 'development' || network == 'bsctest') {
-        const addressJson = readAddressJson(network)
+        const { addressJson } = getConfig(network);
         const busdAddress = addressJson.BUSD;
 
         await deployer.deploy(MdxToken)      // Mdex Token
@@ -114,6 +120,10 @@ module.exports = async function (deployer, network, accounts) {
             let lp = await factory.getPair(prod.token0Address, prod.token1Address);
             await bscPool.add(1000, lp, false);
             saveToJson(`Mdx${prod.token0}${prod.token1}PoolId`, poolId++, network);
+
+            if (network == 'bsctest') {
+                await addLiquidate(prod.token0Address, prod.token1Address, prod.r0, prod.r1, accounts[0]);
+            }
         }
 
     } else {

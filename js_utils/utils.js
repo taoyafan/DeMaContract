@@ -46,9 +46,13 @@ function setNetwork(network) {
     return {addressJson, name2Address, address2Name}
 }
 
-function getConfig() {
+function getConfig(network = null) {
     if (!addressJson) {
-        throw new Error('Haven\'t set network');
+        if (network) {
+            setNetwork(network);
+        } else {
+            throw new Error('Haven\'t set network');
+        }
     }
 
     return {addressJson, name2Address}
@@ -383,9 +387,9 @@ async function addLiquidate(token0, token1, r0, r1, from) {
         await wbnb.deposit({from: from, value: r1})
     }
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
-    await approve(token0, router.address, r0, from)
-    await approve(token1, router.address, r1, from)
+    // let router = await MdexRouter.at(addressJson.MdexRouter);
+    // await approve(token0, router.address, r0, from)
+    // await approve(token1, router.address, r1, from)
 
     let factory = await MdexFactory.at(addressJson.MdexFactory);
     let lpAddress = await factory.getPair(token0, token1);
