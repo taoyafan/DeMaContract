@@ -1,4 +1,5 @@
 const BigNumber = require("bignumber.js");
+const { assert } = require("console");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
@@ -376,23 +377,37 @@ async function swapToExact(tokens, fromIdx, toAmount, from) {
     }
 }
 
+async function createPair(token0, token1) {
+    return await getPair(token0, token1);
+}
+
+async function getPair(token0, token1) {
+    [token0, token1] = tokensFilter(token0, token1);
+    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let lpAddress = await factory.getPair(token0, token1);
+
+    if (lpAddress == bnbAddress) {
+        await factory.createPair(token0, token1);
+        lpAddress = await factory.getPair(token0, token1);
+        assert(lpAddress != bnbAddress);
+    }
+
+    return lpAddress;
+}
+
 // Input token address
 async function addLiquidate(token0, token1, r0, r1, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
     if (token0 == bnbAddress) {
         token0 = addressJson.WBNB
-        await wbnb.deposit({from: from, value: r0})
+        // await wbnb.deposit({from: from, value: r0})
     } else if (token1 == bnbAddress) {
         token1 = addressJson.WBNB
-        await wbnb.deposit({from: from, value: r1})
+        // await wbnb.deposit({from: from, value: r1})
     }
 
-    // let router = await MdexRouter.at(addressJson.MdexRouter);
-    // await approve(token0, router.address, r0, from)
-    // await approve(token1, router.address, r1, from)
+    let lpAddress = await getPair(token0, token1);
 
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
-    let lpAddress = await factory.getPair(token0, token1);
     let lp = await MdexPair.at(lpAddress)
     await transfer(token0, lpAddress, r0, from)
     await transfer(token1, lpAddress, r1, from)
@@ -552,6 +567,8 @@ module.exports = {
     getBalance,
     swapExactTo,
     swapToExact,
+    createPair,
+    getPair,
     addLiquidate,
     removeAllLiquidity,
     swapToTarget,

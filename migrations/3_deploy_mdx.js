@@ -14,14 +14,16 @@ let {getProdInfo} = require('../js_utils/config.js');
 const {
     bnbAddress,
     MaxUint256,
-    getConfig,
+    setNetwork,
+    createPair,
+    getPair,
     addLiquidate,
 } = require("../js_utils/utils");
 
 module.exports = async function (deployer, network, accounts) {
     
     if (network == 'development' || network == 'bsctest') {
-        const { addressJson } = getConfig(network);
+        const { addressJson } = setNetwork(network);
         const busdAddress = addressJson.BUSD;
 
         await deployer.deploy(MdxToken)      // Mdex Token
@@ -98,9 +100,6 @@ module.exports = async function (deployer, network, accounts) {
         await boardRoom.add(0, mdxToken.address, false);
         await boardRoom.add(0, mdxToken.address, false);
         await boardRoom.add(1000, mdxToken.address, false);     // MDX pool
-        
-        // Factory related operations
-        let factory = await MdexFactory.deployed();
 
         // BSC pool related operations
         // - Add minter to BSC pool
@@ -112,18 +111,24 @@ module.exports = async function (deployer, network, accounts) {
         let productions = getProdInfo(network);
         let poolId = 0;
         
+        // Update addressJson in utils 
+        setNetwork(network);
+        
         for (prod of productions) {
-            prod.token0Address = prod.token0 == 'Bnb' ? wbnb.address : prod.token0Address;
-            prod.token1Address = prod.token1 == 'Bnb' ? wbnb.address : prod.token1Address;
+            console.log(`Begin to config ${prod.token0} and ${prod.token1} of account ${accounts[0]}`);
 
-            await factory.createPair(prod.token0Address, prod.token1Address);
-            let lp = await factory.getPair(prod.token0Address, prod.token1Address);
+            let lp = await createPair(prod.token0Address, prod.token1Address);
             await bscPool.add(1000, lp, false);
+                
             saveToJson(`Mdx${prod.token0}${prod.token1}PoolId`, poolId++, network);
 
             if (network == 'bsctest') {
                 await addLiquidate(prod.token0Address, prod.token1Address, prod.r0, prod.r1, accounts[0]);
             }
+        }
+
+        if (network == 'bsctest') {
+            await addLiquidate(addressJson.DEMA, addressJson.USDT, BigNumber(1e24), BigNumber(2e24), accounts[0]);    // 2 USD
         }
 
     } else {
