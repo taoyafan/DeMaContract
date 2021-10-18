@@ -16,6 +16,7 @@
     "muserbscmain": "truffle migrate --f 2 --to 2 --network bscmain",
     "musermatic": "truffle migrate --f 2 --to 2 --network matic",
     "mmdx": "truffle migrate --f 3 --to 3",
+    "mmdxtest": "truffle migrate --f 3 --to 3 --network bsctest",
     "mbank": "truffle migrate --f 4 --to 4",
     "mbanktest": "truffle migrate --f 4 --to 4 --network bsctest",
     "mgoblin": "truffle migrate --f 5 --to 5",
