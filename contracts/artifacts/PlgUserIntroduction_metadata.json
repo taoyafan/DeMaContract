@@ -1,0 +1,108 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "bytes",
+						"name": "contents",
+						"type": "bytes"
+					}
+				],
+				"name": "Write",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "read",
+				"outputs": [
+					{
+						"internalType": "bytes",
+						"name": "",
+						"type": "bytes"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "write",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"events": {
+				"Write(address,bytes)": {
+					"notice": "Events"
+				}
+			},
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/PlgUserIntroduction.sol": "PlgUserIntroduction"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/Interface/IPlugin.sol": {
+			"keccak256": "0x5195e80bf340441dee37a4fecdecca0b1e1aea9f7ccc2e1e0ce3f869bdfa3c15",
+			"urls": [
+				"bzz-raw://7434431dfa0f0faaf3094a7720e9143cfd51c3cca6c88957fd4bdabd680cda78",
+				"dweb:/ipfs/QmS4yEjiYGMF6cqrsbhbb4j6vnTvfqmfdj1NomcN8gbGfJ"
+			]
+		},
+		"contracts/PlgUserIntroduction.sol": {
+			"keccak256": "0x71529743a0fc7ee37017cd1ea87e5d96bfb62b4a6ea93c0e7d1ebb8cc204cc85",
+			"urls": [
+				"bzz-raw://08bd8feef487db05cd0d717abcf274087a3c09b0ec0236e1d3d7907f023635d4",
+				"dweb:/ipfs/QmbXbvs4VG4Hcffuh1sEr3V3KmpbFvNStKQYyohXU1yikC"
+			]
+		}
+	},
+	"version": 1
+}

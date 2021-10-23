@@ -1,0 +1,239 @@
+{
+	"deploy": {
+		"VM:-": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"main:1": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"ropsten:3": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"rinkeby:4": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"kovan:42": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"görli:5": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		},
+		"Custom": {
+			"linkReferences": {},
+			"autoDeployLib": true
+		}
+	},
+	"data": {
+		"bytecode": {
+			"linkReferences": {},
+			"object": "",
+			"opcodes": "",
+			"sourceMap": ""
+		},
+		"deployedBytecode": {
+			"immutableReferences": {},
+			"linkReferences": {},
+			"object": "",
+			"opcodes": "",
+			"sourceMap": ""
+		},
+		"gasEstimates": null,
+		"methodIdentifiers": {
+			"getAllRewards(address)": "362a3fad",
+			"health(uint256,address[2],uint256[2])": "ff43f9e7",
+			"liquidate(uint256,address,address[2],uint256[2])": "2bd417d9",
+			"newHealth(uint256,address[2],uint256[2])": "57dd5650",
+			"posLPAmount(uint256)": "f204b9c5",
+			"userEarnedAmount(address)": "5931c793",
+			"work(uint256,address,address[2],uint256[2],uint256[2],bytes)": "c186c29b"
+		}
+	},
+	"abi": [
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "account",
+					"type": "address"
+				}
+			],
+			"name": "getAllRewards",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "id",
+					"type": "uint256"
+				},
+				{
+					"internalType": "address[2]",
+					"name": "borrowTokens",
+					"type": "address[2]"
+				},
+				{
+					"internalType": "uint256[2]",
+					"name": "debts",
+					"type": "uint256[2]"
+				}
+			],
+			"name": "health",
+			"outputs": [
+				{
+					"internalType": "uint256[2]",
+					"name": "",
+					"type": "uint256[2]"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "id",
+					"type": "uint256"
+				},
+				{
+					"internalType": "address",
+					"name": "user",
+					"type": "address"
+				},
+				{
+					"internalType": "address[2]",
+					"name": "borrowTokens",
+					"type": "address[2]"
+				},
+				{
+					"internalType": "uint256[2]",
+					"name": "debts",
+					"type": "uint256[2]"
+				}
+			],
+			"name": "liquidate",
+			"outputs": [],
+			"stateMutability": "nonpayable",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "id",
+					"type": "uint256"
+				},
+				{
+					"internalType": "address[2]",
+					"name": "borrowTokens",
+					"type": "address[2]"
+				},
+				{
+					"internalType": "uint256[2]",
+					"name": "debts",
+					"type": "uint256[2]"
+				}
+			],
+			"name": "newHealth",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "posId",
+					"type": "uint256"
+				}
+			],
+			"name": "posLPAmount",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "address",
+					"name": "account",
+					"type": "address"
+				}
+			],
+			"name": "userEarnedAmount",
+			"outputs": [
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				},
+				{
+					"internalType": "uint256",
+					"name": "",
+					"type": "uint256"
+				}
+			],
+			"stateMutability": "view",
+			"type": "function"
+		},
+		{
+			"inputs": [
+				{
+					"internalType": "uint256",
+					"name": "id",
+					"type": "uint256"
+				},
+				{
+					"internalType": "address",
+					"name": "user",
+					"type": "address"
+				},
+				{
+					"internalType": "address[2]",
+					"name": "borrowTokens",
+					"type": "address[2]"
+				},
+				{
+					"internalType": "uint256[2]",
+					"name": "borrowAmounts",
+					"type": "uint256[2]"
+				},
+				{
+					"internalType": "uint256[2]",
+					"name": "debts",
+					"type": "uint256[2]"
+				},
+				{
+					"internalType": "bytes",
+					"name": "data",
+					"type": "bytes"
+				}
+			],
+			"name": "work",
+			"outputs": [],
+			"stateMutability": "payable",
+			"type": "function"
+		}
+	]
+}

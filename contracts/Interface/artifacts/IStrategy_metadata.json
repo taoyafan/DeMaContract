@@ -1,0 +1,98 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "borrows",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "execute",
+				"outputs": [
+					{
+						"internalType": "uint256[2]",
+						"name": "",
+						"type": "uint256[2]"
+					}
+				],
+				"stateMutability": "payable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"execute(address,address[2],uint256[2],uint256[2],bytes)": {
+					"details": "Execute worker strategy. Take LP tokens + debt token. Return LP tokens or debt token.",
+					"params": {
+						"borrowTokens": "Two borrow token address.",
+						"borrows": "The amount of each borrow token.",
+						"data": "Extra calldata information passed along to this strategy.",
+						"debts": "The user's total debt of each borrow token, for better decision making context.",
+						"user": "The original user that is interacting with the operator."
+					},
+					"returns": {
+						"_0": "Principal changed amount change of each token, increase or decrease. return token and amount need transfer back."
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/Interface/IStrategy.sol": "IStrategy"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/Interface/IStrategy.sol": {
+			"keccak256": "0xda0623fa5cc54115fa8d3fa40cc901f21fd6480c5876bb7fe0b8ac28aab97cc0",
+			"urls": [
+				"bzz-raw://3ee2a7fdfe4cf5e9312fc8b350b231ac68dd05f1522ac4c7238da3c48248472b",
+				"dweb:/ipfs/QmQKd9criEGMALhBBHpXNCusC5rKprKUXkrzXrRn7oo4Ue"
+			]
+		}
+	},
+	"version": 1
+}

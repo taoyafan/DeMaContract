@@ -1,0 +1,273 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "getAllRewards",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "health",
+				"outputs": [
+					{
+						"internalType": "uint256[2]",
+						"name": "",
+						"type": "uint256[2]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "liquidate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "newHealth",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "posId",
+						"type": "uint256"
+					}
+				],
+				"name": "posLPAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userEarnedAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "borrowAmounts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "work",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"getAllRewards(address)": {
+					"details": "Send all mdx rewards earned in this goblin to account."
+				},
+				"health(uint256,address[2],uint256[2])": {
+					"details": "Return the amount of each borrow token can be withdrawn with the given borrow amount rate.",
+					"params": {
+						"borrowTokens": "Address of two tokens this position had debt.",
+						"debts": "Debts of two tokens.",
+						"id": "The position ID to perform health check."
+					}
+				},
+				"liquidate(uint256,address,address[2],uint256[2])": {
+					"details": "Liquidate the given position by converting it to debtToken and return back to caller.",
+					"params": {
+						"borrowTokens": "Two tokens address user borrow from bank.",
+						"debts": "Two tokens debts.",
+						"id": "The position ID to perform liquidation.",
+						"user": "The address than this position belong to."
+					}
+				},
+				"newHealth(uint256,address[2],uint256[2])": {
+					"details": "Return the left rate of the principal. need to divide to 10000, 100 means 1%",
+					"params": {
+						"borrowTokens": "Address of two tokens this position had debt.",
+						"debts": "Debts of two tokens.",
+						"id": "The position ID to perform loss rate check."
+					}
+				},
+				"posLPAmount(uint256)": {
+					"details": "Get the lp amount at given posId."
+				},
+				"userEarnedAmount(address)": {
+					"returns": {
+						"_0": "Earned MDX and DEMA amount."
+					}
+				},
+				"work(uint256,address,address[2],uint256[2],uint256[2],bytes)": {
+					"details": "Work on the given position. Must be called by the operator.",
+					"params": {
+						"borrowAmounts": "The amount of two borrow tokens.",
+						"borrowTokens": "Address of two tokens user borrow from bank.",
+						"data": "The encoded data, consisting of strategy address and bytes to strategy.",
+						"debts": "The user's debt amount of two tokens.",
+						"id": "The position ID to work on.",
+						"user": "The original user that is interacting with the operator."
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/Interface/IGoblin.sol": "IGoblin"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/Interface/IGoblin.sol": {
+			"keccak256": "0xa8cc2f19056f9b3477ca57447b94fc495d8c129badfa4d3061e2953b68e0736f",
+			"urls": [
+				"bzz-raw://de6134e7c818442b9eeb35c1ac1fcbed78970d7957a0f4c45c239d9ebc2fd185",
+				"dweb:/ipfs/QmUUbYw4zaFmsDJoLJSk56sK1EG6aVkWVAbjVmigpn9rzB"
+			]
+		}
+	},
+	"version": 1
+}

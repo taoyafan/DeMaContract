@@ -1,0 +1,65 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "mdx",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "takerWithdraw",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/Interface/ISwapMining.sol": "ISwapMining"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/Interface/ISwapMining.sol": {
+			"keccak256": "0x2f0aba16c4c7dc5066f7e7e19f24655f1180c2e4c268c476221f5124da041e0e",
+			"urls": [
+				"bzz-raw://50324b7ffe35911fd73fa4658896cb4c24f21fc3c35685f2e90c85b93044d10e",
+				"dweb:/ipfs/QmdGkRJGhkUuiggRb9r47XvcYHHa8HPS7RZj6g3qzzHrqJ"
+			]
+		}
+	},
+	"version": 1
+}

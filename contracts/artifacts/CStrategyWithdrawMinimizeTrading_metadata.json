@@ -1,0 +1,358 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "contract IPancakeRouter02",
+						"name": "_router",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "previousOwner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "OwnershipTransferred",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "uint256[2]",
+						"name": "withdraw",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "posWithdraw",
+				"type": "event"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "execute",
+				"outputs": [
+					{
+						"internalType": "uint256[2]",
+						"name": "",
+						"type": "uint256[2]"
+					}
+				],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "factory",
+				"outputs": [
+					{
+						"internalType": "contract IPancakeFactory",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "value",
+						"type": "uint256"
+					}
+				],
+				"name": "recover",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "renounceOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "router",
+				"outputs": [
+					{
+						"internalType": "contract IPancakeRouter02",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "transferOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "wBNB",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "receive"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"constructor": {
+					"details": "Create a new withdraw minimize trading strategy instance for mdx.",
+					"params": {
+						"_router": "The mdx router smart contract."
+					}
+				},
+				"execute(address,address[2],uint256[2],uint256[2],bytes)": {
+					"details": "Execute worker strategy. Take LP tokens. Return debt token + token want back.",
+					"params": {
+						"borrowTokens": "The token user borrow from bank.",
+						"data": "Extra calldata information passed along to this strategy.",
+						"debts": "User's debt amount.",
+						"user": "User address to withdraw liquidity."
+					}
+				},
+				"owner()": {
+					"details": "Returns the address of the current owner."
+				},
+				"recover(address,address,uint256)": {
+					"details": "Recover ERC20 tokens that were accidentally sent to this smart contract.",
+					"params": {
+						"to": "The address to send the tokens to.",
+						"token": "The token contract. Can be anything. This contract should not hold ERC20 tokens.",
+						"value": "The number of tokens to transfer to `to`."
+					}
+				},
+				"renounceOwnership()": {
+					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner."
+				},
+				"transferOwnership(address)": {
+					"details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/CakeStrategyWithdrawMinimizeTrading.sol": "CStrategyWithdrawMinimizeTrading"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/CakeStrategyWithdrawMinimizeTrading.sol": {
+			"keccak256": "0x1b2120447acfa48851b450e6a2c791cf57d9ee070ea2c4f11b0895c98104dbf7",
+			"urls": [
+				"bzz-raw://112c890a791ea264d352b17af1dca5055fbdb663d615b76bdda4ff4a68061764",
+				"dweb:/ipfs/Qmesbxf2LddccYCV4iK3hycQqFDAuGgGatRAEoVeWicvSs"
+			]
+		},
+		"contracts/Interface/IStrategy.sol": {
+			"keccak256": "0xda0623fa5cc54115fa8d3fa40cc901f21fd6480c5876bb7fe0b8ac28aab97cc0",
+			"urls": [
+				"bzz-raw://3ee2a7fdfe4cf5e9312fc8b350b231ac68dd05f1522ac4c7238da3c48248472b",
+				"dweb:/ipfs/QmQKd9criEGMALhBBHpXNCusC5rKprKUXkrzXrRn7oo4Ue"
+			]
+		},
+		"contracts/Interface/ISwapMining.sol": {
+			"keccak256": "0x2f0aba16c4c7dc5066f7e7e19f24655f1180c2e4c268c476221f5124da041e0e",
+			"urls": [
+				"bzz-raw://50324b7ffe35911fd73fa4658896cb4c24f21fc3c35685f2e90c85b93044d10e",
+				"dweb:/ipfs/QmdGkRJGhkUuiggRb9r47XvcYHHa8HPS7RZj6g3qzzHrqJ"
+			]
+		},
+		"contracts/Interface/IWBNB.sol": {
+			"keccak256": "0xd4adc9be98dba70b48ca30decb0882b41ba84b710693b1ee6f54fea2bb43ddec",
+			"urls": [
+				"bzz-raw://2866bb3fbb45f989f27460fdc74bb0c3c26760c1ee0fa94ec84bb67bd5dad38a",
+				"dweb:/ipfs/QmTZLpayq6NoNpJvoxQaDkqoy5KGT2ABd6BRRxer87kxnQ"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeFactory.sol": {
+			"keccak256": "0x62becd53fc7a56d14b4003bce33e77403191a84da9c1a25726363cdf16a8c825",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://2cbdc489b58363d5b36d5899e5a3f23e6cb2f8f45482dd5ac27c6f45669629a3",
+				"dweb:/ipfs/QmNtk3ZXasu7kd96zZVNsNqSes8w5T9hG5C5Gna4cQ46is"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakePair.sol": {
+			"keccak256": "0x592e23b03960121223eef60794aaf5f7dd2a003277fa3bb542dc8594e2f23439",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://9c6aa27e18e76cd41563394b6fd87b128a93b3e2541e0dd33d017ed0956389ed",
+				"dweb:/ipfs/QmZb44Yg8k7DnsNtBYZRo2ynqcNjVnTq8W8545i2P1cL1n"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeRouter01.sol": {
+			"keccak256": "0x1e9baeab11f3bfe8725d75e51a5faf5d4dfe3fd381bf50b31412faa9097539a3",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://009de3cc2711569d345bbe82ec13eac3bf762a6f3114f6910baab08d4670bbb6",
+				"dweb:/ipfs/QmUJ4d8X8cr2xH5GwY4KLoykiNwcJf6KgdQPMKnnh39bwG"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeRouter02.sol": {
+			"keccak256": "0x97e6fdb750ca6aa448db32b5e5da0cc4d49751c441716b5c51ac8a24ada3c8ad",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1d19403fdfed604b9e03f24d2a99b80a6ad5a36d9b1b3422b39c4c31d33babe4",
+				"dweb:/ipfs/QmPMztMLh3LfhzvotSDAHAZKbGcohdgewarJa4n37mhB8e"
+			]
+		},
+		"contracts/utils/Math.sol": {
+			"keccak256": "0xfe8a402c0290d8d417f7a4948043eec01f562ed273d3ee6de41fd7ce8adb634a",
+			"urls": [
+				"bzz-raw://ef591fa628360cdf6eff1155f1e793eb7c0296462ce8905739c0e55820cc46fc",
+				"dweb:/ipfs/QmdUZSkXfz5Xgf57WfmyxT42xKV7NJsTDjZEy4p5rqG71c"
+			]
+		},
+		"contracts/utils/SafeToken.sol": {
+			"keccak256": "0xd70b67cf28603b993ea1c6df983df623b687a6c9d0cbac546ce018e43b12e08e",
+			"urls": [
+				"bzz-raw://6ba47ed5b69d378e46cb2297856f143920f4122c721264dc915aa9282dde3fd0",
+				"dweb:/ipfs/QmSWa6m91rZ8iF6FfJtGAX9J6EXMs6cQRbjYHY2HbP44F1"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/GSN/Context.sol": {
+			"keccak256": "0x8d3cb350f04ff49cfb10aef08d87f19dcbaecc8027b0bed12f3275cd12f38cf0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://ded47ec7c96750f9bd04bbbc84f659992d4ba901cb7b532a52cd468272cf378f",
+				"dweb:/ipfs/QmfBrGtQP7rZEqEg6Wz6jh2N2Kukpj1z5v3CGWmAqrzm96"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/access/Ownable.sol": {
+			"keccak256": "0xf7c39c7e6d06ed3bda90cfefbcbf2ddc32c599c3d6721746546ad64946efccaa",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://cb57a28e189cd8b05748db44bdd51d608e6f1364dd1b35ad921e1bc82c10631e",
+				"dweb:/ipfs/QmaWWTBbVu2pRR9XUbE4iC159NoP59cRF9ZJwhf4ghFN9i"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/math/SafeMath.sol": {
+			"keccak256": "0x3b21f2c8d626de3b9925ae33e972d8bf5c8b1bffb3f4ee94daeed7d0679036e6",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://7f8d45329fecbf0836ad7543330c3ecd0f8d0ffa42d4016278c3eb2215fdcdfe",
+				"dweb:/ipfs/QmXWLT7GcnHtA5NiD6MFi2CV3EWJY4wv5mLNnypqYDrxL3"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/utils/ReentrancyGuard.sol": {
+			"keccak256": "0x8bbbc2f5c10065ee272592ae0a7a6ceb23de2fbd81564ee0bb015ecf404d5f61",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b95e56c1640d0ef789fc5c16269e141e992f6c8ac97cc6d377bd3825e9cab182",
+				"dweb:/ipfs/QmVzaxJZY51EhagrcNnkxoU6Uq17RhATe7aHvtkC6wUkgK"
+			]
+		}
+	},
+	"version": 1
+}

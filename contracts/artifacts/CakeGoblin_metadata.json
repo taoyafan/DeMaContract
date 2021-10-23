@@ -1,0 +1,1088 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_operator",
+						"type": "address"
+					},
+					{
+						"internalType": "contract IFarm",
+						"name": "_farm",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_poolId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "contract IMasterChef",
+						"name": "_bscPool",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_bscPoolId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "contract IPancakeRouter02",
+						"name": "_router",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "_mdx",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "_token0",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "_token1",
+						"type": "address"
+					},
+					{
+						"internalType": "contract IStrategy",
+						"name": "_liqStrategy",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "lpAmount",
+						"type": "uint256"
+					}
+				],
+				"name": "AddPosition",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "lpTokenAddress",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "lpAmount",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "address[2]",
+						"name": "debtToken",
+						"type": "address[2]"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256[2]",
+						"name": "liqAmount",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "Liquidate",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "previousOwner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "OwnershipTransferred",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "lpAmount",
+						"type": "uint256"
+					}
+				],
+				"name": "RemovePosition",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "StakedbscPool",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "WithdrawnbscPool",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "bscPool",
+				"outputs": [
+					{
+						"internalType": "contract IMasterChef",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "bscPoolId",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "farm",
+				"outputs": [
+					{
+						"internalType": "contract IFarm",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "getAllRewards",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "aIn",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rIn",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rOut",
+						"type": "uint256"
+					}
+				],
+				"name": "getEqAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "aIn",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rIn",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rOut",
+						"type": "uint256"
+					}
+				],
+				"name": "getMktSellAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "aOut",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rIn",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rOut",
+						"type": "uint256"
+					}
+				],
+				"name": "getMktSellInAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "globalInfo",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "totalLp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "totalMdx",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "accMdxPerLp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "lastUpdateTime",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "health",
+				"outputs": [
+					{
+						"internalType": "uint256[2]",
+						"name": "",
+						"type": "uint256[2]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "liqStrategy",
+				"outputs": [
+					{
+						"internalType": "contract IStrategy",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "liquidate",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "lpToken",
+				"outputs": [
+					{
+						"internalType": "contract IPancakePair",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "mdx",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					}
+				],
+				"name": "newHealth",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "operator",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "poolId",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "posLPAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "principal",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "token",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "value",
+						"type": "uint256"
+					}
+				],
+				"name": "recover",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "renounceOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "rewardPerLp",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "contract IStrategy",
+						"name": "_liqStrategy",
+						"type": "address"
+					}
+				],
+				"name": "setCriticalStrategies",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address[]",
+						"name": "strategies",
+						"type": "address[]"
+					},
+					{
+						"internalType": "bool",
+						"name": "isOk",
+						"type": "bool"
+					}
+				],
+				"name": "setStrategyOk",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "strategiesOk",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "token0",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "token1",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalRewards",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "transferOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "userEarnedAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"name": "userInfo",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "totalLp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "earnedMdxStored",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "accMdxPerLpStored",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "lastUpdateTime",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "wBNB",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "id",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					},
+					{
+						"internalType": "address[2]",
+						"name": "borrowTokens",
+						"type": "address[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "borrowAmounts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "uint256[2]",
+						"name": "debts",
+						"type": "uint256[2]"
+					},
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"name": "work",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"stateMutability": "payable",
+				"type": "receive"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"getAllRewards(address)": {
+					"details": "Send both MDX and DEMA rewards to user."
+				},
+				"getEqAmount(uint256,uint256,uint256)": {
+					"details": "Return equivalent output given the input amount and the status of Uniswap reserves.",
+					"params": {
+						"aIn": "The amount of asset to market sell.",
+						"rIn": "the amount of asset in reserve for input.",
+						"rOut": "The amount of asset in reserve for output."
+					}
+				},
+				"getMktSellAmount(uint256,uint256,uint256)": {
+					"details": "Return maximum output given the input amount and the status of Uniswap reserves.",
+					"params": {
+						"aIn": "The amount of asset to market sell.",
+						"rIn": "the amount of asset in reserve for input.",
+						"rOut": "The amount of asset in reserve for output."
+					}
+				},
+				"getMktSellInAmount(uint256,uint256,uint256)": {
+					"details": "Return minmum input given the output amount and the status of Uniswap reserves.",
+					"params": {
+						"aOut": "The output amount of asset after market sell.",
+						"rIn": "the amount of asset in reserve for input.",
+						"rOut": "The amount of asset in reserve for output."
+					}
+				},
+				"health(uint256,address[2],uint256[2])": {
+					"details": "Return the amount of each borrow token can be withdrawn with the given borrow amount rate.",
+					"params": {
+						"borrowTokens": "Address of two tokens this position had debts.",
+						"debts": "Debts of two tokens.",
+						"id": "The position ID to perform health check."
+					}
+				},
+				"liquidate(uint256,address,address[2],uint256[2])": {
+					"details": "Liquidate the given position by converting it to debtToken and return back to caller.",
+					"params": {
+						"account": "The address than this position belong to.",
+						"borrowTokens": "Two tokens address user borrow from bank.",
+						"debts": "Two tokens debts.",
+						"id": "The position ID to perform liquidation."
+					}
+				},
+				"newHealth(uint256,address[2],uint256[2])": {
+					"details": "Return the left rate of the principal. need to divide to 10000, 100 means 1%",
+					"params": {
+						"borrowTokens": "Address of two tokens this position had debt.",
+						"debts": "Debts of two tokens.",
+						"id": "The position ID to perform loss rate check."
+					}
+				},
+				"owner()": {
+					"details": "Returns the address of the current owner."
+				},
+				"recover(address,address,uint256)": {
+					"details": "Recover ERC20 tokens that were accidentally sent to this smart contract.",
+					"params": {
+						"to": "The address to send the tokens to.",
+						"token": "The token contract. Can be anything. This contract should not hold ERC20 tokens.",
+						"value": "The number of tokens to transfer to `to`."
+					}
+				},
+				"renounceOwnership()": {
+					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner."
+				},
+				"setCriticalStrategies(address)": {
+					"details": "Update critical strategy smart contracts. EMERGENCY ONLY. Bad strategies can steal funds.",
+					"params": {
+						"_liqStrategy": "The new liquidate strategy contract."
+					}
+				},
+				"setStrategyOk(address[],bool)": {
+					"details": "Set the given strategies' approval status.",
+					"params": {
+						"isOk": "Whether to approve or unapprove the given strategies.",
+						"strategies": "The strategy addresses."
+					}
+				},
+				"totalRewards()": {
+					"details": "total Mdx rewards can be withdrawn."
+				},
+				"transferOwnership(address)": {
+					"details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+				},
+				"userEarnedAmount(address)": {
+					"returns": {
+						"_0": "Earned MDX and DEMA amount."
+					}
+				},
+				"work(uint256,address,address[2],uint256[2],uint256[2],bytes)": {
+					"details": "Work on the given position. Must be called by the operator.",
+					"params": {
+						"account": "The original user that is interacting with the operator.",
+						"borrowAmounts": "The amount of two borrow tokens.",
+						"borrowTokens": "Address of two tokens user borrow from bank.",
+						"data": "The encoded data, consisting of strategy address and bytes to strategy.",
+						"debts": "The user's debts amount of two tokens.",
+						"id": "The position ID to work on."
+					}
+				}
+			},
+			"stateVariables": {
+				"posLPAmount": {
+					"details": "Get the lp amount at given posId."
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"events": {
+				"AddPosition(uint256,uint256)": {
+					"notice": "Events"
+				}
+			},
+			"kind": "user",
+			"methods": {
+				"farm()": {
+					"notice": "Immutable variables"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/CakeGoblin.sol": "CakeGoblin"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/CakeGoblin.sol": {
+			"keccak256": "0xc8f135ffebd854246861308c9df3f91339ead111aa90ec78f2fc148d8f53a061",
+			"urls": [
+				"bzz-raw://58bf26f1c967aebe66b48e752110292c57f7bedc9740810495112d052eea5a05",
+				"dweb:/ipfs/QmapBUKM4JgpmtDFr3xQwmp95QnMu5LGfzc9dD5jjAAjic"
+			]
+		},
+		"contracts/Interface/IFarm.sol": {
+			"keccak256": "0xab4b5b785451855f4f3b0cbb3809883e63b265bd3f0ed56161fa5af159534f39",
+			"urls": [
+				"bzz-raw://6007f96431cfb469ef609bc51078a583f7d515d2088feac69462cfeb37275ac9",
+				"dweb:/ipfs/QmV1mRMxFGHJwQu4tnCDVyjhyYtkysLS6FEumMWohuth8p"
+			]
+		},
+		"contracts/Interface/IGoblin.sol": {
+			"keccak256": "0xa8cc2f19056f9b3477ca57447b94fc495d8c129badfa4d3061e2953b68e0736f",
+			"urls": [
+				"bzz-raw://de6134e7c818442b9eeb35c1ac1fcbed78970d7957a0f4c45c239d9ebc2fd185",
+				"dweb:/ipfs/QmUUbYw4zaFmsDJoLJSk56sK1EG6aVkWVAbjVmigpn9rzB"
+			]
+		},
+		"contracts/Interface/IStrategy.sol": {
+			"keccak256": "0xda0623fa5cc54115fa8d3fa40cc901f21fd6480c5876bb7fe0b8ac28aab97cc0",
+			"urls": [
+				"bzz-raw://3ee2a7fdfe4cf5e9312fc8b350b231ac68dd05f1522ac4c7238da3c48248472b",
+				"dweb:/ipfs/QmQKd9criEGMALhBBHpXNCusC5rKprKUXkrzXrRn7oo4Ue"
+			]
+		},
+		"contracts/Interface/cakeInterface/IMasterChef.sol": {
+			"keccak256": "0x94adbd7d5f2e5744dcce27ec6d6302854dfc91f3441c6938b355e56ec5326ae7",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://410d368a420f6089b2fec8cfcacc5ed9034bf8a2df570890a4c8e2a6bf5527e5",
+				"dweb:/ipfs/QmdpfZ1KJtj1cGtCykjSQMUww8zibhpUishkKK2mxho5La"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeFactory.sol": {
+			"keccak256": "0x62becd53fc7a56d14b4003bce33e77403191a84da9c1a25726363cdf16a8c825",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://2cbdc489b58363d5b36d5899e5a3f23e6cb2f8f45482dd5ac27c6f45669629a3",
+				"dweb:/ipfs/QmNtk3ZXasu7kd96zZVNsNqSes8w5T9hG5C5Gna4cQ46is"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakePair.sol": {
+			"keccak256": "0x592e23b03960121223eef60794aaf5f7dd2a003277fa3bb542dc8594e2f23439",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://9c6aa27e18e76cd41563394b6fd87b128a93b3e2541e0dd33d017ed0956389ed",
+				"dweb:/ipfs/QmZb44Yg8k7DnsNtBYZRo2ynqcNjVnTq8W8545i2P1cL1n"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeRouter01.sol": {
+			"keccak256": "0x1e9baeab11f3bfe8725d75e51a5faf5d4dfe3fd381bf50b31412faa9097539a3",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://009de3cc2711569d345bbe82ec13eac3bf762a6f3114f6910baab08d4670bbb6",
+				"dweb:/ipfs/QmUJ4d8X8cr2xH5GwY4KLoykiNwcJf6KgdQPMKnnh39bwG"
+			]
+		},
+		"contracts/Interface/cakeInterface/IPancakeRouter02.sol": {
+			"keccak256": "0x97e6fdb750ca6aa448db32b5e5da0cc4d49751c441716b5c51ac8a24ada3c8ad",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://1d19403fdfed604b9e03f24d2a99b80a6ad5a36d9b1b3422b39c4c31d33babe4",
+				"dweb:/ipfs/QmPMztMLh3LfhzvotSDAHAZKbGcohdgewarJa4n37mhB8e"
+			]
+		},
+		"contracts/utils/Math.sol": {
+			"keccak256": "0xfe8a402c0290d8d417f7a4948043eec01f562ed273d3ee6de41fd7ce8adb634a",
+			"urls": [
+				"bzz-raw://ef591fa628360cdf6eff1155f1e793eb7c0296462ce8905739c0e55820cc46fc",
+				"dweb:/ipfs/QmdUZSkXfz5Xgf57WfmyxT42xKV7NJsTDjZEy4p5rqG71c"
+			]
+		},
+		"contracts/utils/SafeToken.sol": {
+			"keccak256": "0xd70b67cf28603b993ea1c6df983df623b687a6c9d0cbac546ce018e43b12e08e",
+			"urls": [
+				"bzz-raw://6ba47ed5b69d378e46cb2297856f143920f4122c721264dc915aa9282dde3fd0",
+				"dweb:/ipfs/QmSWa6m91rZ8iF6FfJtGAX9J6EXMs6cQRbjYHY2HbP44F1"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/GSN/Context.sol": {
+			"keccak256": "0x8d3cb350f04ff49cfb10aef08d87f19dcbaecc8027b0bed12f3275cd12f38cf0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://ded47ec7c96750f9bd04bbbc84f659992d4ba901cb7b532a52cd468272cf378f",
+				"dweb:/ipfs/QmfBrGtQP7rZEqEg6Wz6jh2N2Kukpj1z5v3CGWmAqrzm96"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/access/Ownable.sol": {
+			"keccak256": "0xf7c39c7e6d06ed3bda90cfefbcbf2ddc32c599c3d6721746546ad64946efccaa",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://cb57a28e189cd8b05748db44bdd51d608e6f1364dd1b35ad921e1bc82c10631e",
+				"dweb:/ipfs/QmaWWTBbVu2pRR9XUbE4iC159NoP59cRF9ZJwhf4ghFN9i"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/math/SafeMath.sol": {
+			"keccak256": "0x3b21f2c8d626de3b9925ae33e972d8bf5c8b1bffb3f4ee94daeed7d0679036e6",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://7f8d45329fecbf0836ad7543330c3ecd0f8d0ffa42d4016278c3eb2215fdcdfe",
+				"dweb:/ipfs/QmXWLT7GcnHtA5NiD6MFi2CV3EWJY4wv5mLNnypqYDrxL3"
+			]
+		},
+		"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/utils/ReentrancyGuard.sol": {
+			"keccak256": "0x8bbbc2f5c10065ee272592ae0a7a6ceb23de2fbd81564ee0bb015ecf404d5f61",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://b95e56c1640d0ef789fc5c16269e141e992f6c8ac97cc6d377bd3825e9cab182",
+				"dweb:/ipfs/QmVzaxJZY51EhagrcNnkxoU6Uq17RhATe7aHvtkC6wUkgK"
+			]
+		}
+	},
+	"version": 1
+}

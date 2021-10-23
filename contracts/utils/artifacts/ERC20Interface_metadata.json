@@ -1,0 +1,64 @@
+{
+	"compiler": {
+		"version": "0.6.12+commit.27d51765"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "user",
+						"type": "address"
+					}
+				],
+				"name": "balanceOf",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"contracts/utils/SafeToken.sol": "ERC20Interface"
+		},
+		"evmVersion": "istanbul",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": true,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"contracts/utils/SafeToken.sol": {
+			"keccak256": "0xd70b67cf28603b993ea1c6df983df623b687a6c9d0cbac546ce018e43b12e08e",
+			"urls": [
+				"bzz-raw://6ba47ed5b69d378e46cb2297856f143920f4122c721264dc915aa9282dde3fd0",
+				"dweb:/ipfs/QmSWa6m91rZ8iF6FfJtGAX9J6EXMs6cQRbjYHY2HbP44F1"
+			]
+		}
+	},
+	"version": 1
+}

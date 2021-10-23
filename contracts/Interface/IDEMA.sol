@@ -1,6 +1,6 @@
 pragma solidity >=0.5.0 <0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.3.0/contracts/token/ERC20/IERC20.sol";
 
 interface IDEMA is IERC20{
 
