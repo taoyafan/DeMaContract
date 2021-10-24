@@ -93,7 +93,6 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256[2] debts;
         uint256[2] backToken;
         bool[2] isBorrowBnb;
-        bool borrowed;
     }
 
     // Used in liquidate to prevent stack over deep
@@ -118,14 +117,26 @@ contract Bank is Ownable, ReentrancyGuard {
 
     /* ==================================== Read ==================================== */
 
-    // New health
-    function allPosIdAndHealth() external view returns (uint256[] memory, uint256[] memory) {
-        uint256 len = EnumerableSet.length(allPosId);
-        uint256[] memory posId = new uint256[](len);
-        uint256[] memory posHealth = new uint256[](len);
+    function posNum() external view returns (uint256) {
+        return EnumerableSet.length(allPosId);
+    }
 
-        for (uint256 i = 0; i < len; ++i) {
-            uint256 tempPosId = EnumerableSet.at(allPosId, i);
+    // New health
+    function posIdAndHealth(uint256 start, uint256 num) external view returns (uint256[] memory, uint256[] memory) {
+        // Check num
+        {
+            uint256 len = EnumerableSet.length(allPosId);
+            require(start <= len, "Start can not be lager than len");
+            
+            len = len.sub(start);   // Left length from start
+            num = len < num ? len : num;
+        }
+
+        uint256[] memory posId = new uint256[](num);
+        uint256[] memory posHealth = new uint256[](num);
+
+        for (uint256 i = 0; i < num; ++i) {
+            uint256 tempPosId = EnumerableSet.at(allPosId, start.add(i));
             Position storage pos = positions[tempPosId];
             Production storage prod = productions[pos.productionId];
             uint256 debt0 = debtShareToVal(prod.borrowToken[0], pos.debtShare[0]);
@@ -196,7 +207,7 @@ contract Bank is Ownable, ReentrancyGuard {
         TokenBank storage bank = banks[token];
         require(bank.isOpen, 'token not exists');
 
-        uint balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
+        uint256 balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
         balance = bank.totalVal < balance? bank.totalVal: balance;
 
         return balance.add(bank.totalDebt).sub(bank.totalReserve);
@@ -442,8 +453,6 @@ contract Bank is Ownable, ReentrancyGuard {
             data
         );
 
-        amount.borrowed = false;
-
         // Calculate the back token amount
         for (i = 0; i < 2; ++i) {
             amount.backToken[i] = amount.isBorrowBnb[i] ? (address(this).balance.sub(amount.beforeToken[i])) :
@@ -459,22 +468,20 @@ contract Bank is Ownable, ReentrancyGuard {
 
             } else {
                 // There are some borrow token
-                amount.borrowed = true;
                 amount.debts[i] = amount.debts[i].sub(amount.backToken[i]);
+                _addDebt(positions[posId], production, amount.debts);
                 amount.backToken[i] = 0;
 
                 require(amount.debts[i] >= production.minDebt[i], "too small debts size");
             }
         }
 
-        if (amount.borrowed) {
+        if (borrow[0] > 0 || borrow[1] > 0) { 
             // Return the amount of each borrow token can be withdrawn with the given borrow amount rate.
             uint256[2] memory health = production.goblin.health(posId, production.borrowToken, amount.debts);
 
             require(health[0].mul(production.openFactor) >= amount.debts[0].mul(10000), "bad work factor");
             require(health[1].mul(production.openFactor) >= amount.debts[1].mul(10000), "bad work factor");
-
-            _addDebt(positions[posId], production, amount.debts);
         }
         // If the lp amount in current pos is 0, delete the pos.
         else if (production.goblin.posLPAmount(posId) == 0) {
