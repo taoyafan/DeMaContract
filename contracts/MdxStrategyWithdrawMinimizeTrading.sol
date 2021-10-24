@@ -150,7 +150,7 @@ contract MdxStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, IStrate
                 }
             }
 
-            // 5. send all tokens back.
+            // 5. send all left tokens back to user.
             leftAmount = [token0.myBalance(), token1.myBalance()];
             _safeUnWrapperAndSend(token0, user, leftAmount[0]);
             _safeUnWrapperAndSend(token1, user, leftAmount[1]);
