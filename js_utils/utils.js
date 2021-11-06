@@ -1,5 +1,4 @@
 const BigNumber = require("bignumber.js");
-const { assert } = require("console");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
@@ -161,7 +160,7 @@ async function getStates(posId, userAddress, tokensName) {
         }
     }
     states.posInfo.posId = posId;
-    let allPosIdAndHealth = await bank.allPosIdAndHealth();
+    let allPosIdAndHealth = await bank.posIdAndHealth(0, MaxUint256);
     [states.allPosId, states.allPosHealth] = [allPosIdAndHealth[0], allPosIdAndHealth[1]];
     for (i = 0; i < states.allPosHealth.length; i++) {
         states.allPosHealth[i] = BigNumber(states.allPosHealth[i]);
@@ -259,19 +258,18 @@ function equal(amount0, amount1, info, strictEqual=true, token=1) {
 
     if (strictEqual) {
         if (token == bnbAddress || token == addressJson.WBNB) {
-            assert.equal(larger.minus(smaller)
-                .dividedToIntegerBy(1e17).toNumber(), 0, info)
+            assert.equal(larger.minus(smaller).dividedToIntegerBy(1e17).toNumber(), 0, info)
         } else {
             assert.equal(amount0.toString(), amount1.toString(), info)
         }
     } else {
         let delta = larger.minus(smaller)
         if (token == bnbAddress || token == addressJson.WBNB) {
-            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
-                .dividedToIntegerBy(1000).plus(1e17)), info)
+            assert.equal(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
+                .dividedToIntegerBy(1000).plus(1e17), true), info)
         } else {
-            assert(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
-                .dividedToIntegerBy(1000)), info)
+            assert.equal(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
+                .dividedToIntegerBy(1000)), true, info)
         }
     }
 }
@@ -389,7 +387,7 @@ async function getPair(token0, token1) {
     if (lpAddress == bnbAddress) {
         await factory.createPair(token0, token1);
         lpAddress = await factory.getPair(token0, token1);
-        assert(lpAddress != bnbAddress);
+        console.assert(lpAddress != bnbAddress);
     }
 
     return lpAddress;
