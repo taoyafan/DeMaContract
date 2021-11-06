@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "decode" : "node scripts/opPos_params_decode.js",
+    "decode": "node scripts/opPos_params_decode.js",
 
     "compile": "truffle compile",
     "minit": "truffle migrate --f 1 --to 1",
@@ -30,7 +30,7 @@
     "pricetest": "truffle exec ./scripts/get_price.js --network bsctest",
     "getstatustest": "truffle exec ./scripts/get_status.js --network bsctest",
     "misctest": "truffle exec ./scripts/misc.js --network bsctest",
-  
+
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
 
@@ -63,6 +63,7 @@
   "homepage": "https://github.com/DeMacFinance/contract#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^3.3.0",
+    "@pancakeswap/pancake-swap-lib": "^0.0.1",
     "@truffle/hdwallet-provider": "^1.2.6",
     "bignumber.js": "^9.0.1",
     "bn.js": "^5.2.0",
