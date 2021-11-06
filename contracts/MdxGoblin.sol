@@ -1,23 +1,17 @@
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-// import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-// import "@openzeppelin/contracts/utils/Address.sol";
-// import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/IFarm.sol";
+import "./Interface/MDX/IMdexRouter.sol";
+import "./Interface/MDX/IMdexFactory.sol";
+import "./Interface/MDX/IMdexPair.sol";
+import "./Interface/MDX/IBSCPool.sol";
 import "./Interface/IReinvestment.sol";
-import "./Interface/IMdexRouter.sol";
-import "./Interface/IMdexFactory.sol";
-import "./Interface/IMdexPair.sol";
+import "./Interface/IFarm.sol";
 import "./Interface/IGoblin.sol";
 import "./Interface/IStrategy.sol";
-import "./Interface/IBSCPool.sol";
 
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
@@ -338,7 +332,15 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // Send MDX
         if (user.earnedMdxStored > 0) {
-            reinvestment.withdraw(user.earnedMdxStored);    // TODO This may be not correct
+            
+            // If there is not enough token in reinvestment, withdraw from bscpool first.
+            if (user.earnedMdxStored > reinvestment.userEarnedAmount(address(this)))
+            {
+                bscPool.withdraw(bscPoolId, 0);     // Will get mdx rewards
+                reinvestment.deposit(mdx.myBalance());
+            }
+
+            reinvestment.withdraw(user.earnedMdxStored);
             mdx.safeTransfer(account, user.earnedMdxStored);
             globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
             user.earnedMdxStored = 0;

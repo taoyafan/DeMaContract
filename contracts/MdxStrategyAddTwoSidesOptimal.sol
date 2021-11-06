@@ -4,12 +4,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/IMdexRouter.sol";
-import "./Interface/IMdexFactory.sol";
-import "./Interface/IMdexPair.sol";
+import "./Interface/MDX/IMdexRouter.sol";
+import "./Interface/MDX/IMdexFactory.sol";
+import "./Interface/MDX/IMdexPair.sol";
+import "./Interface/MDX/ISwapMining.sol";
+
 import "./Interface/IWBNB.sol";
 import "./Interface/IStrategy.sol";
-import "./Interface/ISwapMining.sol";
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 

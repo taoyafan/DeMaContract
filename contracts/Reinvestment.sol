@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./Interface/IReinvestment.sol";
-import "./Interface/IBoardRoomMDX.sol";
+import "./Interface/MDX/IBoardRoomMDX.sol";
 import "./utils/SafeToken.sol";
 
 

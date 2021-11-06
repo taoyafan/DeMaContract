@@ -1,5 +1,5 @@
 // Address: 0x7DAe51BD3E3376B8c7c4900E9107f12Be3AF1bA8
-pragma solidity =0.6.6;
+pragma solidity ^0.6.6;
 
 interface IMdexFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
