@@ -398,10 +398,10 @@ async function addLiquidate(token0, token1, r0, r1, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
     if (token0 == bnbAddress) {
         token0 = addressJson.WBNB
-        // await wbnb.deposit({from: from, value: r0})
+        await wbnb.deposit({from: from, value: r0})
     } else if (token1 == bnbAddress) {
         token1 = addressJson.WBNB
-        // await wbnb.deposit({from: from, value: r1})
+        await wbnb.deposit({from: from, value: r1})
     }
 
     let lpAddress = await getPair(token0, token1);
