@@ -463,8 +463,10 @@ contract Bank is Ownable, ReentrancyGuard {
                 amount.backToken[i] = amount.backToken[i].sub(amount.debts[i]);
                 amount.debts[i] = 0;
 
-                amount.isBorrowBnb[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
-                    SafeToken.safeTransfer(production.borrowToken[i], msg.sender, amount.backToken[i]);
+                if (amount.backToken[i] > 0) {
+                    amount.isBorrowBnb[i] ? SafeToken.safeTransferETH(msg.sender, amount.backToken[i]):
+                        SafeToken.safeTransfer(production.borrowToken[i], msg.sender, amount.backToken[i]);
+                }
 
             } else {
                 // There are some borrow token
