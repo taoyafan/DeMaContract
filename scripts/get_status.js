@@ -39,7 +39,7 @@ function openPosition(callback) {
         const file = `scripts/log/status.json`;
         initFile(file);
 
-        let posId = 4;
+        let posId = 3;
 
         let bank = await Bank.at(addressJson.Bank);
         let info = await bank.positionInfo(posId);
