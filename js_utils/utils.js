@@ -235,7 +235,9 @@ async function getStates(posId, userAddress, tokensName) {
             }; 
         }
         states.reinvest.userInfo = await getUserInfo(goblinAddress)
-        states.reinvest.ownerInfo = await getUserInfo(userAddress)
+
+        let ownerAddress = await reinvestment.owner() 
+        states.reinvest.ownerInfo = await getUserInfo(ownerAddress)
 
         // - Mdx balance
         states.reinvest.mdxBalance = await getBalance(addressJson.MdxToken, reinvestment.address)
