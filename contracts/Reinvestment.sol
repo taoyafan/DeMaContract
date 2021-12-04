@@ -117,7 +117,7 @@ contract Reinvestment is Ownable, IReinvestment {
         if (amount > 0) {
             _updatePool(msg.sender);
             UserInfo storage user = userInfo[msg.sender];
-            if (user.earnedMdxStored >= amount) {
+            if (amount > user.earnedMdxStored) {
                 amount = user.earnedMdxStored;
             }
 
