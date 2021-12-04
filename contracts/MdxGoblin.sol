@@ -341,7 +341,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
 
             reinvestment.withdraw(user.earnedMdxStored);
-            mdx.safeTransfer(account, user.earnedMdxStored);
+            mdx.safeTransfer(account, mdx.myBalance());
             globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
             user.earnedMdxStored = 0;
         }
