@@ -10,7 +10,7 @@ let {
     setNetwork,
     fromWei,
 } = require('../js_utils/utils.js');
-const {addressJson, name2Address} = setNetwork('bsctest')
+const {addressJson, name2Address} = setNetwork('bsctest', web3)
 
 const getAbi = require(`../js_utils/get_abi_address`)
 

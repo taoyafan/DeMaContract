@@ -8,7 +8,7 @@ let {
     transfer,
     removeAllLiquidity,
 } = require('../js_utils/utils.js');
-const {addressJson} = setNetwork('bsctest')
+const {addressJson} = setNetwork('bsctest', web3)
 
 async function transferToTestAccount(from) {
     const testAccounts = [

@@ -23,7 +23,7 @@ const {
 module.exports = async function (deployer, network, accounts) {
     
     if (network == 'development' || network == 'bsctest') {
-        const { addressJson } = setNetwork(network);
+        const { addressJson } = setNetwork(network, web3);
         const busdAddress = addressJson.BUSD;
 
         await deployer.deploy(MdxToken)      // Mdex Token
@@ -112,7 +112,7 @@ module.exports = async function (deployer, network, accounts) {
         let poolId = 0;
         
         // Update addressJson in utils 
-        setNetwork(network);
+        setNetwork(network, web3);
         
         for (prod of productions) {
             console.log(`Begin to config ${prod.token0} and ${prod.token1} of account ${accounts[0]}`);

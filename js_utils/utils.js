@@ -3,7 +3,6 @@ BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
 const path = require('path');
-const web3 = require('web3');
 
 const MdxGoblin = artifacts.require("MdxGoblin");
 const MdexFactory = artifacts.require("MdexFactory");
@@ -22,8 +21,10 @@ let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
 let addressJson = null;
 let name2Address = null;
+let web3 = null;
 
-function setNetwork(network) {
+function setNetwork(network, _web3) {
+    web3 = _web3
     addressJson = readAddressJson(network);
 
     name2Address = {
@@ -46,13 +47,9 @@ function setNetwork(network) {
     return {addressJson, name2Address, address2Name}
 }
 
-function getConfig(network = null) {
+function getConfig() {
     if (!addressJson) {
-        if (network) {
-            setNetwork(network);
-        } else {
-            throw new Error('Haven\'t set network');
-        }
+        throw new Error('Haven\'t set network');
     }
 
     return {addressJson, name2Address}
@@ -439,6 +436,17 @@ async function removeAllLiquidity(token0, token1, from) {
     }
 }
 
+async function getEqAmount(tokens, amounts, which=0) {
+    let r0, r1
+    [r0, r1] = await getR0R1(tokens[0], tokens[1])
+
+    if (which == 0) {
+        return aMulB(amounts[1], r0).dividedToIntegerBy(r1).plus(amounts[0])
+    } else {
+        return aMulB(amounts[0], r1).dividedToIntegerBy(r0).plus(amounts[1])
+    }
+}
+
 // which = 2 means swap to larger, 3 means to smaller
 async function swapToTarget(tokens, amounts, which=0) {
     let r0, r1
@@ -571,6 +579,7 @@ module.exports = {
     getPair,
     addLiquidate,
     removeAllLiquidity,
+    getEqAmount,
     swapToTarget,
     getR0R1,
     getTokenAmountInLp,

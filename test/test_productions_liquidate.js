@@ -46,7 +46,7 @@ const {
     tokensFilter,
 } = require("../js_utils/utils");
 
-const {addressJson, name2Address} = setNetwork('development')
+const {addressJson, name2Address} = setNetwork('development', web3)
 
 const {
     createPosition,

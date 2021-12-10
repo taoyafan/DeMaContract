@@ -16,7 +16,7 @@ let {
     setNetwork,
     toWei,
 } = require('../js_utils/utils.js');
-const {addressJson, name2Address} = setNetwork('bsctest')
+const {addressJson, name2Address} = setNetwork('bsctest', web3)
 
 const { createPosition }= require('../js_utils/prod_interface.js');
 
