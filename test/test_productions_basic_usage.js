@@ -40,7 +40,7 @@ const {
     aDivB,
     tokensFilter,
 } = require("../js_utils/utils");
-const {addressJson, name2Address} = setNetwork('development')
+const {addressJson, name2Address} = setNetwork('development', web3)
 
 const {
     createPosition,
@@ -63,7 +63,7 @@ contract("TestProduction", (accounts) => {
     let reinvestment;
 
     let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
-    let r = [[10000, 2000000], [20, 20], [2000000, 10000], [10000, 2000000]]
+    let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
 
     before('Init', async () => {
         initFile(file);
@@ -105,20 +105,20 @@ contract("TestProduction", (accounts) => {
             let borrowsArray = [[0, 0], [0, 1], [1, 0], [2, 1], [1, 2]];
 
             depositArray.forEach((deposits) => {
-                deposits.forEach((a, i, arr) => { arr[i] = r[i] * 100 * a })
+                deposits.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
             borrowsArray.forEach((borrows) => {
-                borrows.forEach((a, i, arr) => { arr[i] = r[i] * 100 * a })
+                borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            // for (deposits of depositArray) {
-            //     for (borrows of borrowsArray) {
-            //         forEachBorrow(tokensName, deposits, borrows, r);
-            //     }
-            // }
+            for (deposits of depositArray) {
+                for (borrows of borrowsArray) {
+                    forEachBorrow(tokensName, deposits, borrows, r);
+                }
+            }
 
-            forEachBorrow(tokensName, depositArray[2], borrowsArray[2], r);
+            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 

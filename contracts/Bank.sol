@@ -471,11 +471,14 @@ contract Bank is Ownable, ReentrancyGuard {
             } else {
                 // There are some borrow token
                 amount.debts[i] = amount.debts[i].sub(amount.backToken[i]);
-                _addDebt(positions[posId], production, amount.debts);
                 amount.backToken[i] = 0;
 
                 require(amount.debts[i] >= production.minDebt[i], "too small debts size");
             }
+        }
+
+        if (amount.debts[0] > 0 || amount.debts[1] > 0) {
+            _addDebt(positions[posId], production, amount.debts);
         }
 
         if (borrow[0] > 0 || borrow[1] > 0) { 

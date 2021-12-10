@@ -134,9 +134,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param rOut The amount of asset in reserve for output.
      */
     function getEqAmount(uint256 aIn, uint256 rIn, uint256 rOut) public pure returns (uint256) {
-        if (aIn == 0) return 0;
         require(rIn > 0 && rOut > 0, "bad reserve values");
-        return rIn.mul(rOut).div(aIn);
+        return aIn.mul(rOut).div(rIn);
     }
     /**
      * @dev Return maximum output given the input amount and the status of Uniswap reserves.
@@ -445,7 +444,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             if (deltaN[0] > 0 || deltaN[1] > 0){
                 // Decrease some principal.
                 if (N[0] > 0) {
-                    uint256 decN0 = getEqAmount(deltaN[1], ra, rb);
+                    uint256 decN0 = getEqAmount(deltaN[1], rb, ra);
                     if (N[0] > deltaN[0].add(decN0)) {
                         N[0] = N[0].sub(deltaN[0]).sub(decN0);
                     } else {
@@ -453,7 +452,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
                     }
                 } else {
                     // N[1] >= 0
-                    uint256 decN1 = getEqAmount(deltaN[0], rb, ra);
+                    uint256 decN1 = getEqAmount(deltaN[0], ra, rb);
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
                     } else {

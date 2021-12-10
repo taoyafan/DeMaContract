@@ -8,8 +8,10 @@ const {
     equal,
     swapAllLpToToken0,
     approve,
+    getEqAmount,
     swapToTarget,
     getR0R1,
+    toWei,
     fromWei,
     aSubB,
     aAddB,
@@ -224,6 +226,7 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
     // - Principals
     let [r0, r1] = await getR0R1(tokens[0], tokens[1]);
     let targetPrincipal = [0, 0];
+    
     if (beforeStates.goblin.principals[0].toNumber() == 0 &&
         beforeStates.goblin.principals[1].toNumber() == 0) {
         // Create position
@@ -233,10 +236,22 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
             targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
         }
     } else {
-        if (beforeStates.goblin.principals[0].toNumber() > 0) {
-            targetPrincipal[0] = await swapToTarget(tokens, depositAmounts, 0);
+        if (depositAmounts[0] > 0 || depositAmounts[1] > 0) {
+            // Replenishment
+
+            if (beforeStates.goblin.principals[0].toNumber() > 0) {
+                targetPrincipal[0] = await swapToTarget(tokens, depositAmounts, 0);
+            } else {
+                targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
+            }
         } else {
-            targetPrincipal[1] = await swapToTarget(tokens, depositAmounts, 1);
+            // Withdraw
+
+            if (beforeStates.goblin.principals[0].toNumber() > 0) {
+                targetPrincipal[0] = await getEqAmount(tokens, depositAmounts, 0);
+            } else {
+                targetPrincipal[1] = await getEqAmount(tokens, depositAmounts, 1);
+            }
         }
     }
 
@@ -244,10 +259,12 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
         let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
         if (targetPrincipal[i] < 0) {
             // It's a withdraw operation
-            if(BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i]) || 
-               afterStates.posInfo.lpAmount.toNumber() == 0) 
+            
+            if (BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) // || 
+            //    afterStates.posInfo.lpAmount.toNumber() == 0) 
             {
-                targetPrincipal[i] = BigNumber(-beforeStates.goblin.principals[i])
+                // Withdraw all token
+                targetPrincipal[i] = BigNumber(beforeStates.goblin.principals[i])
             }
         }
 
