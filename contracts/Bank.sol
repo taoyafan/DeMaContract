@@ -482,7 +482,10 @@ contract Bank is Ownable, ReentrancyGuard {
             }
         }
 
-        if (amount.debts[0] > 0 || amount.debts[1] > 0) {
+        if ((amount.debts[0] > 0 || amount.debts[1] > 0) && 
+            production.goblin.posLPAmount(posId) != 0) 
+        {
+            // If this pos is not empty and has debts, add debts.
             _addDebt(positions[posId], production, amount.debts);
         }
 
