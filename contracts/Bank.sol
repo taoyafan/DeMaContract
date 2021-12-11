@@ -210,7 +210,12 @@ contract Bank is Ownable, ReentrancyGuard {
         uint256 balance = token == address(0)? address(this).balance: SafeToken.myBalance(token);
         balance = bank.totalVal < balance? bank.totalVal: balance;
 
-        return balance.add(bank.totalDebt).sub(bank.totalReserve);
+        balance = balance.add(bank.totalDebt);
+        if (balance > bank.totalReserve) {
+            return balance.sub(bank.totalReserve);
+        } else {
+            return 0;
+        }
     }
 
     function debtShareToVal(address token, uint256 debtShare) public view returns (uint256) {
@@ -431,13 +436,13 @@ contract Bank is Ownable, ReentrancyGuard {
             // Save the amount of borrow token after borrowing before goblin work.
             if (amount.isBorrowBnb[i]) {
                 amount.sendBnb = amount.sendBnb.add(borrow[i]);
-                require(amount.sendBnb <= address(this).balance && amount.debts[i] <= banks[production.borrowToken[i]].totalVal,
+                require(amount.sendBnb <= address(this).balance && amount.debts[i] <= totalToken(production.borrowToken[i]),
                     "insufficient Bnb in the bank");
                 amount.beforeToken[i] = address(this).balance.sub(amount.sendBnb);
 
             } else {
                 amount.beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
-                require(borrow[i] <= amount.beforeToken[i] && amount.debts[i] <= banks[production.borrowToken[i]].totalVal,
+                require(borrow[i] <= amount.beforeToken[i] && amount.debts[i] <= totalToken(production.borrowToken[i]),
                     "insufficient borrowToken in the bank");
                 amount.beforeToken[i] = amount.beforeToken[i].sub(borrow[i]);
                 SafeToken.safeApprove(production.borrowToken[i], address(production.goblin), borrow[i]);
