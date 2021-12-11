@@ -260,15 +260,17 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
         if (targetPrincipal[i] < 0) {
             // It's a withdraw operation
             
-            if (BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) // || 
-            //    afterStates.posInfo.lpAmount.toNumber() == 0) 
+            if (BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) 
             {
                 // Withdraw all token
                 targetPrincipal[i] = BigNumber(beforeStates.goblin.principals[i])
             }
         }
 
-        equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false);
+        // If remove pos, We don't care the principal.
+        if (afterStates.posInfo.lpAmount.toNumber() != 0) {
+            equal(principal, targetPrincipal[i], `Principal[${i}] amounts changes wrong`, false);
+        }
     }
 
 

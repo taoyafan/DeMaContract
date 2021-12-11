@@ -265,7 +265,7 @@ function equal(amount0, amount1, info, strictEqual=true, token=1) {
         let delta = larger.minus(smaller)
         if (token == bnbAddress || token == addressJson.WBNB) {
             assert.equal(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
-                .dividedToIntegerBy(1000).plus(1e17), true), info)
+                .dividedToIntegerBy(1000).plus(1e17)), true, info)
         } else {
             assert.equal(delta.isLessThanOrEqualTo(larger.multipliedBy(7)
                 .dividedToIntegerBy(1000)), true, info)

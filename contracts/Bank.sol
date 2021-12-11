@@ -492,6 +492,7 @@ contract Bank is Ownable, ReentrancyGuard {
         else if (production.goblin.posLPAmount(posId) == 0) {
             EnumerableSet.remove(user.posId, posId);
             EnumerableSet.remove(allPosId, posId);
+            positions[posId].owner = address(0);        // Clear pos owner in case create again.
             user.posNum[prodId] = user.posNum[prodId].sub(1);
 
             // Get all rewards. Note that it MUST after user.posNum update.
@@ -557,6 +558,7 @@ contract Bank is Ownable, ReentrancyGuard {
             }
         }
 
+        positions[posId].owner = address(0);        // Clear pos owner in case create again.
         emit Liquidate(posId, msg.sender, temp.prize, temp.left);
     }
 

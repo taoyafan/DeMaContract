@@ -102,7 +102,7 @@ contract("TestProductionLiquidate", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[3], r[3]);
+        forEachTokenPair(tokenPairs[0], r[0]);
 
 
         async function forEachTokenPair(tokensName, r) {
@@ -117,14 +117,14 @@ contract("TestProductionLiquidate", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            // for (deposits of depositArray) {
-            //     for (borrows of borrowsArray) {
-            //         forEachBorrow(tokensName, deposits, borrows, r);
-            //     }
-            //     // break
-            // }
+            for (deposits of depositArray) {
+                for (borrows of borrowsArray) {
+                    forEachBorrow(tokensName, deposits, borrows, r);
+                }
+                // break
+            }
 
-            forEachBorrow(tokensName, depositArray[1], borrowsArray[0], r);
+            // forEachBorrow(tokensName, depositArray[1], borrowsArray[0], r);
             // forEachBorrow(tokensName, depositArray[3], borrowsArray[4], r);
 
             // 1. Check health and new health
@@ -256,7 +256,7 @@ contract("TestProductionLiquidate", (accounts) => {
                     })
 
                     // 6. Swap to make new health to 50%, Liquidate
-                    describe(`\n\nLiquidate test`, async () => {
+                    describe(`\n\nTest liquidate`, async () => {
                         let killer = accounts[1];
                         let killerbeforeStates;
 
