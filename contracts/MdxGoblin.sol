@@ -356,7 +356,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param id The position ID to work on.
      * @param account The original user that is interacting with the operator.
      * @param borrowTokens Address of two tokens user borrow from bank.
-     * @param borrowAmounts The amount of two borrow tokens.
+     * @param borrowAmount The amount of two borrow tokens.
      * @param debts The user's debts amount of two tokens.
      * @param data The encoded data, consisting of strategy address and bytes to strategy.
      */
@@ -364,7 +364,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 id,
         address account,
         address[2] calldata borrowTokens,
-        uint256[2] calldata borrowAmounts,
+        uint256[2] calldata borrowAmount,
         uint256[2] calldata debts,
         bytes calldata data
     )
@@ -394,8 +394,8 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         for (uint256 i = 0; i < 2; ++i) {
             // transfer the borrow token.
-            if (borrowAmounts[i] > 0 && borrowTokens[i] != address(0)) {
-                borrowTokens[i].safeTransferFrom(msg.sender, address(this), borrowAmounts[i]);
+            if (borrowAmount[i] > 0 && borrowTokens[i] != address(0)) {
+                borrowTokens[i].safeTransferFrom(msg.sender, address(this), borrowAmount[i]);
 
                 borrowTokens[i].safeApprove(address(strategy), 0);
                 borrowTokens[i].safeApprove(address(strategy), uint256(-1));
@@ -407,7 +407,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         // -------------------------- execute --------------------------
         // strategy will send back all token and LP.
         uint256[2] memory deltaN = IStrategy(strategy).execute{value: msg.value}(
-            account, borrowTokens, borrowAmounts, debts, ext);
+            account, borrowTokens, borrowAmount, debts, ext);
 
         if (mdx.myBalance() > temp.returnMdxAmount) {
             // There are return mdx, that means it's a withdraw
