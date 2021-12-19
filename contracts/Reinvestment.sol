@@ -3,13 +3,14 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./interface/IReinvestment.sol";
 import "./interface/MDX/IBoardRoomMDX.sol";
 import "./utils/SafeToken.sol";
 
 
-contract Reinvestment is Ownable, IReinvestment {
+contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
     /// @notice Libraries
     using SafeToken for address;
     using SafeMath for uint256;
@@ -24,22 +25,8 @@ contract Reinvestment is Ownable, IReinvestment {
 
     /// @notice Mutable state variables
 
-    struct GlobalInfo {
-        uint256 totalShares;        // Total staked lp amount.
-        uint256 totalMdx;           // Total Mdx amount that already staked to board room.
-        uint256 accMdxPerShare;     // Accumulate mdx rewards amount per lp token.
-        uint256 lastUpdateTime;
-    }
-
-    struct UserInfo {
-        uint256 totalShares;            // Total Lp amount.
-        uint256 earnedMdxStored;        // Earned mdx amount stored at the last time user info was updated.
-        uint256 accMdxPerShareStored;   // The accMdxPerShare at the last time user info was updated.
-        uint256 lastUpdateTime;
-    }
-
-    mapping(address => UserInfo) public userInfo;
-    GlobalInfo public globalInfo;
+    mapping(address => uint256) public userShares;
+    uint256 public totalShares;
     uint256 public override reservedRatio;       // Reserved share ratio. will divide by 10000, 0 means not reserved.
 
     constructor(
@@ -58,120 +45,82 @@ contract Reinvestment is Ownable, IReinvestment {
 
     /* ==================================== Read ==================================== */
 
-    function totalRewards() public view returns (uint256) {
+    function totalAmount() public view returns (uint256) {
         (uint256 deposited, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
         return mdx.myBalance().add(deposited).add(boardRoom.pending(boardRoomPid, address(this)));
     }
 
-    // TODO need to mul(1e18) and div(1e18) in other place used this function.
-    function rewardsPerShare() public view  returns (uint256) {
-        if (globalInfo.totalShares != 0) {
-            // globalInfo.totalMdx is the mdx amount at the last time update.
-            return (totalRewards().sub(globalInfo.totalMdx)).mul(1e18).div(
-                globalInfo.totalShares).add(globalInfo.accMdxPerShare);
-        } else {
-            return globalInfo.accMdxPerShare;
-        }
-    }
-
     /// @notice Goblin is the user.
     function userEarnedAmount(address account) public view override returns (uint256) {
-        UserInfo storage user = userInfo[account];
-        return user.totalShares.mul(rewardsPerShare().sub(user.accMdxPerShareStored)).div(1e18).add(user.earnedMdxStored);
+        return shareToAmount(userShares[account]);
+    }
+
+    function amountToShare(uint256 _amount, uint256 _totalAmount) public view returns (uint256) {
+        return totalShares == 0 ? _amount : _amount.mul(totalShares).div(_totalAmount);
+    }
+
+    function shareToAmount(uint256 _shares) public view returns (uint256) {
+        return _shares.mul(totalAmount()).div(totalShares);
     }
 
     /* ==================================== Write ==================================== */
 
     // Deposit mdx.
-    function deposit(uint256 amount) external override {
+    function deposit(uint256 amount) external  override nonReentrant {
         if (amount > 0) {
-            _updatePool(msg.sender);
             mdx.safeTransferFrom(msg.sender, address(this), amount);
-
-            UserInfo storage user = userInfo[msg.sender];
-            uint256 shares = _amountToShare(amount);
-
-            // Update global info first
-            globalInfo.totalMdx = globalInfo.totalMdx.add(amount);
-            globalInfo.totalShares = globalInfo.totalShares.add(shares);
+            uint256 shares = amountToShare(amount, totalAmount().sub(amount));
+            totalShares = totalShares.add(shares);
 
             // If there are some reserved shares
             if (reservedRatio != 0) {
-                UserInfo storage owner = userInfo[owner()];
+                // Reserve some shares to owner
                 uint256 ownerShares = shares.mul(reservedRatio).div(10000);
-                uint256 ownerAmount = amount.mul(reservedRatio).div(10000);
-                owner.totalShares = owner.totalShares.add(ownerShares);
-                owner.earnedMdxStored = owner.earnedMdxStored.add(ownerAmount);
+                userShares[owner()] = userShares[owner()].add(ownerShares);
 
                 // Calculate the left shares
                 shares = shares.sub(ownerShares);
-                amount = amount.sub(ownerAmount);
             }
 
-            user.totalShares = user.totalShares.add(shares);
-            user.earnedMdxStored = user.earnedMdxStored.add(amount);
+            userShares[msg.sender] = userShares[msg.sender].add(shares);
         }
     }
 
     // Withdraw mdx to sender.
-    function withdraw(uint256 amount) external override {
-        if (amount > 0) {
-            _updatePool(msg.sender);
-            UserInfo storage user = userInfo[msg.sender];
-            if (amount > user.earnedMdxStored) {
-                amount = user.earnedMdxStored;
-            }
+    function withdraw(uint256 shares) external override nonReentrant {
+        if (shares > 0) {
+            uint256 amount = shareToAmount(shares);
+            bool needRedeposit = false;
 
-            bool isWithdraw = false;
             if (mdx.myBalance() < amount) {
                 // If balance is not enough Withdraw from board room first.
                 (uint256 depositedMdx, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
                 boardRoom.withdraw(boardRoomPid, depositedMdx);
-                isWithdraw = true;
+                needRedeposit = true;
+
+                // Check again
+                if (mdx.myBalance() < amount) {
+                    amount = mdx.myBalance();
+                    needRedeposit = false;
+                }
             }
+
             mdx.safeTransfer(msg.sender, amount);
 
-            // Update left share and amount.
-            uint256 share = _amountToShare(amount);
-            globalInfo.totalShares = globalInfo.totalShares.sub(share);
-            globalInfo.totalMdx = globalInfo.totalMdx.sub(amount);
-            user.totalShares = user.totalShares.sub(share);
-            user.earnedMdxStored = user.earnedMdxStored.sub(amount);
+            // Update left shares.
+            totalShares = totalShares.sub(shares);
+            userShares[msg.sender] = userShares[msg.sender].sub(shares);
 
             // If withdraw mdx from board room, we need to redeposit.
-            if (isWithdraw) {
+            if (needRedeposit) {
                 boardRoom.deposit(boardRoomPid, mdx.myBalance());
             }
         }
     }
 
-    function reinvest() external {
+    function reinvest() external nonReentrant {
         boardRoom.withdraw(boardRoomPid, 0);
         boardRoom.deposit(boardRoomPid, mdx.myBalance());
-    }
-
-    /* ==================================== Internal ==================================== */
-
-    /// @dev update pool info and user info.
-    function _updatePool(address account) internal {
-        if (globalInfo.lastUpdateTime != block.timestamp) {
-            /// @notice MUST update accMdxPerShare first as it will use the old totalMdx
-            globalInfo.accMdxPerShare = rewardsPerShare();
-            globalInfo.totalMdx = totalRewards();
-            globalInfo.lastUpdateTime = block.timestamp;
-        }
-
-        UserInfo storage user = userInfo[account];
-        if (account != address(0) && user.lastUpdateTime != block.timestamp) {
-            user.earnedMdxStored = userEarnedAmount(account);
-            user.accMdxPerShareStored = globalInfo.accMdxPerShare;
-            user.lastUpdateTime = block.timestamp;
-        }
-    }
-
-    function _amountToShare(uint256 amount) internal view returns (uint256) {
-        return globalInfo.totalMdx == 0 ?
-            amount : amount.mul(globalInfo.totalShares).div(globalInfo.totalMdx);
     }
 
     /* ==================================== Only Owner ==================================== */
