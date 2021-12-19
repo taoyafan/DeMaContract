@@ -1,6 +1,7 @@
 // LpStakingRewards: 0xFe11eaBe3eF9255c9c894cd2aE74D88E44bFC166
 // LpStakingRewardsFactory: 0x79c6d0502c4fc203301bee4136d9e32e3460c38c
 
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 /**

@@ -1,16 +1,17 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/MDX/IMdexRouter.sol";
-import "./Interface/MDX/IMdexFactory.sol";
-import "./Interface/MDX/IMdexPair.sol";
-import "./Interface/MDX/ISwapMining.sol";
+import "./interface/MDX/IMdexRouter.sol";
+import "./interface/MDX/IMdexFactory.sol";
+import "./interface/MDX/IMdexPair.sol";
+import "./interface/MDX/ISwapMining.sol";
 
-import "./Interface/IWBNB.sol";
-import "./Interface/IStrategy.sol";
+import "./interface/IWBNB.sol";
+import "./interface/IStrategy.sol";
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 

@@ -1,6 +1,7 @@
 // StakingRewards: HT: 0x15F342232657208a17d09C99Bb7A758165145D7B
 // StakingRewardsFactory: 0x2b5Fa4d7BDDE20227Fb5094973DbC67962D226C7
 
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 

@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./Interface/MDX/IBSCPool.sol";
+import "./interface/MDX/IBSCPool.sol";
 import "./utils/SafeToken.sol";
 
 // Wrapperd BSC Pool

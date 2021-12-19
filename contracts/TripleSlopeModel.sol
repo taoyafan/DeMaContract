@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./Interface/IInterestModel.sol";
+import "./interface/IInterestModel.sol";
 
 contract TripleSlopeModel is IInterestModel {
     using SafeMath for uint256;

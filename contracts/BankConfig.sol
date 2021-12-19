@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Interface/IBankConfig.sol";
-import "./Interface/IInterestModel.sol";
+import "./interface/IBankConfig.sol";
+import "./interface/IInterestModel.sol";
 
 contract BankConfig is IBankConfig, Ownable {
 

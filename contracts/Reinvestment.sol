@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./Interface/IReinvestment.sol";
-import "./Interface/MDX/IBoardRoomMDX.sol";
+import "./interface/IReinvestment.sol";
+import "./interface/MDX/IBoardRoomMDX.sol";
 import "./utils/SafeToken.sol";
 
 

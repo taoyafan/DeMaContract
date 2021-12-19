@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-import "./Interface/IDEMA.sol";
+import "./interface/IDEMA.sol";
 
 contract DEMA is IDEMA {
     using Address for address;
