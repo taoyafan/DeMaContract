@@ -8,7 +8,7 @@ const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
 const DEMA = artifacts.require("DEMA");
 const Farm = artifacts.require("Farm");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 const{ expectRevert  } = require('@openzeppelin/test-helpers');
 
 const BigNumber = require("bignumber.js");
@@ -80,7 +80,7 @@ contract("TestProductionLiquidate", (accounts) => {
         // router = await MdexRouter.at(addressJson.MdexRouter);
         mdx = await MdxToken.at(addressJson.MdxToken);
         bank = await Bank.at(addressJson.Bank);
-        // reinvestment = await Reinvestment.at(addressJson.Reinvestment);
+        // reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
 
         // Deposit token in bank.
         let amount = toWei(2000);

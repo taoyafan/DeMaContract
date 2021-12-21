@@ -25,7 +25,7 @@
   "BankBnbFarmPoolId": 2,
   "BankEthFarmPoolId": 3,
   "BankBtcFarmPoolId": 4,
-  "Reinvestment": "0xAdb98b2eDAa3B5f4177560A8ef584FDe5d076d17",
+  "MdxReinvestment": "0xAdb98b2eDAa3B5f4177560A8ef584FDe5d076d17",
   "MdxStrategyWithdrawMinimizeTrading": "0x9eDb51e2ae0EbA47D47C79eEA96E519753683f36",
   "MdxStrategyAddTwoSidesOptimal": "0xb618A25F5f1b630E4e833c3345161bdDb91E0C38",
   "MdxBnbUsdtGoblin": "0x0906AC87708101a7bee4b5A843e76C3322443A3F",

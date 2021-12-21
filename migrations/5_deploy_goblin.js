@@ -1,7 +1,7 @@
 const MdxStrategyWithdrawMinimizeTrading = artifacts.require("MdxStrategyWithdrawMinimizeTrading");
 const MdxStrategyAddTwoSidesOptimal = artifacts.require("MdxStrategyAddTwoSidesOptimal");
 const MdxGoblin = artifacts.require("MdxGoblin");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 const Farm = artifacts.require("Farm");
 const Bank = artifacts.require("Bank");
 const{ time } = require('@openzeppelin/test-helpers');
@@ -18,11 +18,11 @@ module.exports = async function (deployer, network, accounts) {
 
     let productions = getProdInfo(network);
 
-    await deployer.deploy(Reinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 2000);
+    await deployer.deploy(MdxReinvestment, addressJson.BoardRoomMDX, 4, addressJson.MdxToken, 2000);
     await deployer.deploy(MdxStrategyWithdrawMinimizeTrading, addressJson.MdexRouter);
     await deployer.deploy(MdxStrategyAddTwoSidesOptimal, addressJson.MdexRouter);
 
-    saveToJson(`Reinvestment`, Reinvestment.address, network);
+    saveToJson(`MdxReinvestment`, MdxReinvestment.address, network);
     saveToJson(`MdxStrategyWithdrawMinimizeTrading`, MdxStrategyWithdrawMinimizeTrading.address, network);
     saveToJson(`MdxStrategyAddTwoSidesOptimal`, MdxStrategyAddTwoSidesOptimal.address, network);
 
@@ -41,7 +41,7 @@ module.exports = async function (deployer, network, accounts) {
             addressJson.Bank,
             addressJson.Farm,
             prod.farmPoolId,                     // Farm pool id, Goblin begin from 100
-            Reinvestment.address,
+            MdxReinvestment.address,
             addressJson.BSCPool,
             prod.mdxPoolId,                      // Bsc pool id
             addressJson.MdexRouter,

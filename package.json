@@ -41,7 +41,7 @@
     "vfgoblin1test": "truffle run verify MdxGoblin@0x5DA43586f18270dC1F99E14b43620Ca6ab1Bdf72 --network bsctest",
     "vfgoblin2test": "truffle run verify MdxGoblin@0xa3143F63284c35060F662722003072Dc3C17fcd2 --network bsctest",
     "vfgoblin3test": "truffle run verify MdxGoblin@0xDEE8F34629fAbbFF8b1D741c4CB55AD11329C376 --network bsctest",
-    "vfreinvesttest": "truffle run verify Reinvestment@0xC48278D67fbA803E124fB9fADDF760008a0dEE14 --network bsctest",
+    "vfreinvesttest": "truffle run verify MdxReinvestment@0xC48278D67fbA803E124fB9fADDF760008a0dEE14 --network bsctest",
 
     "testbank": "truffle test ./test/test_bank.js",
     "testuser": "truffle test ./test/test_UserProfile.js --show-events",

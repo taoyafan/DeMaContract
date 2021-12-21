@@ -1,6 +1,6 @@
 const MdxToken = artifacts.require('MdxToken');
 const BoardRoom = artifacts.require("BoardRoomMDX");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const BigNumber = require("bignumber.js");
 
@@ -27,7 +27,7 @@ contract("TestReinvestment", (accounts) => {
         // initiate
         mdxToken = await MdxToken.deployed();
         boardRoom = await BoardRoom.deployed();
-        reinvestment = await Reinvestment.deployed();
+        reinvestment = await MdxReinvestment.deployed();
         poolLengthBeforeAdd = await boardRoom.poolLength();
 
         poolLength = parseInt(await boardRoom.poolLength(), 10);

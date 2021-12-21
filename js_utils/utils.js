@@ -11,7 +11,7 @@ const ERC20Token = artifacts.require("ERC20Token");
 const MdexRouter = artifacts.require("MdexRouter");
 const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -207,10 +207,10 @@ async function getStates(posId, userAddress, tokensName) {
         states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
     }
 
-    // Reinvestment info
+    // MdxReinvestment info
     {
         states.reinvest = {};
-        let reinvestment = await Reinvestment.at(addressJson.Reinvestment);
+        let reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
 
         // - global info
         let globalInfo = await reinvestment.globalInfo();

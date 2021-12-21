@@ -10,7 +10,7 @@ import "./interface/MDX/IBoardRoomMDX.sol";
 import "./utils/SafeToken.sol";
 
 
-contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
+contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     /// @notice Libraries
     using SafeToken for address;
     using SafeMath for uint256;
@@ -18,6 +18,9 @@ contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
     /// @notice Events
     event Deposit(address indexed user, uint256 amount);
     event Withdraw(address indexed user, uint256 amount);
+    event Reinvest();
+    event StopReinvest();
+    event RecoverReinvest();
 
     address mdx;
     IBoardRoomMDX public boardRoom;
@@ -28,6 +31,7 @@ contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
     mapping(address => uint256) public userShares;
     uint256 public totalShares;
     uint256 public override reservedRatio;       // Reserved share ratio. will divide by 10000, 0 means not reserved.
+    bool public canReinvested = true;
 
     constructor(
         IBoardRoomMDX _boardRoom,
@@ -66,7 +70,7 @@ contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
     /* ==================================== Write ==================================== */
 
     // Deposit mdx.
-    function deposit(uint256 amount) external  override nonReentrant {
+    function deposit(uint256 amount) external override nonReentrant {
         if (amount > 0) {
             mdx.safeTransferFrom(msg.sender, address(this), amount);
             uint256 shares = amountToShare(amount, totalAmount().sub(amount));
@@ -83,22 +87,32 @@ contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
             }
 
             userShares[msg.sender] = userShares[msg.sender].add(shares);
+
+            emit Deposit(msg.sender, amount);
         }
     }
 
     // Withdraw mdx to sender.
-    function withdraw(uint256 shares) external override nonReentrant {
-        if (shares > 0) {
-            uint256 amount = shareToAmount(shares);
+    /// @notice Input param is amount rather than shares. Amount can be get from userEarnedAmount()
+    function withdraw(uint256 amount) external override nonReentrant {
+        if (amount > 0) {
+            uint256 shares = amountToShare(amount, totalAmount());
+            
+            // Check the max shares and amount can be withdraw
+            if (shares > userShares[msg.sender]) {
+                shares = userShares[msg.sender];
+                amount = shareToAmount(shares);
+            }
+
             bool needRedeposit = false;
 
             if (mdx.myBalance() < amount) {
-                // If balance is not enough Withdraw from board room first.
-                (uint256 depositedMdx, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
-                boardRoom.withdraw(boardRoomPid, depositedMdx);
-                needRedeposit = true;
+                // If balance is not enough, withdraw from board room first.
+                if (_tryToWithdraw(type(uint256).max)) {
+                    needRedeposit = true;
+                }
 
-                // Check again
+                // Check again, If there don't has enough, withdraw all left.
                 if (mdx.myBalance() < amount) {
                     amount = mdx.myBalance();
                     needRedeposit = false;
@@ -112,24 +126,64 @@ contract Reinvestment is Ownable, IReinvestment, ReentrancyGuard {
             userShares[msg.sender] = userShares[msg.sender].sub(shares);
 
             // If withdraw mdx from board room, we need to redeposit.
-            if (needRedeposit) {
+            if (needRedeposit && canReinvested) {
                 boardRoom.deposit(boardRoomPid, mdx.myBalance());
             }
+
+            emit Withdraw(msg.sender, amount);
         }
     }
 
     function reinvest() external nonReentrant {
-        boardRoom.withdraw(boardRoomPid, 0);
+        require(canReinvested, "Stop reinvested");
+        _tryToWithdraw(0);
         boardRoom.deposit(boardRoomPid, mdx.myBalance());
+
+        emit Reinvest();
+    }
+
+    /* ==================================== Internal ==================================== */
+
+    /// @dev try to withdraw mdx with amount from board room.
+    /// @notice if withdraw all, amount can be type(uint256).max
+    /// @return Whether withdrawn
+    function _tryToWithdraw(uint256 amount) internal returns (bool) {
+        (uint256 deposited, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
+        if (deposited > 0) {
+            // Can withdraw
+            if (amount > deposited) {
+                amount = deposited;
+            }
+            boardRoom.withdraw(boardRoomPid, amount);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /* ==================================== Only Owner ==================================== */
+    
+    // Recover ERC20 tokens (Rather than MDX) that were accidentally sent to this smart contract.
+    function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
+        require(token != mdx, "Recover token cannot be mdx");
+        token.safeTransfer(to, value);
+    }
 
     // Used when boardroom is closed.
-    function stopReinvest() external onlyOwner {
-        (uint256 deposited, /* rewardDebt */) = boardRoom.userInfo(boardRoomPid, address(this));
-        if (deposited > 0) {
-            boardRoom.withdraw(boardRoomPid, deposited);
-        }
+    function stopReinvest() external onlyOwner nonReentrant {
+        _tryToWithdraw(type(uint256).max);
+        canReinvested = false;
+        emit StopReinvest();
+    }
+
+    function recoverReinvest() external onlyOwner nonReentrant {
+        boardRoom.deposit(boardRoomPid, mdx.myBalance());
+        canReinvested = true;
+        emit RecoverReinvest();
+    }
+
+    function setReservedRatio(uint256 ratio) external onlyOwner {
+        require(ratio <= 10000, "Reserved ratio cannot lager than 10000");
+        reservedRatio = ratio;
     }
 }

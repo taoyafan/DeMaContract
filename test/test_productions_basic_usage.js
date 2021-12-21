@@ -8,7 +8,7 @@ const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
 const DEMA = artifacts.require("DEMA");
 const Farm = artifacts.require("Farm");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
@@ -75,7 +75,7 @@ contract("TestProduction", (accounts) => {
         // router = await MdexRouter.at(addressJson.MdexRouter);
         mdx = await MdxToken.at(addressJson.MdxToken);
         bank = await Bank.at(addressJson.Bank);
-        // reinvestment = await Reinvestment.at(addressJson.Reinvestment);
+        // reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
 
         // Deposit token in bank.
         let amount = toWei(20000);
