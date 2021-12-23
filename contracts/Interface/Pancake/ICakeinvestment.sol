@@ -7,7 +7,7 @@ interface ICakeinvestment {
     function reservedRatio() external view returns (uint256);
 
     // total CAKE rewards of goblin.
-    function userEarnedAmount(address user) external view returns (uint256);
+    function userAmount(address user) external view returns (uint256);
 
     function deposit(uint256 amount) external;
 

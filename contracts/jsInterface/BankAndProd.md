@@ -520,7 +520,7 @@ Goblin address can be found in bank through getting production information.
 
 1. Get user earned MDX(Cake) and DEMA amount
 
-function definition: `userEarnedAmount(address account) returns (uint256, uint256)`
+function definition: `userAmount(address account) returns (uint256, uint256)`
 
 javascript calling example:
 
@@ -528,7 +528,7 @@ javascript calling example:
 async function GoblinGetUserEarned(account) {
     // account should be address string
     const goblin = new web3.eth.Contract(goblinAbi, goblinAddress);
-    let [dexToken, dema] = await goblin.methods.userEarnedAmount(account).call({from: account});
+    let [dexToken, dema] = await goblin.methods.userAmount(account).call({from: account});
     return [dexToken, dema];
 }
 ```

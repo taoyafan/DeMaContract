@@ -213,22 +213,16 @@ async function getStates(posId, userAddress, tokensName) {
         let reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
 
         // - global info
-        let globalInfo = await reinvestment.globalInfo();
         states.reinvest.globalInfo = {
-            totalShares: BigNumber(globalInfo.totalShares),
-            totalMdx: BigNumber(globalInfo.totalMdx),
-            accMdxPerShare: BigNumber(globalInfo.accMdxPerShare),
-            lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
+            totalShares: BigNumber(await reinvestment.totalShares()),
+            totalAmount: BigNumber(await reinvestment.totalAmount()),
         }; 
 
         // - user info
         async function getUserInfo(userAddress) {
-            let userInfo = await reinvestment.userInfo(userAddress);
             return {
-                totalShares: BigNumber(userInfo.totalShares),
-                earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
-                accMdxPerShareStored: BigNumber(userInfo.accMdxPerShareStored),
-                lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
+                userShares: BigNumber(await reinvestment.userShares(userAddress)),
+                userAmount: BigNumber(await reinvestment.userAmount(userAddress)),
             }; 
         }
         states.reinvest.userInfo = await getUserInfo(goblinAddress)

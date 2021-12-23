@@ -302,7 +302,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
             poolPendingMdx = poolPendingMdx.sub(poolPendingMdx.mul(reservedRatio).div(10000));
         }
 
-        return poolPendingMdx.add(reinvestment.userEarnedAmount(address(this)));
+        return poolPendingMdx.add(reinvestment.userAmount(address(this)));
     }
 
     function rewardPerLp() public view  returns (uint256) {
@@ -316,7 +316,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     /// @return Earned MDX and DEMA amount.
-    function userEarnedAmount(address account) public view override returns (uint256, uint256) {
+    function userAmount(address account) public view override returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
 
         return (user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored),
@@ -326,7 +326,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
     /* ==================================== Write ==================================== */
 
     /// @dev Send both MDX and DEMA rewards to user.
-    function getAllRewards(address account) public override {
+    function getAllRewards(address account) external override nonReentrant {
         _updatePool(account);
         UserInfo storage user = userInfo[account];
 
@@ -334,7 +334,7 @@ contract MdxGoblin is Ownable, ReentrancyGuard, IGoblin {
         if (user.earnedMdxStored > 0) {
             
             // If there is not enough token in reinvestment, withdraw from bscpool first.
-            if (user.earnedMdxStored > reinvestment.userEarnedAmount(address(this)))
+            if (user.earnedMdxStored > reinvestment.userAmount(address(this)))
             {
                 bscPool.withdraw(bscPoolId, 0);     // Will get mdx rewards
                 reinvestment.deposit(mdx.myBalance());

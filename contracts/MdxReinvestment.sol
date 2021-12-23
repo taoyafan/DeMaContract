@@ -31,7 +31,7 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     mapping(address => uint256) public userShares;
     uint256 public totalShares;
     uint256 public override reservedRatio;       // Reserved share ratio. will divide by 10000, 0 means not reserved.
-    bool public canReinvested = true;
+    bool public canReinvest = true;
 
     constructor(
         IBoardRoomMDX _boardRoom,
@@ -55,16 +55,17 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     /// @notice Goblin is the user.
-    function userEarnedAmount(address account) public view override returns (uint256) {
+    function userAmount(address account) public view override returns (uint256) {
         return shareToAmount(userShares[account]);
     }
 
     function amountToShare(uint256 _amount, uint256 _totalAmount) public view returns (uint256) {
-        return totalShares == 0 ? _amount : _amount.mul(totalShares).div(_totalAmount);
+        return (_totalAmount == 0 || totalShares == 0) ? 
+            _amount : _amount.mul(totalShares).div(_totalAmount);
     }
 
     function shareToAmount(uint256 _shares) public view returns (uint256) {
-        return _shares.mul(totalAmount()).div(totalShares);
+        return totalShares == 0 ? 0 : _shares.mul(totalAmount()).div(totalShares);
     }
 
     /* ==================================== Write ==================================== */
@@ -93,7 +94,7 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     // Withdraw mdx to sender.
-    /// @notice Input param is amount rather than shares. Amount can be get from userEarnedAmount()
+    /// @notice Input param is amount rather than shares. Amount can be get from userAmount()
     function withdraw(uint256 amount) external override nonReentrant {
         if (amount > 0) {
             uint256 shares = amountToShare(amount, totalAmount());
@@ -126,7 +127,7 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
             userShares[msg.sender] = userShares[msg.sender].sub(shares);
 
             // If withdraw mdx from board room, we need to redeposit.
-            if (needRedeposit && canReinvested) {
+            if (needRedeposit && canReinvest) {
                 boardRoom.deposit(boardRoomPid, mdx.myBalance());
             }
 
@@ -135,7 +136,7 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     function reinvest() external nonReentrant {
-        require(canReinvested, "Stop reinvested");
+        require(canReinvest, "Stop reinvested");
         _tryToWithdraw(0);
         boardRoom.deposit(boardRoomPid, mdx.myBalance());
 
@@ -172,13 +173,13 @@ contract MdxReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     // Used when boardroom is closed.
     function stopReinvest() external onlyOwner nonReentrant {
         _tryToWithdraw(type(uint256).max);
-        canReinvested = false;
+        canReinvest = false;
         emit StopReinvest();
     }
 
     function recoverReinvest() external onlyOwner nonReentrant {
         boardRoom.deposit(boardRoomPid, mdx.myBalance());
-        canReinvested = true;
+        canReinvest = true;
         emit RecoverReinvest();
     }
 

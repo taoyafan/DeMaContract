@@ -95,7 +95,7 @@ contract CakeInvestment is Ownable, ICakeinvestment {
     }
 
     /// @notice Goblin is the user.
-    function userEarnedAmount(address account) public view override returns (uint256) {
+    function userAmount(address account) public view override returns (uint256) {
         return userTotalCakes(account).sub(userInfo[account].totalDepositedCake);
     }
 

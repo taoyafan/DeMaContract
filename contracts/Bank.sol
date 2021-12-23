@@ -309,7 +309,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function userEarnPerProd(address account, uint256 prodId) external view returns (uint256, uint256) {
         Production storage prod = productions[prodId];
-        return prod.goblin.userEarnedAmount(account);
+        return prod.goblin.userAmount(account);
     }
 
     /* ==================================== Write ==================================== */
@@ -359,7 +359,7 @@ contract Bank is Ownable, ReentrancyGuard {
         Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
 
         // get DEMA rewards
-        getBankRewards();
+        _getBankRewards();
 
         if (token == address(0)) {//Bnb
             SafeToken.safeTransferETH(msg.sender, amount);
@@ -505,7 +505,7 @@ contract Bank is Ownable, ReentrancyGuard {
             user.posNum[prodId] = user.posNum[prodId].sub(1);
 
             // Get all rewards. Note that it MUST after user.posNum update.
-            getRewardsAllProd();
+            _getRewardsAllProd();
         }
 
         emit OpPosition(posId, amount.debts, amount.backToken);
@@ -575,6 +575,28 @@ contract Bank is Ownable, ReentrancyGuard {
 
     // Send earned DEMA from per token bank to user.
     function getBankRewardsPerToken(address token) public nonReentrant{
+        _getBankRewardsPerToken(token);
+    }
+
+    // Send earned DEMA from all tokens to user.
+    function getBankRewards() external nonReentrant{
+        _getBankRewards();
+    }
+
+    // Get MDX and DEMA rewards of per production
+    function getRewardsPerProd(uint256 prodId) external nonReentrant{
+        _getRewardsPerProd(prodId);
+    }
+
+    // Get MDX and DEMA rewards of all productions
+    function getRewardsAllProd() external nonReentrant{
+        _getRewardsAllProd();
+    }
+
+    /* ==================================== Internal ==================================== */
+
+    // Send earned DEMA from per token bank to user.
+    function _getBankRewardsPerToken(address token) internal {
         TokenBank storage bank = banks[token];
         Farm.getStakeRewardsPerPool(bank.poolId, msg.sender);
 
@@ -586,14 +608,14 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     // Send earned DEMA from all tokens to user.
-    function getBankRewards() public nonReentrant{
+    function _getBankRewards() internal {
         for (uint256 index = userBanksNum(msg.sender); index > 0; --index) {
-            getBankRewardsPerToken(userBankAddress(msg.sender, index - 1));
+            _getBankRewardsPerToken(userBankAddress(msg.sender, index - 1));
         }
     }
 
     // Get MDX and DEMA rewards of per production
-    function getRewardsPerProd(uint256 prodId) public nonReentrant{
+    function _getRewardsPerProd(uint256 prodId) internal {
         productions[prodId].goblin.getAllRewards(msg.sender);
 
         // Delete pool if no left pos.
@@ -601,17 +623,14 @@ contract Bank is Ownable, ReentrancyGuard {
         if (user.posNum[prodId] == 0) {
             EnumerableSet.remove(user.prodId, prodId);
         }
-
     }
 
     // Get MDX and DEMA rewards of all productions
-    function getRewardsAllProd() public nonReentrant{
+    function _getRewardsAllProd() internal {
         for (uint256 i = userProdNum(msg.sender); i > 0; --i) {
-            getRewardsPerProd(userProdId(msg.sender, i-1));
+            _getRewardsPerProd(userProdId(msg.sender, i-1));
         }
     }
-
-    /* ==================================== Internal ==================================== */
 
     function _addDebt(Position storage pos, Production storage production, uint256[2] memory debtVal) internal {
         for (uint256 i = 0; i < 2; ++i) {

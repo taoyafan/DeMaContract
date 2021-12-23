@@ -112,13 +112,13 @@ contract("TestProduction", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            for (deposits of depositArray) {
-                for (borrows of borrowsArray) {
-                    forEachBorrow(tokensName, deposits, borrows, r);
-                }
-            }
+            // for (deposits of depositArray) {
+            //     for (borrows of borrowsArray) {
+            //         forEachBorrow(tokensName, deposits, borrows, r);
+            //     }
+            // }
 
-            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
+            forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 

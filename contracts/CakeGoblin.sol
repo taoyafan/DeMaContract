@@ -303,8 +303,8 @@ contract CakeGoblin is Ownable, ReentrancyGuard, IGoblin {
         //     poolPendingCAKE = poolPendingCAKE.sub(poolPendingCAKE.mul(reservedRatio).div(10000));
         // }
 
-        // return poolPendingCAKE.add(reinvestment.userEarnedAmount(address(this)));
-        return poolPendingCAKE.add(reinvestment.userEarnedAmount(address(this)));
+        // return poolPendingCAKE.add(reinvestment.userAmount(address(this)));
+        return poolPendingCAKE.add(reinvestment.userAmount(address(this)));
     }
 
     function rewardPerLp() public view  returns (uint256) {
@@ -318,7 +318,7 @@ contract CakeGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     /// @return Earned CAKE and DEMA amount.
-    function userEarnedAmount(address account) public view override returns (uint256, uint256) {
+    function userAmount(address account) public view override returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
 
         return (user.totalLp.mul(rewardPerLp().sub(user.accCakePerLpStored)).div(1e18).add(user.earnedCakeStored),
@@ -334,7 +334,7 @@ contract CakeGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         // Send CAKE
         if (user.earnedCakeStored > 0) {
-            reinvestment.withdraw(reinvestment.userEarnedAmount(account));    // TODO This may be not correct
+            reinvestment.withdraw(reinvestment.userAmount(account));    // TODO This may be not correct
             cake.safeTransfer(account, user.earnedCakeStored);
             globalInfo.totalCake = globalInfo.totalCake.sub(user.earnedCakeStored);
             user.earnedCakeStored = 0;

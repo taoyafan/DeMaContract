@@ -105,8 +105,8 @@ contract("TestReinvestment", (accounts) => {
         // console.log(`boardUserInfoAfterUpdatePool :${JSON.stringify(boardUserInfoAfterUpdatePool)}`);
 
         let totalRewardsAfterUpdatePool = await reinvestment.totalRewards();
-        let userRewardsAfterUpdatePool = await reinvestment.userEarnedAmount(user);
-        let ownerRewardsAfterUpdatePool = await reinvestment.userEarnedAmount(owner);
+        let userRewardsAfterUpdatePool = await reinvestment.userAmount(user);
+        let ownerRewardsAfterUpdatePool = await reinvestment.userAmount(owner);
 
         console.log(`totalRewardsAfterUpdatePool: ${totalRewardsAfterUpdatePool}`);
         console.log(`userRewardsAfterUpdatePool: ${userRewardsAfterUpdatePool}`);
