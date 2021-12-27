@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./interface/IReinvestment.sol";
-import "./utils/SafeToken.sol";
+import "./../interface/IReinvestment.sol";
+import "./../utils/SafeToken.sol";
 
 
 abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {

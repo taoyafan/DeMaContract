@@ -4,7 +4,7 @@ pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./utils/SafeToken.sol";
-import "./AReinvestment.sol";
+import "./abstract/AReinvestment.sol";
 import "./interface/Pancake/IMasterChef.sol";
 
 contract CakeReinvestment is AReinvestment {
