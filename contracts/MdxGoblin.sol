@@ -7,6 +7,7 @@ import "./abstract/AGoblin.sol";
 import "./interface/MDX/IMdexRouter.sol";
 import "./interface/MDX/IBSCPool.sol";
 import "./utils/SafeToken.sol";
+import "./utils/Math.sol";
 
 
 contract MdxGoblin is AGoblin {
@@ -26,15 +27,14 @@ contract MdxGoblin is AGoblin {
         address _token0,
         address _token1,
         address _liqStrategy
-    )
-        public
-        AGoblin(_operator, _farm, _poolId, _reinvestment, _bscPool,
-            _bscPoolId, _router, _mdx, _token0, _token1, _liqStrategy)
-    {
-        wBNB = IMdexRouter(_router).WBNB();
-    }
+    ) public AGoblin(_operator, _farm, _poolId, _reinvestment, _bscPool,
+                _bscPoolId, _router, _mdx, _token0, _token1, _liqStrategy) {}
 
     /* ==================================== Internal ==================================== */
+
+    function _WBNB(address _router) internal view override returns (address) {
+        return IMdexRouter(_router).WBNB();
+    }
 
     function _dexPoolPendingRewards() internal view override returns (uint256) {
         (uint256 poolPendingMdx, /* poolPendingLp */) = IBSCPool(dexPool).pending(dexPoolId, address(this));

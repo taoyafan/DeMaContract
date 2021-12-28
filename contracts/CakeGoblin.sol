@@ -7,6 +7,7 @@ import "./abstract/AGoblin.sol";
 import "./interface/Pancake/IPancakeRouter02.sol";
 import "./interface/Pancake/IMasterChef.sol";
 import "./utils/SafeToken.sol";
+import "./utils/Math.sol";
 
 
 contract CakeGoblin is AGoblin {
@@ -26,15 +27,14 @@ contract CakeGoblin is AGoblin {
         address _token0,
         address _token1,
         address _liqStrategy
-    )
-        public
-        AGoblin(_operator, _farm, _poolId, _reinvestment, _masterChef,
-            _masterChefPid, _router, _cake, _token0, _token1, _liqStrategy)
-    {
-        wBNB = IPancakeRouter02(_router).WETH();
-    }
+    ) public AGoblin(_operator, _farm, _poolId, _reinvestment, _masterChef,
+                _masterChefPid, _router, _cake, _token0, _token1, _liqStrategy) {}
 
     /* ==================================== Internal ==================================== */
+
+    function _WBNB(address _router) internal view override returns (address) {
+        return IPancakeRouter02(_router).WETH();
+    }
 
     function _dexPoolPendingRewards() internal view override returns (uint256) {
         return IMasterChef(dexPool).pendingCake(0, address(this));

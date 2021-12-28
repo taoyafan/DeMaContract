@@ -102,6 +102,7 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         dexToken = _dexToken;
         IFactory factory = IFactory(IRouter(_router).factory());
 
+        wBNB = _WBNB(_router);
         _token0 = _token0 == address(0) ? wBNB : _token0;
         _token1 = _token1 == address(0) ? wBNB : _token1;
 
@@ -539,6 +540,8 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     /* ==================================== Internal ==================================== */
 
     // ------------------ The following are virtual function ------------------
+
+    function _WBNB(address _router) internal view virtual returns (address);
 
     function _dexPoolPendingRewards() internal view virtual returns (uint256);
 
