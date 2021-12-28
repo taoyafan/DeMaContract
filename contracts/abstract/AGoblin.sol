@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./../interface/MDX/IMdexRouter.sol";
-import "./../interface/MDX/IMdexFactory.sol";
-import "./../interface/MDX/IMdexPair.sol";
-import "./../interface/MDX/IBSCPool.sol";
+import "./../interface/IRouter.sol";
+import "./../interface/IFactory.sol";
+import "./../interface/IPair.sol";
+
 import "./../interface/IReinvestment.sol";
 import "./../interface/IFarm.sol";
 import "./../interface/IGoblin.sol";
@@ -18,7 +18,7 @@ import "./../utils/SafeToken.sol";
 import "./../utils/Math.sol";
 
 
-contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
+abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     /// @notice Libraries
     using SafeToken for address;
     using SafeMath for uint256;
@@ -28,19 +28,19 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     event RemovePosition(uint256 indexed id, uint256 lpAmount);
     event Liquidate(uint256 indexed id, address lpTokenAddress, uint256 lpAmount,
         address[2] debtToken, uint256[2] liqAmount);
-    event StakedbscPool(address indexed user, uint256 amount);
-    event WithdrawnbscPool(address indexed user, uint256 amount);
+    event StakeddexPool(address indexed user, uint256 amount);
+    event WithdrawndexPool(address indexed user, uint256 amount);
 
     /// @notice Immutable variables
     IFarm public farm;
     uint256 public poolId;
     IReinvestment reinvestment;
 
-    IBSCPool public bscPool;
-    uint256 public bscPoolId;
+    address dexPool;
+    uint256 dexPoolId;
 
-    IMdexPair public lpToken;
-    address public mdx;
+    IPair public lpToken;
+    address public dexToken;
     address public wBNB;
     address public token0;      // lpToken.token0(), Won't be 0
     address public token1;      // lpToken.token1(), Won't be 0
@@ -48,16 +48,16 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     /// @notice Mutable state variables
     struct GlobalInfo {
-        uint256 totalLp;        // Total staked lp amount.
-        uint256 totalMdx;       // Total Mdx amount that already staked to board room.
-        uint256 accMdxPerLp;    // Accumulate mdx rewards amount per lp token.
+        uint256 totalLp;            // Total staked lp amount.
+        uint256 totalDexToken;      // Total DexToken amount that already staked to board room.
+        uint256 accDexTokenPerLp;   // Accumulate dexToken rewards amount per lp token.
         uint256 lastUpdateTime;
     }
 
     struct UserInfo {
-        uint256 totalLp;            // Total Lp amount.
-        uint256 earnedMdxStored;    // Earned mdx amount stored at the last time user info was updated.
-        uint256 accMdxPerLpStored;  // The accMdxPerLp at the last time user info was updated.
+        uint256 totalLp;                // Total Lp amount.
+        uint256 earnedDexTokenStored;   // Earned dexToken amount stored at the last time user info was updated.
+        uint256 accDexTokenPerLpStored; // The accDexTokenPerLp at the last time user info was updated.
         uint256 lastUpdateTime;
     }
 
@@ -74,50 +74,49 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     struct TempParams {
         uint256 beforeLPAmount;
         uint256 afterLPAmount;
-        uint256 returnMdxAmount;
+        uint256 returnDexTokenAmount;
         uint256 deltaAmount;
     }
 
     constructor(
         address _operator,              // Bank
-        IFarm _farm,                    // Farm
+        address _farm,                  // Farm
         uint256 _poolId,                // Farm pool id
-        IReinvestment _reinvestment,    // Mdx reinvestment
-        IBSCPool _bscPool,
-        uint256 _bscPoolId,
-        IMdexRouter _router,
-        address _mdx,
+        address _reinvestment,          // DexToken reinvestment
+        address _dexPool,
+        uint256 _dexPoolId,
+        address _router,
+        address _dexToken,
         address _token0,
         address _token1,
-        IStrategy _liqStrategy
+        address _liqStrategy
     ) public {
         operator = _operator;
-        wBNB = _router.WBNB();
-        farm = _farm;
+        farm = IFarm(_farm);
         poolId  = _poolId;
-        reinvestment = _reinvestment;
+        reinvestment = IReinvestment(_reinvestment);
 
-        // MDX related params.
-        bscPool = _bscPool;
-        bscPoolId  = _bscPoolId;
-        mdx = _mdx;
-        IMdexFactory factory = IMdexFactory(_router.factory());
+        // DexToken related params.
+        dexPool = _dexPool;
+        dexPoolId  = _dexPoolId;
+        dexToken = _dexToken;
+        IFactory factory = IFactory(IRouter(_router).factory());
 
         _token0 = _token0 == address(0) ? wBNB : _token0;
         _token1 = _token1 == address(0) ? wBNB : _token1;
 
-        lpToken = IMdexPair(factory.getPair(_token0, _token1));
+        lpToken = IPair(factory.getPair(_token0, _token1));
         require(address(lpToken) != address(0), 'Pair not exit');
         // May switch the order of tokens
         token0 = lpToken.token0();
         token1 = lpToken.token1();
 
-        liqStrategy = _liqStrategy;
-        strategiesOk[address(liqStrategy)] = true;
+        liqStrategy = IStrategy(_liqStrategy);
+        strategiesOk[_liqStrategy] = true;
 
         // 100% trust in the bsc pool
-        lpToken.approve(address(bscPool), uint256(-1));
-        mdx.safeApprove(address(reinvestment), uint256(-1));
+        lpToken.approve(dexPool, uint256(-1));
+        dexToken.safeApprove(address(reinvestment), uint256(-1));
     }
 
     /// @dev Require that the caller must be the operator (the bank).
@@ -127,46 +126,6 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     }
 
     /* ==================================== Read ==================================== */
-
-    /**
-     * @dev Return equivalent output given the input amount and the status of Uniswap reserves.
-     * @param aIn The amount of asset to market sell.
-     * @param rIn the amount of asset in reserve for input.
-     * @param rOut The amount of asset in reserve for output.
-     */
-    function getEqAmount(uint256 aIn, uint256 rIn, uint256 rOut) public pure returns (uint256) {
-        require(rIn > 0 && rOut > 0, "bad reserve values");
-        return aIn.mul(rOut).div(rIn);
-    }
-    /**
-     * @dev Return maximum output given the input amount and the status of Uniswap reserves.
-     * @param aIn The amount of asset to market sell.
-     * @param rIn the amount of asset in reserve for input.
-     * @param rOut The amount of asset in reserve for output.
-     */
-    function getMktSellAmount(uint256 aIn, uint256 rIn, uint256 rOut) public pure returns (uint256) {
-        if (aIn == 0) return 0;
-        require(rIn > 0 && rOut > 0, "bad reserve values");
-        uint256 aInWithFee = aIn.mul(997);
-        uint256 numerator = aInWithFee.mul(rOut);
-        uint256 denominator = rIn.mul(1000).add(aInWithFee);
-        return numerator.div(denominator);
-    }
-
-    /**
-     * @dev Return minmum input given the output amount and the status of Uniswap reserves.
-     * @param aOut The output amount of asset after market sell.
-     * @param rIn the amount of asset in reserve for input.
-     * @param rOut The amount of asset in reserve for output.
-     */
-    function getMktSellInAmount(uint256 aOut, uint256 rIn, uint256 rOut) public pure returns (uint256) {
-        if (aOut == 0) return 0;
-        require(rIn > 0, "Get sell in amount, rIn must > 0");
-        require(rOut > aOut, "Get sell in amount, rOut must > aOut");
-        uint256 numerator = rIn.mul(aOut).mul(1000);
-        uint256 denominator = rOut.sub(aOut).mul(997);
-        return numerator.div(denominator);
-    }
 
     /**
      * @dev Return the amount of each borrow token can be withdrawn with the given borrow amount rate.
@@ -217,14 +176,14 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
             uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
             amount = amount > na ? na : amount;
             na = na.sub(amount);
-            nb = nb.add(getMktSellAmount(amount, ra, rb));
+            nb = nb.add(_getMktSellAmount(amount, ra, rb));
         }
 
         // na/da < nb/db, swap B to A
         else if (na.mul(db).add(1e25) < nb.mul(da)) {
             uint256 amount = _swapAToBWithDebtsRatio(rb, ra, db, da, nb, na);
             amount = amount > nb ? nb : amount;
-            na = na.add(getMktSellAmount(amount, rb, ra));
+            na = na.add(_getMktSellAmount(amount, rb, ra));
             nb = nb.sub(amount);
         }
 
@@ -291,59 +250,59 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         }
     }
 
-    /// @dev total Mdx rewards can be withdrawn.
+    /// @dev total DexToken rewards can be withdrawn.
     function totalRewards() public view returns (uint256) {
-        (uint256 poolPendingMdx, /* poolPendingLp */) = bscPool.pending(bscPoolId, address(this));
-
+        uint256 poolPendingRewards = _dexPoolPendingRewards();
         uint256 reservedRatio = reinvestment.reservedRatio();
+
         // If reserved some rewards
         if (reservedRatio != 0) {
             // And then div the left share ratio.
-            poolPendingMdx = poolPendingMdx.sub(poolPendingMdx.mul(reservedRatio).div(10000));
+            poolPendingRewards = poolPendingRewards.sub(poolPendingRewards.mul(reservedRatio).div(10000));
         }
 
-        return poolPendingMdx.add(reinvestment.userAmount(address(this)));
+        return poolPendingRewards.add(reinvestment.userAmount(address(this)));
     }
 
     function rewardPerLp() public view  returns (uint256) {
         if (globalInfo.totalLp != 0) {
-            // globalInfo.totalMdx is the mdx amount at the last time update.
-            return (totalRewards().sub(globalInfo.totalMdx)).mul(1e18).div(
-                globalInfo.totalLp).add(globalInfo.accMdxPerLp);
+            // globalInfo.totalDexToken is the dexToken amount at the last time update.
+            return (totalRewards().sub(globalInfo.totalDexToken)).mul(1e18).div(
+                globalInfo.totalLp).add(globalInfo.accDexTokenPerLp);
         } else {
-            return globalInfo.accMdxPerLp;
+            return globalInfo.accDexTokenPerLp;
         }
     }
 
-    /// @return Earned MDX and DEMA amount.
+    /// @return Earned DexToken and DEMA amount.
     function userAmount(address account) public view override returns (uint256, uint256) {
         UserInfo storage user = userInfo[account];
 
-        return (user.totalLp.mul(rewardPerLp().sub(user.accMdxPerLpStored)).div(1e18).add(user.earnedMdxStored),
+        return (user.totalLp.mul(rewardPerLp().sub(user.accDexTokenPerLpStored)).div(1e18).add(user.earnedDexTokenStored),
                 farm.stakeEarnedPerPool(poolId, account));
     }
 
     /* ==================================== Write ==================================== */
 
-    /// @dev Send both MDX and DEMA rewards to user.
+    /// @dev Send both DexToken and DEMA rewards to user.
     function getAllRewards(address account) external override nonReentrant {
         _updatePool(account);
         UserInfo storage user = userInfo[account];
 
-        // Send MDX
-        if (user.earnedMdxStored > 0) {
-            
-            // If there is not enough token in reinvestment, withdraw from bscpool first.
-            if (user.earnedMdxStored > reinvestment.userAmount(address(this)))
+        // Send DexToken
+        if (user.earnedDexTokenStored > 0) {
+
+            // If there is not enough token in reinvestment, withdraw from dexPool first.
+            if (user.earnedDexTokenStored > reinvestment.userAmount(address(this)))
             {
-                bscPool.withdraw(bscPoolId, 0);     // Will get mdx rewards
-                reinvestment.deposit(mdx.myBalance());
+                _dexPoolWithdraw(0);     // Will get dexToken rewards
+                reinvestment.deposit(dexToken.myBalance());
             }
 
-            reinvestment.withdraw(user.earnedMdxStored);
-            mdx.safeTransfer(account, mdx.myBalance());
-            globalInfo.totalMdx = globalInfo.totalMdx.sub(user.earnedMdxStored);
-            user.earnedMdxStored = 0;
+            reinvestment.withdraw(user.earnedDexTokenStored);
+            dexToken.safeTransfer(account, dexToken.myBalance());
+            globalInfo.totalDexToken = globalInfo.totalDexToken.sub(user.earnedDexTokenStored);
+            user.earnedDexTokenStored = 0;
         }
 
         // Send DEMA
@@ -402,26 +361,26 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
             }
         }
 
-        temp.returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute
+        temp.returnDexTokenAmount = dexToken.myBalance();  // Now is dexToken balance before execute
 
         // -------------------------- execute --------------------------
         // strategy will send back all token and LP.
         uint256[2] memory deltaN = IStrategy(strategy).execute{value: msg.value}(
             account, borrowTokens, borrowAmount, debts, ext);
 
-        if (mdx.myBalance() > temp.returnMdxAmount) {
-            // There are return mdx, that means it's a withdraw
-            temp.returnMdxAmount = mdx.myBalance() - temp.returnMdxAmount;
+        if (dexToken.myBalance() > temp.returnDexTokenAmount) {
+            // There are return dexToken, that means it's a withdraw
+            temp.returnDexTokenAmount = dexToken.myBalance() - temp.returnDexTokenAmount;
         } else {
-            // No return or Mdx amount decrease which means it's an add.
-            temp.returnMdxAmount = 0;
+            // No return or DexToken amount decrease which means it's an add.
+            temp.returnDexTokenAmount = 0;
         }
 
         // 3. Add LP tokens back to the bsc pool.
         _addPosition(id, account);
 
-        // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance().sub(temp.returnMdxAmount));
+        // Send dexToken to reinvestment.
+        reinvestment.deposit(dexToken.myBalance().sub(temp.returnDexTokenAmount));
 
         // Handle stake reward.
         temp.afterLPAmount = posLPAmount[id];
@@ -445,7 +404,7 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
             if (deltaN[0] > 0 || deltaN[1] > 0){
                 // Decrease some principal.
                 if (N[0] > 0) {
-                    uint256 decN0 = getEqAmount(deltaN[1], rb, ra);
+                    uint256 decN0 = _getEqAmount(deltaN[1], rb, ra);
                     if (N[0] > deltaN[0].add(decN0)) {
                         N[0] = N[0].sub(deltaN[0]).sub(decN0);
                     } else {
@@ -453,7 +412,7 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
                     }
                 } else {
                     // N[1] >= 0
-                    uint256 decN1 = getEqAmount(deltaN[0], ra, rb);
+                    uint256 decN1 = _getEqAmount(deltaN[0], ra, rb);
                     if (N[1] > deltaN[1].add(decN1)) {
                         N[1] = N[1].sub(deltaN[1]).sub(decN1);
                     } else {
@@ -472,10 +431,10 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
                 // First time open the position, get the principal.
                 // if deltaN[0] / deltaN[1] > ra / rb, that means token0 is worth more than token1.
                 if (deltaN[0].mul(rb) > deltaN[1].mul(ra)) {
-                    uint256 incN0 = getMktSellAmount(deltaN[1], rb, ra);
+                    uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
                     N[0] = deltaN[0].add(incN0);
                 } else {
-                    uint256 incN1 = getMktSellAmount(deltaN[0], ra, rb);
+                    uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
                     N[1] = deltaN[1].add(incN1);
                 }
             } else {
@@ -483,11 +442,11 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
                 if (deltaN[0] > 0 || deltaN[1] > 0){
                     // Increase some principal.
                     if (N[0] > 0) {
-                        uint256 incN0 = getMktSellAmount(deltaN[1], rb, ra);
+                        uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
                         N[0] = N[0].add(deltaN[0]).add(incN0);
                     } else {
                         // N[1] > 0
-                        uint256 incN1 = getMktSellAmount(deltaN[0], ra, rb);
+                        uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
                         N[1] = N[1].add(deltaN[1]).add(incN1);
                     }
                 }
@@ -542,22 +501,22 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);
 
-        uint256 returnMdxAmount = mdx.myBalance();  // Now is mdx balance before execute
+        uint256 returnDexTokenAmount = dexToken.myBalance();  // Now is dexToken balance before execute
 
         // address token0, address token1, uint256 rate, uint256 whichWantBack
         liqStrategy.execute(address(this), borrowTokens, uint256[2]([uint256(0), uint256(0)]), debts, abi.encode(
             lpToken.token0(), lpToken.token1(), 10000, 2));
 
-        if (mdx.myBalance() > returnMdxAmount) {
-            // There are return mdx, that means it's a withdraw
-            returnMdxAmount = mdx.myBalance() - returnMdxAmount;
+        if (dexToken.myBalance() > returnDexTokenAmount) {
+            // There are return dexToken, that means it's a withdraw
+            returnDexTokenAmount = dexToken.myBalance() - returnDexTokenAmount;
         } else {
-            // No return or Mdx amount decrease which means it's an add.
-            returnMdxAmount = 0;
+            // No return or DexToken amount decrease which means it's an add.
+            returnDexTokenAmount = 0;
         }
 
-        // Send mdx to reinvestment.
-        reinvestment.deposit(mdx.myBalance().sub(returnMdxAmount));
+        // Send dexToken to reinvestment.
+        reinvestment.deposit(dexToken.myBalance().sub(returnDexTokenAmount));
 
         // 2. transfer borrowTokens and user want back to bank.
         uint256[2] memory tokensLiquidate;
@@ -579,32 +538,29 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
 
     /* ==================================== Internal ==================================== */
 
-    /// @dev Internal function to stake all outstanding LP tokens to the given position ID.
-    function _addPosition(uint256 id, address account) internal {
-        uint256 lpBalance = lpToken.balanceOf(address(this));
-        if (lpBalance > 0) {
-            UserInfo storage user = userInfo[account];
-            // take lpToken to the pool2.
-            bscPool.deposit(bscPoolId, lpBalance);
-            posLPAmount[id] = posLPAmount[id].add(lpBalance);
-            globalInfo.totalLp = globalInfo.totalLp.add(lpBalance);
-            user.totalLp = user.totalLp.add(lpBalance);
-            emit AddPosition(id, lpBalance);
-        }
-    }
+    // ------------------ The following are virtual function ------------------
 
-    /// @dev Internal function to remove shares of the ID and convert to outstanding LP tokens.
-    function _removePosition(uint256 id, address account) internal {
-        uint256 lpAmount = posLPAmount[id];
-        if (lpAmount > 0) {
-            UserInfo storage user = userInfo[account];
-            bscPool.withdraw(bscPoolId, lpAmount);
-            globalInfo.totalLp = globalInfo.totalLp.sub(lpAmount);
-            user.totalLp = user.totalLp.sub(lpAmount);
-            posLPAmount[id] = 0;
-            emit RemovePosition(id, lpAmount);
-        }
-    }
+    function _dexPoolPendingRewards() internal view virtual returns (uint256);
+
+    function _dexPoolDeposit(uint256 amount) internal virtual;
+
+    function _dexPoolWithdraw(uint256 amount) internal virtual;
+
+    /**
+     * @dev Return maximum output given the input amount and the status of Uniswap reserves.
+     * @param aIn The amount of asset to market sell.
+     * @param rIn the amount of asset in reserve for input.
+     * @param rOut The amount of asset in reserve for output.
+     */
+    function _getMktSellAmount(uint256 aIn, uint256 rIn, uint256 rOut) internal pure virtual returns (uint256);
+
+    /**
+     * @dev Return minmum input given the output amount and the status of Uniswap reserves.
+     * @param aOut The output amount of asset after market sell.
+     * @param rIn the amount of asset in reserve for input.
+     * @param rOut The amount of asset in reserve for output.
+     */
+    function _getMktSellInAmount(uint256 aOut, uint256 rIn, uint256 rOut) internal pure virtual returns (uint256);
 
     /**
      * @dev Swap A to B with the input debts ratio
@@ -626,24 +582,46 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         uint256 db,
         uint256 na,
         uint256 nb
-    ) internal pure returns (uint256) {
-        // This can also help to make sure db != 0
-        require(na.mul(db) > nb.mul(da), "na/da should lager than nb/db");
+    ) internal pure virtual returns (uint256);
 
-        if (da == 0) {
-            return na;
+    // ------------------------------------------------------------------------
+
+    /**
+     * @dev Return equivalent output given the input amount and the status of Uniswap reserves.
+     * @param aIn The amount of asset to market sell.
+     * @param rIn the amount of asset in reserve for input.
+     * @param rOut The amount of asset in reserve for output.
+     */
+    function _getEqAmount(uint256 aIn, uint256 rIn, uint256 rOut) internal pure returns (uint256) {
+        require(rIn > 0 && rOut > 0, "bad reserve values");
+        return aIn.mul(rOut).div(rIn);
+    }
+
+    /// @dev Internal function to stake all outstanding LP tokens to the given position ID.
+    function _addPosition(uint256 id, address account) internal {
+        uint256 lpBalance = lpToken.balanceOf(address(this));
+        if (lpBalance > 0) {
+            UserInfo storage user = userInfo[account];
+            // take lpToken to the pool2.
+            _dexPoolDeposit(lpBalance);
+            posLPAmount[id] = posLPAmount[id].add(lpBalance);
+            globalInfo.totalLp = globalInfo.totalLp.add(lpBalance);
+            user.totalLp = user.totalLp.add(lpBalance);
+            emit AddPosition(id, lpBalance);
         }
+    }
 
-        uint256 part1 = na.sub(nb.mul(da).div(db));
-        uint256 part2 = ra.mul(1000).div(997);
-        uint256 part3 = da.mul(rb).div(db);
-
-        uint256 b = part2.add(part3).sub(part1);
-        uint256 nc = part1.mul(part2);
-
-        // (-b + math.sqrt(b * b + 4 * nc)) / 2
-        // Note that nc = - c
-        return Math.sqrt(b.mul(b).add(nc.mul(4))).sub(b).div(2);
+    /// @dev Internal function to remove shares of the ID and convert to outstanding LP tokens.
+    function _removePosition(uint256 id, address account) internal {
+        uint256 lpAmount = posLPAmount[id];
+        if (lpAmount > 0) {
+            UserInfo storage user = userInfo[account];
+            _dexPoolWithdraw(lpAmount);
+            globalInfo.totalLp = globalInfo.totalLp.sub(lpAmount);
+            user.totalLp = user.totalLp.sub(lpAmount);
+            posLPAmount[id] = 0;
+            emit RemovePosition(id, lpAmount);
+        }
     }
 
     /// @dev Return the left amount of A after repay all debts
@@ -658,7 +636,7 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
 
         if (nb > db) {
             // Swap B to A
-            uint256 incA = getMktSellAmount(nb-db, rb, ra);
+            uint256 incA = _getMktSellAmount(nb-db, rb, ra);
             if (na.add(incA) > da) {
                 na = na.add(incA).sub(da);
             } else {
@@ -673,7 +651,7 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
                 na = 0;
             }
             else {
-                uint256 decA = getMktSellInAmount(db-nb, ra, rb);
+                uint256 decA = _getMktSellInAmount(db-nb, ra, rb);
                 if (na > da.add(decA)) {
                     na = na.sub(decA).sub(da);
                 } else {
@@ -689,17 +667,17 @@ contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     function _updatePool(address account) internal {
         // Check last update first.
         if (globalInfo.lastUpdateTime != block.timestamp) {
-            /// @notice MUST update accMdxPerLp first as it will use the old totalMdx
-            globalInfo.accMdxPerLp = rewardPerLp();
-            globalInfo.totalMdx = totalRewards();
+            /// @notice MUST update accDexTokenPerLp first as it will use the old totalDexToken
+            globalInfo.accDexTokenPerLp = rewardPerLp();
+            globalInfo.totalDexToken = totalRewards();
             globalInfo.lastUpdateTime = block.timestamp;
         }
 
         UserInfo storage user = userInfo[account];
         if (account != address(0) && user.lastUpdateTime != block.timestamp) {
-            user.earnedMdxStored = user.totalLp.mul(globalInfo.accMdxPerLp.sub(user.accMdxPerLpStored)
-                ).div(1e18).add(user.earnedMdxStored);
-            user.accMdxPerLpStored = globalInfo.accMdxPerLp;
+            user.earnedDexTokenStored = user.totalLp.mul(globalInfo.accDexTokenPerLp.sub(user.accDexTokenPerLpStored)
+                ).div(1e18).add(user.earnedDexTokenStored);
+            user.accDexTokenPerLpStored = globalInfo.accDexTokenPerLp;
             user.lastUpdateTime = block.timestamp;
         }
     }

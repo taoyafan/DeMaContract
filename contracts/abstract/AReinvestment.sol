@@ -51,7 +51,7 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     function amountToShare(uint256 _amount, uint256 _totalAmount) public view returns (uint256) {
-        return (_totalAmount == 0 || totalShares == 0) ? 
+        return (_totalAmount == 0 || totalShares == 0) ?
             _amount : _amount.mul(totalShares).div(_totalAmount);
     }
 
@@ -89,7 +89,7 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     function withdraw(uint256 amount) external override nonReentrant {
         if (amount > 0) {
             uint256 shares = amountToShare(amount, totalAmount());
-            
+
             // Check the max shares and amount can be withdraw
             if (shares > userShares[msg.sender]) {
                 shares = userShares[msg.sender];
@@ -135,8 +135,8 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     /* ==================================== Internal ==================================== */
-    
-    // ================== The following are virtual function ==================
+
+    // ------------------ The following are virtual function ------------------
 
     function _dexDepositAmount() internal view virtual returns (uint256);
 
@@ -145,8 +145,8 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     function _dexDeposit(uint256 amount) internal virtual;
 
     function _dexWithdraw(uint256 amount) internal virtual;
-    
-    // ========================================================================
+
+    // ------------------------------------------------------------------------
 
     /// @dev try to withdraw dexToken with amount from board room.
     /// @notice if withdraw all, amount can be type(uint256).max
@@ -166,7 +166,7 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
     }
 
     /* ==================================== Only Owner ==================================== */
-    
+
     // Recover ERC20 tokens (Rather than dexToken) that were accidentally sent to this smart contract.
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
         require(token != dexToken, "Recover token cannot be dexToken");
