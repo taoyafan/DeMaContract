@@ -1,17 +1,25 @@
 const BigNumber = require("bignumber.js");
+const { assert } = require("console");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
 const path = require('path');
 
-const MdxGoblin = artifacts.require("MdxGoblin");
 const MdexFactory = artifacts.require("MdexFactory");
-const WBNB = artifacts.require("WBNB");
-const ERC20Token = artifacts.require("ERC20Token");
 const MdexRouter = artifacts.require("MdexRouter");
 const MdexPair = artifacts.require("MdexPair");
-const Bank = artifacts.require("Bank");
+const MdxGoblin = artifacts.require("MdxGoblin");
 const MdxReinvestment = artifacts.require("MdxReinvestment");
+
+const PancakeFactory = artifacts.require("PancakeFactory");
+const PancakeRouter = artifacts.require("PancakeRouter");
+const PancakePair = artifacts.require("PancakePair");
+const CakeGoblin = artifacts.require("CakeGoblin");
+const CakeReinvestment = artifacts.require("CakeReinvestment");
+
+const WBNB = artifacts.require("WBNB");
+const ERC20Token = artifacts.require("ERC20Token");
+const Bank = artifacts.require("Bank");
 
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -22,6 +30,13 @@ let {saveToJson, readAddressJson} = require('./jsonRW.js');
 let addressJson = null;
 let name2Address = null;
 let web3 = null;
+let contracts = {};
+let dex = "Mdx";        // Can set to "Cake"
+
+function setDex(_dex) {
+    console.assert(_dex == "Mdx" || _dex =="Cake", "Dex only support Mdx and Cake");
+    dex = _dex;
+}
 
 function setNetwork(network, _web3) {
     web3 = _web3
@@ -42,6 +57,22 @@ function setNetwork(network, _web3) {
     for (let key in name2Address) {
         let value = name2Address[key];
         address2Name[value] = key;
+    }
+
+    // Dex related contracts instance except pair.
+    contracts = {
+        "Mdx": {
+            "Factory": addressJson.MdexFactory ? MdexFactory.at(addressJson.MdexFactory) : null,
+            "Router": addressJson.MdexRouter ? MdexRouter.at(addressJson.MdexRouter) : null,
+            "Pair": MdexPair,
+            "Reinvestment": addressJson.MdxReinvestment ? MdxReinvestment.at(addressJson.MdxReinvestment) : null,
+        },
+        "Cake": {
+            "Factory": addressJson.PancakeFactory ? PancakeFactory.at(addressJson.PancakeFactory) : null,
+            "Router": addressJson.PancakeRouter ? PancakeRouter.at(addressJson.PancakeRouter) : null,
+            "Pair": PancakePair,
+            "Reinvestment": addressJson.CakeReinvestment ? CakeReinvestment.at(addressJson.CakeReinvestment) : null,
+        },
     }
 
     return {addressJson, name2Address, address2Name}
@@ -168,8 +199,18 @@ async function getStates(posId, userAddress, tokensName) {
     states.userProdId = await bank.userAllProdId(userAddress);
 
     // Goblin info
-    let goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
-    let goblin = await MdxGoblin.at(goblinAddress);
+    let goblin
+    
+    if (dex == "Mdx") {
+        let goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
+        goblin = await MdxGoblin.at(goblinAddress);
+    } else if (dex == "Cake") {
+        let goblinAddress = addressJson[`Cake${tokensName[0]}${tokensName[1]}Goblin`];
+        goblin = await CakeGoblin.at(goblinAddress);
+    } else {
+        throw new Error(`Dex not support: ${dex}`);
+    }
+
     {
         states.goblin = {}
 
@@ -202,15 +243,21 @@ async function getStates(posId, userAddress, tokensName) {
     // mdx pool lp amount
     {
         let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
-        let factory = await MdexFactory.at(addressJson.MdexFactory);
+        let factory = await _getContractInstance("Factory");
         let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
-        states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
+        if (dex == "Mdx") {
+            states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
+        } else if (dex == "Cake") {
+            states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.MasterChef)
+        } else {
+            throw new Error(`Dex not support: ${dex}`);
+        }
     }
 
     // MdxReinvestment info
     {
         states.reinvest = {};
-        let reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
+        let reinvestment = await _getContractInstance("Reinvestment");
 
         // - global info
         states.reinvest.globalInfo = {
@@ -273,9 +320,9 @@ async function swapAllLpToToken0(token0, token1, lpAmount) {
     [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await _getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await _getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -329,7 +376,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
         tokens[1-fromIdx] = addressJson.WBNB;
     }
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await _getContractInstance("Router");
     await approve(tokens[fromIdx], router.address, 0, from);
     await approve(tokens[fromIdx], router.address, MaxUint256, from);
 
@@ -346,7 +393,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
 
 async function swapToExact(tokens, fromIdx, toAmount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await _getContractInstance("Router");
 
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
@@ -374,7 +421,7 @@ async function createPair(token0, token1) {
 
 async function getPair(token0, token1) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await _getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
 
     if (lpAddress == bnbAddress) {
@@ -399,7 +446,7 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
     let lpAddress = await getPair(token0, token1);
 
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await _getContractInstance("Pair", lpAddress)
     await transfer(token0, lpAddress, r0, from)
     await transfer(token1, lpAddress, r1, from)
     await lp.mint(from)
@@ -410,12 +457,12 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
 async function removeAllLiquidity(token0, token1, from) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await _getContractInstance("Factory");
 
     let lpAddress = await factory.getPair(token0, token1);
     let lpAmount = await getBalance(lpAddress, from);
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await _getContractInstance("Router");
     await approve(lpAddress, router.address, lpAmount, from)
     await router.removeLiquidity(token0, token1,
         lpAmount, 0, 0, from, MaxUint256, {from: from});
@@ -471,9 +518,9 @@ function _swapAllToA(na, nb, ra, rb) {
 async function getR0R1(token0, token1, log = false) {
     [token0, token1] = tokensFilter(token0, token1);
 
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await _getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await _getContractInstance("Pair", lpAddress)
 
     let token0InLp = await lp.token0()
     res = await lp.getReserves();
@@ -496,9 +543,9 @@ async function getTokenAmountInLp(tokens, lpAmount) {
     let [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await _getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await _getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -553,9 +600,25 @@ function logObj(obj, name) {
     console.log(JSON.stringify(obj, null, 2))
 }
 
+// Only pair need address.
+async function _getContractInstance(name, address=null) {
+    console.assert(dex in contracts, `Dex not support: ${dex}`);
+    console.assert(name in contracts[dex], `name not support in ${dex}: ${name}`);
+    
+    if (name == "Pair") {
+        console.assert(address != null, "Pair must has address")
+        return await contracts[dex]["Pair"].at(address);
+    } else {
+        let instance = await contracts[dex][name];
+        assert(instance, `Contract haven't deployed: ${name}`)
+        return instance;
+    }
+}
+
 module.exports = {
     bnbAddress,
     MaxUint256,
+    setDex,
     setNetwork,
     getConfig,
     erc20TokenGetBalance,
