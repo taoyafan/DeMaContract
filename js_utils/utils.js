@@ -1,5 +1,4 @@
 const BigNumber = require("bignumber.js");
-const { assert } = require("console");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const fs = require('fs')
@@ -62,16 +61,16 @@ function setNetwork(network, _web3) {
     // Dex related contracts instance except pair.
     contracts = {
         "Mdx": {
-            "Factory": addressJson.MdexFactory ? MdexFactory.at(addressJson.MdexFactory) : null,
-            "Router": addressJson.MdexRouter ? MdexRouter.at(addressJson.MdexRouter) : null,
-            "Pair": MdexPair,
-            "Reinvestment": addressJson.MdxReinvestment ? MdxReinvestment.at(addressJson.MdxReinvestment) : null,
+            "Factory": () => addressJson.MdexFactory ? MdexFactory.at(addressJson.MdexFactory) : null,
+            "Router": () => addressJson.MdexRouter ? MdexRouter.at(addressJson.MdexRouter) : null,
+            "Pair": (address) => address ? MdexPair.at(address) : null,
+            "Reinvestment": () => addressJson.MdxReinvestment ? MdxReinvestment.at(addressJson.MdxReinvestment) : null,
         },
         "Cake": {
-            "Factory": addressJson.PancakeFactory ? PancakeFactory.at(addressJson.PancakeFactory) : null,
-            "Router": addressJson.PancakeRouter ? PancakeRouter.at(addressJson.PancakeRouter) : null,
-            "Pair": PancakePair,
-            "Reinvestment": addressJson.CakeReinvestment ? CakeReinvestment.at(addressJson.CakeReinvestment) : null,
+            "Factory": () => addressJson.PancakeFactory ? PancakeFactory.at(addressJson.PancakeFactory) : null,
+            "Router": () => addressJson.PancakeRouter ? PancakeRouter.at(addressJson.PancakeRouter) : null,
+            "Pair": (address) => address ? PancakePair.at(address) : null,
+            "Reinvestment": () => addressJson.CakeReinvestment ? CakeReinvestment.at(addressJson.CakeReinvestment) : null,
         },
     }
 
@@ -200,12 +199,13 @@ async function getStates(posId, userAddress, tokensName) {
 
     // Goblin info
     let goblin
-    
+    let goblinAddress
+
     if (dex == "Mdx") {
-        let goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
+        goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
         goblin = await MdxGoblin.at(goblinAddress);
     } else if (dex == "Cake") {
-        let goblinAddress = addressJson[`Cake${tokensName[0]}${tokensName[1]}Goblin`];
+        goblinAddress = addressJson[`Cake${tokensName[0]}${tokensName[1]}Goblin`];
         goblin = await CakeGoblin.at(goblinAddress);
     } else {
         throw new Error(`Dex not support: ${dex}`);
@@ -243,7 +243,7 @@ async function getStates(posId, userAddress, tokensName) {
     // mdx pool lp amount
     {
         let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
-        let factory = await _getContractInstance("Factory");
+        let factory = await getContractInstance("Factory");
         let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
         if (dex == "Mdx") {
             states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
@@ -257,7 +257,7 @@ async function getStates(posId, userAddress, tokensName) {
     // MdxReinvestment info
     {
         states.reinvest = {};
-        let reinvestment = await _getContractInstance("Reinvestment");
+        let reinvestment = await getContractInstance("Reinvestment");
 
         // - global info
         states.reinvest.globalInfo = {
@@ -320,9 +320,9 @@ async function swapAllLpToToken0(token0, token1, lpAmount) {
     [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await _getContractInstance("Factory");
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await _getContractInstance("Pair", lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -376,7 +376,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
         tokens[1-fromIdx] = addressJson.WBNB;
     }
 
-    let router = await _getContractInstance("Router");
+    let router = await getContractInstance("Router");
     await approve(tokens[fromIdx], router.address, 0, from);
     await approve(tokens[fromIdx], router.address, MaxUint256, from);
 
@@ -393,7 +393,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
 
 async function swapToExact(tokens, fromIdx, toAmount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
-    let router = await _getContractInstance("Router");
+    let router = await getContractInstance("Router");
 
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
@@ -421,7 +421,7 @@ async function createPair(token0, token1) {
 
 async function getPair(token0, token1) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await _getContractInstance("Factory");
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
 
     if (lpAddress == bnbAddress) {
@@ -446,7 +446,7 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
     let lpAddress = await getPair(token0, token1);
 
-    let lp = await _getContractInstance("Pair", lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     await transfer(token0, lpAddress, r0, from)
     await transfer(token1, lpAddress, r1, from)
     await lp.mint(from)
@@ -457,12 +457,12 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
 async function removeAllLiquidity(token0, token1, from) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await _getContractInstance("Factory");
+    let factory = await getContractInstance("Factory");
 
     let lpAddress = await factory.getPair(token0, token1);
     let lpAmount = await getBalance(lpAddress, from);
 
-    let router = await _getContractInstance("Router");
+    let router = await getContractInstance("Router");
     await approve(lpAddress, router.address, lpAmount, from)
     await router.removeLiquidity(token0, token1,
         lpAmount, 0, 0, from, MaxUint256, {from: from});
@@ -518,9 +518,9 @@ function _swapAllToA(na, nb, ra, rb) {
 async function getR0R1(token0, token1, log = false) {
     [token0, token1] = tokensFilter(token0, token1);
 
-    let factory = await _getContractInstance("Factory");
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await _getContractInstance("Pair", lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
 
     let token0InLp = await lp.token0()
     res = await lp.getReserves();
@@ -543,9 +543,9 @@ async function getTokenAmountInLp(tokens, lpAmount) {
     let [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await _getContractInstance("Factory");
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await _getContractInstance("Pair", lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -601,23 +601,20 @@ function logObj(obj, name) {
 }
 
 // Only pair need address.
-async function _getContractInstance(name, address=null) {
+async function getContractInstance(name, address=null) {
     console.assert(dex in contracts, `Dex not support: ${dex}`);
     console.assert(name in contracts[dex], `name not support in ${dex}: ${name}`);
     
-    if (name == "Pair") {
-        console.assert(address != null, "Pair must has address")
-        return await contracts[dex]["Pair"].at(address);
-    } else {
-        let instance = await contracts[dex][name];
-        assert(instance, `Contract haven't deployed: ${name}`)
-        return instance;
-    }
+    let instance = await contracts[dex][name](address);
+    console.assert(instance, `Contract haven't deployed: ${name}`)
+    return instance;
 }
 
 module.exports = {
     bnbAddress,
     MaxUint256,
+    dex,
+    getContractInstance,
     setDex,
     setNetwork,
     getConfig,
