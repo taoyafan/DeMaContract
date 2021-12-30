@@ -51,6 +51,10 @@ const {
     checkPosResult,
 } = require("../js_utils/prod_interface");
 
+const {
+    reinvest,
+} = require("../js_utils/other_interface");
+
 contract("TestProduction", (accounts) => {
 
     let factory;
@@ -175,6 +179,12 @@ contract("TestProduction", (accounts) => {
 
                         it(`Check replenishment result`, async () => {
                             await checkPosResult(beforeStates, afterStates, [deposits[0], deposits[1]], borrows);
+                        })
+                    })
+
+                    describe(`\n\nTest reinvest`, async () => {
+                        it(`reinvest`, async () => {
+                            await reinvest();
                         })
                     })
 
