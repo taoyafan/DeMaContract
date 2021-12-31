@@ -23,6 +23,11 @@ function getBanksInfo(network) {
                 rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
             },
             {
+                token: "Cake",
+                tokenAddress: addressJson.CakeToken,
+                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            },
+            {
                 token: "Busd",
                 tokenAddress: addressJson.BUSD,
                 rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)

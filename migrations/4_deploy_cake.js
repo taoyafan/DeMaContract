@@ -25,8 +25,11 @@ module.exports = async function (deployer, network, accounts) {
         const { addressJson } = setNetwork(network, web3);
         setDex("Cake");
 
-        let cakeToken = await deployer.deploy(CakeToken)      // Cake Token
-        saveToJson("CakeToken", CakeToken.address, network);
+        // let cake = await deployer.deploy(CakeToken); // Has bug that cake is undefined
+        await deployer.deploy(CakeToken);      // Cake Token
+        const cake = await CakeToken.deployed();
+        saveToJson("CakeToken", cake.address, network);
+        await cake.mint(accounts[0], BigNumber(1e25));      // 1e7
 
         await deployer.deploy(
             PancakeFactory,            // Factory
@@ -40,8 +43,8 @@ module.exports = async function (deployer, network, accounts) {
             addressJson.WBNB            // WBNB should be saved in addressJson after deploying cake.
         );
 
-        let cake = await deployer.deploy(
-            SyrupBar,                   // MasterChef
+        await deployer.deploy(
+            SyrupBar,                   // SyrupBar
             CakeToken.address,
         );
 

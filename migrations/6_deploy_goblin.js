@@ -33,7 +33,7 @@ module.exports = async function (deployer, network, accounts) {
         prod.farmPoolId = await farm.nextPoolId();
         
         // Get mdx pool id
-        prod.mdxPoolId = addressJson[`Mdx${prod.token0}${prod.token1}PoolId`];
+        prod.dexPoolId = addressJson[`Mdx${prod.token0}${prod.token1}PoolId`];
 
         // Deploy
         prod.goblin = await deployer.deploy(
@@ -43,7 +43,7 @@ module.exports = async function (deployer, network, accounts) {
             prod.farmPoolId,                     // Farm pool id, Goblin begin from 100
             MdxReinvestment.address,
             addressJson.BSCPool,
-            prod.mdxPoolId,                      // Bsc pool id
+            prod.dexPoolId,                      // Bsc pool id
             addressJson.MdexRouter,
             addressJson.MdxToken,
             prod.token0Address,                  // Token0 address

@@ -1,14 +1,7 @@
-const MdxGoblin = artifacts.require("MdxGoblin");
-const MdexFactory = artifacts.require("MdexFactory");
 const WBNB = artifacts.require("WBNB");
 const ERC20Token = artifacts.require("ERC20Token");
-const MdexRouter = artifacts.require("MdexRouter");
 const MdxToken = artifacts.require("MdxToken");
-const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
-const DEMA = artifacts.require("DEMA");
-const Farm = artifacts.require("Farm");
-const MdxReinvestment = artifacts.require("MdxReinvestment");
 const{ expectRevert  } = require('@openzeppelin/test-helpers');
 
 const BigNumber = require("bignumber.js");

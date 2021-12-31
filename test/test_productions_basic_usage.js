@@ -1,24 +1,18 @@
-const MdxGoblin = artifacts.require("MdxGoblin");
-const MdexFactory = artifacts.require("MdexFactory");
 const WBNB = artifacts.require("WBNB");
 const ERC20Token = artifacts.require("ERC20Token");
-const MdexRouter = artifacts.require("MdexRouter");
-const MdxToken = artifacts.require("MdxToken");
-const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
-const DEMA = artifacts.require("DEMA");
-const Farm = artifacts.require("Farm");
-const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
-const fs = require('fs')
 
 const file = `test/log/prod_basic_usage.json`;
+const dex = "Mdx";
 
 const {
     bnbAddress,
     MaxUint256,
+    getContractInstance,
+    setDex,
     setNetwork,
     saveLogToFile,
     initFile,
@@ -40,6 +34,8 @@ const {
     aDivB,
     tokensFilter,
 } = require("../js_utils/utils");
+
+setDex(dex);
 const {addressJson, name2Address} = setNetwork('development', web3)
 
 const {
@@ -57,36 +53,29 @@ const {
 
 contract("TestProduction", (accounts) => {
 
-    let factory;
     let wbnb;
     let usdt;
     let busd;
-    let router;
-    let mdx;
+    let dexToken;
     let bank;
-    let reinvestment;
-
-    let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
+    let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], [dex, 'Busd']];
     let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
 
     before('Init', async () => {
         initFile(file);
 
-        // factory = await MdexFactory.at(addressJson.MdexFactory);
         wbnb = await WBNB.at(addressJson.WBNB);
         usdt = await ERC20Token.at(addressJson.USDT);
         busd = await ERC20Token.at(addressJson.BUSD);
-        // router = await MdexRouter.at(addressJson.MdexRouter);
-        mdx = await MdxToken.at(addressJson.MdxToken);
         bank = await Bank.at(addressJson.Bank);
-        // reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
+        dexToken = await getContractInstance("DexToken");
 
         // Deposit token in bank.
         let amount = toWei(20000);
         await bank.deposit(bnbAddress, amount, {from: accounts[0], value: amount});
 
-        await mdx.approve(bank.address, amount, {from: accounts[0]});
-        await bank.deposit(mdx.address, amount, {from: accounts[0]});
+        await dexToken.approve(bank.address, amount, {from: accounts[0]});
+        await bank.deposit(dexToken.address, amount, {from: accounts[0]});
 
         await usdt.approve(bank.address, amount, {from: accounts[0]});
         await bank.deposit(usdt.address, amount, {from: accounts[0]});
@@ -116,13 +105,13 @@ contract("TestProduction", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            for (deposits of depositArray) {
-                for (borrows of borrowsArray) {
-                    forEachBorrow(tokensName, deposits, borrows, r);
-                }
-            }
+            // for (deposits of depositArray) {
+            //     for (borrows of borrowsArray) {
+            //         forEachBorrow(tokensName, deposits, borrows, r);
+            //     }
+            // }
 
-            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
+            forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 
@@ -184,7 +173,12 @@ contract("TestProduction", (accounts) => {
 
                     describe(`\n\nTest reinvest`, async () => {
                         it(`reinvest`, async () => {
+                            beforeStates = afterStates;
                             await reinvest();
+                            afterStates = await getStates(posId, accounts[0], tokensName);
+                            saveLogToFile(file, `After reinvest`, afterStates)
+                            assert.equal(afterStates.reinvest.DexTokenBalance, 0, 
+                                "After reinvest, dex token balance of reinvestment should be 0");
                         })
                     })
 

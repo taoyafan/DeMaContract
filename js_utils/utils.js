@@ -4,18 +4,6 @@ BigNumber.config({ EXPONENTIAL_AT: 30 })
 const fs = require('fs')
 const path = require('path');
 
-const MdexFactory = artifacts.require("MdexFactory");
-const MdexRouter = artifacts.require("MdexRouter");
-const MdexPair = artifacts.require("MdexPair");
-const MdxGoblin = artifacts.require("MdxGoblin");
-const MdxReinvestment = artifacts.require("MdxReinvestment");
-
-const PancakeFactory = artifacts.require("PancakeFactory");
-const PancakeRouter = artifacts.require("PancakeRouter");
-const PancakePair = artifacts.require("PancakePair");
-const CakeGoblin = artifacts.require("CakeGoblin");
-const CakeReinvestment = artifacts.require("CakeReinvestment");
-
 const WBNB = artifacts.require("WBNB");
 const ERC20Token = artifacts.require("ERC20Token");
 const Bank = artifacts.require("Bank");
@@ -23,13 +11,12 @@ const Bank = artifacts.require("Bank");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-
+let {getAddress, getInstance} = require('./dex_adapter.js');
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
 let addressJson = null;
 let name2Address = null;
 let web3 = null;
-let contracts = {};
 let dex = "Mdx";        // Can set to "Cake"
 
 function setDex(_dex) {
@@ -56,22 +43,6 @@ function setNetwork(network, _web3) {
     for (let key in name2Address) {
         let value = name2Address[key];
         address2Name[value] = key;
-    }
-
-    // Dex related contracts instance except pair.
-    contracts = {
-        "Mdx": {
-            "Factory": () => addressJson.MdexFactory ? MdexFactory.at(addressJson.MdexFactory) : null,
-            "Router": () => addressJson.MdexRouter ? MdexRouter.at(addressJson.MdexRouter) : null,
-            "Pair": (address) => address ? MdexPair.at(address) : null,
-            "Reinvestment": () => addressJson.MdxReinvestment ? MdxReinvestment.at(addressJson.MdxReinvestment) : null,
-        },
-        "Cake": {
-            "Factory": () => addressJson.PancakeFactory ? PancakeFactory.at(addressJson.PancakeFactory) : null,
-            "Router": () => addressJson.PancakeRouter ? PancakeRouter.at(addressJson.PancakeRouter) : null,
-            "Pair": (address) => address ? PancakePair.at(address) : null,
-            "Reinvestment": () => addressJson.CakeReinvestment ? CakeReinvestment.at(addressJson.CakeReinvestment) : null,
-        },
     }
 
     return {addressJson, name2Address, address2Name}
@@ -119,8 +90,8 @@ function saveLogToFile(file, name, data = null) {
     }
 }
 
-async function getStates(posId, userAddress, tokensName) {
-    let tokensAddress = [name2Address[tokensName[0]], name2Address[tokensName[1]]];
+async function getStates(posId, userAddress, tokenNames) {
+    let tokensAddress = [name2Address[tokenNames[0]], name2Address[tokenNames[1]]];
 
     let states = {tokensAddress: tokensAddress};
 
@@ -130,6 +101,7 @@ async function getStates(posId, userAddress, tokensName) {
         await getBalance(tokensAddress[1], userAddress),
         await getBalance(addressJson['DEMA'], userAddress),
         await getBalance(addressJson['MdxToken'], userAddress),
+        await getBalance(addressJson['CakeToken'], userAddress),
     ];
 
     // bank amount
@@ -198,19 +170,7 @@ async function getStates(posId, userAddress, tokensName) {
     states.userProdId = await bank.userAllProdId(userAddress);
 
     // Goblin info
-    let goblin
-    let goblinAddress
-
-    if (dex == "Mdx") {
-        goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
-        goblin = await MdxGoblin.at(goblinAddress);
-    } else if (dex == "Cake") {
-        goblinAddress = addressJson[`Cake${tokensName[0]}${tokensName[1]}Goblin`];
-        goblin = await CakeGoblin.at(goblinAddress);
-    } else {
-        throw new Error(`Dex not support: ${dex}`);
-    }
-
+    let goblin = await getContractInstance("Goblin", tokenNames);
     {
         states.goblin = {}
 
@@ -218,8 +178,8 @@ async function getStates(posId, userAddress, tokensName) {
         globalInfo = await goblin.globalInfo();
         states.goblin.globalInfo = {
             totalLp: BigNumber(globalInfo.totalLp),
-            totalMdx: BigNumber(globalInfo.totalMdx),
-            accMdxPerLp: BigNumber(globalInfo.accMdxPerLp),
+            totalDexToken: BigNumber(globalInfo.totalDexToken),
+            accDexTokenPerLp: BigNumber(globalInfo.accDexTokenPerLp),
             lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
         }
 
@@ -228,8 +188,8 @@ async function getStates(posId, userAddress, tokensName) {
         states.goblin.userInfo = {
             totalLp: BigNumber(userInfo.totalLp),
             tokensAmountInLp: await getTokenAmountInLp(tokensAddress, userInfo.totalLp),
-            earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
-            accMdxPerLpStored: BigNumber(userInfo.accMdxPerLpStored),
+            earnedDexTokenStored: BigNumber(userInfo.earnedDexTokenStored),
+            accDexTokenPerLpStored: BigNumber(userInfo.accDexTokenPerLpStored),
             lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
         }
 
@@ -240,21 +200,17 @@ async function getStates(posId, userAddress, tokensName) {
                                     
     }
 
-    // mdx pool lp amount
+    // Dex pool lp amount
     {
         let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
         let factory = await getContractInstance("Factory");
         let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
-        if (dex == "Mdx") {
-            states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
-        } else if (dex == "Cake") {
-            states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.MasterChef)
-        } else {
-            throw new Error(`Dex not support: ${dex}`);
-        }
+        
+        let dexPool = await getContractInstance("DexPool");
+        states.dexPoolLpAmount = await getBalance(lpAddress, dexPool.address)
     }
 
-    // MdxReinvestment info
+    // Reinvestment info
     {
         states.reinvest = {};
         let reinvestment = await getContractInstance("Reinvestment");
@@ -272,13 +228,14 @@ async function getStates(posId, userAddress, tokensName) {
                 userAmount: BigNumber(await reinvestment.userAmount(userAddress)),
             }; 
         }
-        states.reinvest.userInfo = await getUserInfo(goblinAddress)
+        states.reinvest.userInfo = await getUserInfo(goblin.address)
 
         let ownerAddress = await reinvestment.owner() 
         states.reinvest.ownerInfo = await getUserInfo(ownerAddress)
 
-        // - Mdx balance
-        states.reinvest.mdxBalance = await getBalance(addressJson.MdxToken, reinvestment.address)
+        // - DexToken balance
+        let dexToken = await getContractInstance("DexToken");
+        states.reinvest.DexTokenBalance = await getBalance(dexToken.address, reinvestment.address)
     }
 
     return states
@@ -600,14 +557,18 @@ function logObj(obj, name) {
     console.log(JSON.stringify(obj, null, 2))
 }
 
-// Only pair need address.
-async function getContractInstance(name, address=null) {
-    console.assert(dex in contracts, `Dex not support: ${dex}`);
-    console.assert(name in contracts[dex], `name not support in ${dex}: ${name}`);
-    
-    let instance = await contracts[dex][name](address);
-    console.assert(instance, `Contract haven't deployed: ${name}`)
+// Pair need param which is pair address.
+// Goblin need param which is array of token names.
+async function getContractInstance(name, param=null) {
+    let instance = await getInstance(addressJson, dex, name, param);
+    console.assert(instance, `Contract haven't deployed: ${name}, Dex: ${dex}`);
     return instance;
+}
+
+// Goblin need param which is array of token names.
+function getDexRelatedAddress(name, param) {
+    let address = getAddress(addressJson, dex, name, param);
+    return address;
 }
 
 module.exports = {
@@ -615,6 +576,7 @@ module.exports = {
     MaxUint256,
     dex,
     getContractInstance,
+    getDexRelatedAddress,
     setDex,
     setNetwork,
     getConfig,

@@ -4,6 +4,7 @@ const Bank = artifacts.require("Bank");
 
 const {
     bnbAddress,
+    dex,
     getConfig,
     equal,
     swapAllLpToToken0,
@@ -65,8 +66,8 @@ async function _addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
         bnbValue = amounts[1];
     }
 
-    let pid = addressJson[`Mdx${tokensName[0]}${tokensName[1]}ProdId`]
-    let addStrategyAddress = addressJson.MdxStrategyAddTwoSidesOptimal;
+    let pid = addressJson[`${dex}${tokensName[0]}${tokensName[1]}ProdId`]
+    let addStrategyAddress = addressJson[`${dex}StrategyAddTwoSidesOptimal`];
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256", "uint256"],
@@ -183,13 +184,13 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
     for (i = 0; i < 2; ++i) {
         // Check user balance
         let userIncBalance = aSubB(afterStates.userBalance[i], beforeStates.userBalance[i]);
-        if (tokens[i] == addressJson.MdxToken && afterStates.mdxPoolLpAmount.toNumber() == 0) {
+        if (tokens[i] == addressJson[`${dex}Token`] && afterStates.dexPoolLpAmount.toNumber() == 0) {
             userIncBalance = aSubB(userIncBalance,
-                aAddB(beforeStates.goblin.userInfo.earnedMdxStored,
+                aAddB(beforeStates.goblin.userInfo.earnedDexTokenStored,
                     aDivB(
-                        aMulB(beforeStates.mdxPoolLpAmount,
-                            aSubB(afterStates.goblin.userInfo.accMdxPerLpStored,
-                                beforeStates.goblin.userInfo.accMdxPerLpStored)
+                        aMulB(beforeStates.dexPoolLpAmount,
+                            aSubB(afterStates.goblin.userInfo.accDexTokenPerLpStored,
+                                beforeStates.goblin.userInfo.accDexTokenPerLpStored)
                         ), 1e18
                     )
                 )
@@ -281,9 +282,9 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
     equal(userIncTotalLp, IncLpAmount, `Global LP amounts changes wrong`, true, 1); //1 means not bnb
     equal(globalIncTotalLp, IncLpAmount, `User Lp amount changes wrong`, true, 1); //1 means not bnb
 
-    // Check mdx pool lp amount
-    let mdxPoolIncLp = aSubB(afterStates.mdxPoolLpAmount, beforeStates.mdxPoolLpAmount);
-    equal(mdxPoolIncLp, IncLpAmount, `Mdx pool amounts changes wrong`, true, 1); //1 means not bnb
+    // Check dex pool lp amount
+    let dexPoolIncLp = aSubB(afterStates.dexPoolLpAmount, beforeStates.dexPoolLpAmount);
+    equal(dexPoolIncLp, IncLpAmount, `Dex pool amounts changes wrong`, true, 1); //1 means not bnb
 }
 
 module.exports = {
