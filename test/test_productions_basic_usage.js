@@ -6,7 +6,7 @@ const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
 
 const file = `test/log/prod_basic_usage.json`;
-const dex = "Mdx";
+const dex = "Cake";
 
 const {
     bnbAddress,

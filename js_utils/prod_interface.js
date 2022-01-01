@@ -4,7 +4,7 @@ const Bank = artifacts.require("Bank");
 
 const {
     bnbAddress,
-    dex,
+    getDexRelatedAddress,
     getConfig,
     equal,
     swapAllLpToToken0,
@@ -19,6 +19,7 @@ const {
     aMulB,
     aDivB,
 } = require("./utils");
+const gFAddress = getDexRelatedAddress;
 
 const { addressJson, name2Address } = getConfig();
 
@@ -41,7 +42,7 @@ async function withdraw(posId, tokensName, userAddress, withdrawRate, whichWantB
     let token0Address = name2Address[tokensName[0]];
     let token1Address = name2Address[tokensName[1]];
 
-    let withdrawStrategyAddress = addressJson.MdxStrategyWithdrawMinimizeTrading;
+    let withdrawStrategyAddress = gFAddress("StrategyWithdrawMinimizeTrading");
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256"],
@@ -66,8 +67,8 @@ async function _addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
         bnbValue = amounts[1];
     }
 
-    let pid = addressJson[`${dex}${tokensName[0]}${tokensName[1]}ProdId`]
-    let addStrategyAddress = addressJson[`${dex}StrategyAddTwoSidesOptimal`];
+    let pid = gFAddress("ProdId", tokensName);
+    let addStrategyAddress = gFAddress("StrategyAddTwoSidesOptimal")
 
     let strategyDate = web3.eth.abi.encodeParameters(
         ["address", "address", "uint256", "uint256", "uint256"],
@@ -184,7 +185,7 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
     for (i = 0; i < 2; ++i) {
         // Check user balance
         let userIncBalance = aSubB(afterStates.userBalance[i], beforeStates.userBalance[i]);
-        if (tokens[i] == addressJson[`${dex}Token`] && afterStates.dexPoolLpAmount.toNumber() == 0) {
+        if (tokens[i] == gFAddress("DexToken") && afterStates.dexPoolLpAmount.toNumber() == 0) {
             userIncBalance = aSubB(userIncBalance,
                 aAddB(beforeStates.goblin.userInfo.earnedDexTokenStored,
                     aDivB(

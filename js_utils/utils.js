@@ -11,7 +11,7 @@ const Bank = artifacts.require("Bank");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-let {getAddress, getInstance} = require('./dex_adapter.js');
+let {gContracts, getName, getAddress, getInstance} = require('./dex_adapter.js');
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
 let addressJson = null;
@@ -36,6 +36,7 @@ function setNetwork(network, _web3) {
         'Eth': addressJson.ETH,
         'Btc': addressJson.BTC,
         'Mdx': addressJson.MdxToken,
+        'Cake': addressJson.CakeToken,
         'Dema': addressJson.DEMA,
     };
 
@@ -561,22 +562,38 @@ function logObj(obj, name) {
 // Goblin need param which is array of token names.
 async function getContractInstance(name, param=null) {
     let instance = await getInstance(addressJson, dex, name, param);
-    console.assert(instance, `Contract haven't deployed: ${name}, Dex: ${dex}`);
+    console.assert(instance, `Get instance error, Dex: ${dex}, name: ${name}, param: ${param}`);
     return instance;
 }
 
 // Goblin need param which is array of token names.
-function getDexRelatedAddress(name, param) {
+function getDexRelatedAddress(name, param=null) {
     let address = getAddress(addressJson, dex, name, param);
+    console.assert(address!=null, `Get address error, Dex: ${dex}, name: ${name}, param: ${param}`);
     return address;
+}
+
+// Goblin need param which is array of token names.
+function getDexRelatedName(name, param=null) {
+    let specName = getName(dex, name, param);
+    console.assert(specName!=null, `Get name error, Dex: ${dex}, name: ${name}, param: ${param}`);
+    return specName;
+}
+
+function getDexRelatedContract(name) {
+    let contract = gContracts[dex][name];
+    console.assert(contract, `Get contract error, Dex: ${dex}, name: ${name}`);
+    return contract;
 }
 
 module.exports = {
     bnbAddress,
     MaxUint256,
     dex,
-    getContractInstance,
+    getDexRelatedName,
     getDexRelatedAddress,
+    getDexRelatedContract,
+    getContractInstance,
     setDex,
     setNetwork,
     getConfig,

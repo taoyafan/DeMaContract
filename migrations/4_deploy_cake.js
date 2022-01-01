@@ -6,7 +6,7 @@ const PancakeRouter = artifacts.require("PancakeRouter");
 const MasterChef = artifacts.require("MasterChef");
 
 const BigNumber = require("bignumber.js");
-let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
+let {saveToJson} = require('../js_utils/jsonRW.js');
 let {getProdInfo} = require('../js_utils/config.js');
 
 const {
@@ -31,22 +31,25 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson("CakeToken", cake.address, network);
         await cake.mint(accounts[0], BigNumber(1e25));      // 1e7
 
-        await deployer.deploy(
+        const factory = await deployer.deploy(
             PancakeFactory,            // Factory
             accounts[0]
         );
         saveToJson("PancakeFactory", PancakeFactory.address, network);
+        console.log(`INIT_CODE_PAIR_HASH: ${await factory.INIT_CODE_PAIR_HASH()}`)
 
         let router = await deployer.deploy(
             PancakeRouter,              // PancakeRouter
             PancakeFactory.address,
             addressJson.WBNB            // WBNB should be saved in addressJson after deploying cake.
         );
+        saveToJson("PancakeRouter", PancakeRouter.address, network);
 
         await deployer.deploy(
             SyrupBar,                   // SyrupBar
             CakeToken.address,
         );
+        saveToJson("SyrupBar", SyrupBar.address, network);
 
         let masterChef = await deployer.deploy(
             MasterChef,                 // MasterChef

@@ -5,6 +5,9 @@ const MdxGoblin = artifacts.require("MdxGoblin");
 const MdxReinvestment = artifacts.require("MdxReinvestment");
 const MdxToken = artifacts.require("MdxToken");
 const BSCPool = artifacts.require("BSCPool");
+const BoardRoomMDX = artifacts.require("BoardRoomMDX");
+const MdxStrategyAddTwoSidesOptimal = artifacts.require("MdxStrategyAddTwoSidesOptimal");
+const MdxStrategyWithdrawMinimizeTrading = artifacts.require("MdxStrategyWithdrawMinimizeTrading");
 
 const PancakeFactory = artifacts.require("PancakeFactory");
 const PancakeRouter = artifacts.require("PancakeRouter");
@@ -13,8 +16,10 @@ const CakeGoblin = artifacts.require("CakeGoblin");
 const CakeReinvestment = artifacts.require("CakeReinvestment");
 const CakeToken = artifacts.require("CakeToken");
 const MasterChef = artifacts.require("MasterChef");
+const CakeStrategyAddTwoSidesOptimal = artifacts.require("CakeStrategyAddTwoSidesOptimal");
+const CakeStrategyWithdrawMinimizeTrading = artifacts.require("CakeStrategyWithdrawMinimizeTrading");
 
-const g_getName = 
+const gGetName = 
 {
     "Mdx": {
         "Factory": () => "MdexFactory",
@@ -22,11 +27,15 @@ const g_getName =
         "DexPool": () => "BSCPool",
         "Reinvestment": () => "MdxReinvestment",
         "DexToken": () => "MdxToken",
+        "BoardRoom": () => "BoardRoomMDX",
+        "BoardRoomPoolId": () => 4,
         "Goblin": (names) => `Mdx${names[0]}${names[1]}Goblin`,
         "PoolId": (names) => `Mdx${names[0]}${names[1]}PoolId`,
         "FarmPoolId": (names) => `Mdx${names[0]}${names[1]}FarmPoolId`,
         "ProdId": (names) => `Mdx${names[0]}${names[1]}ProdId`,
         "ProdTokens": (prodId) => `MdxProd${prodId}Tokens`,
+        "StrategyAddTwoSidesOptimal": () => "MdxStrategyAddTwoSidesOptimal",
+        "StrategyWithdrawMinimizeTrading": () => "MdxStrategyWithdrawMinimizeTrading",
     },
     "Cake": {
         "Factory": () => "PancakeFactory",
@@ -34,15 +43,19 @@ const g_getName =
         "DexPool": () => "MasterChef",
         "Reinvestment": () => "CakeReinvestment",
         "DexToken": () => "CakeToken",
+        "BoardRoom": () => "MasterChef",
+        "BoardRoomPoolId": () => 0,
         "Goblin": (names) => `Cake${names[0]}${names[1]}Goblin`,
         "PoolId": (names) => `Cake${names[0]}${names[1]}PoolId`,
         "FarmPoolId": (names) => `Cake${names[0]}${names[1]}FarmPoolId`,
         "ProdId": (names) => `Cake${names[0]}${names[1]}ProdId`,
         "ProdTokens": (prodId) => `CakeProd${prodId}Tokens`,
+        "StrategyAddTwoSidesOptimal": () => "CakeStrategyAddTwoSidesOptimal",
+        "StrategyWithdrawMinimizeTrading": () => "CakeStrategyWithdrawMinimizeTrading",
     },
 }
 
-const g_contracts = {
+const gContracts = {
     "Mdx": {
         "Factory": MdexFactory,
         "Router": MdexRouter,
@@ -51,6 +64,9 @@ const g_contracts = {
         "Reinvestment": MdxReinvestment,
         "DexToken": MdxToken,
         "Goblin": MdxGoblin,
+        "BoardRoom": BoardRoomMDX,
+        "StrategyAddTwoSidesOptimal": MdxStrategyAddTwoSidesOptimal,
+        "StrategyWithdrawMinimizeTrading": MdxStrategyWithdrawMinimizeTrading,
     },
     "Cake": {
         "Factory": PancakeFactory,
@@ -60,23 +76,26 @@ const g_contracts = {
         "Reinvestment": CakeReinvestment,
         "DexToken": CakeToken,
         "Goblin": CakeGoblin,
+        "BoardRoom": MasterChef,
+        "StrategyAddTwoSidesOptimal": CakeStrategyAddTwoSidesOptimal,
+        "StrategyWithdrawMinimizeTrading": CakeStrategyWithdrawMinimizeTrading,
     },
 }
 
 function getName(dex, name, param=null) {
-    const specName = g_getName[dex][name](param);
-    console.assert(specName, `${name} name of ${dex} not found `);
+    const specName = gGetName[dex][name](param);
+    console.assert(specName!=null, `${name} name of ${dex} not found `);
     return specName;
 }
 
 function getAddress(addressJson, dex, name, param=null) {
     const address = addressJson[getName(dex, name, param)];
-    console.assert(address, `${name} address of ${dex} not found `);
+    console.assert(address!=null, `${name} address of ${dex} not found `);
     return address;
 }
 
 function getInstance(addressJson, dex, contractName, param=null) {
-    const contract = g_contracts[dex][contractName];
+    const contract = gContracts[dex][contractName];
     console.assert(contract, `${contractName} contract of ${dex} not found `);
     
     const address = contractName == "Pair" ? param : getAddress(addressJson, dex, contractName, param);
@@ -85,6 +104,7 @@ function getInstance(addressJson, dex, contractName, param=null) {
 }
 
 module.exports = {
+    gContracts,
     getName,
     getAddress,
     getInstance,
