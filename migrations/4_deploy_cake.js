@@ -45,7 +45,7 @@ module.exports = async function (deployer, network, accounts) {
         );
         saveToJson("PancakeRouter", PancakeRouter.address, network);
 
-        await deployer.deploy(
+        const syrupBar = await deployer.deploy(
             SyrupBar,                   // SyrupBar
             CakeToken.address,
         );
@@ -64,6 +64,7 @@ module.exports = async function (deployer, network, accounts) {
         // MasterChef related operations
 
         // - Transfer owner ship
+        syrupBar.transferOwnership(MasterChef.address);
         cake.transferOwnership(MasterChef.address);
 
         // - Initialize each lp pool
