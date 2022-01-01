@@ -2,7 +2,6 @@
 pragma solidity 0.6.12;
 
 import './../utils/Math.sol';
-import './libs/PancakeLibrary.sol';
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -196,9 +195,9 @@ contract PancakePair is PancakeERC20 {
         uint amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, 'Pancake: INSUFFICIENT_INPUT_AMOUNT');
         { // scope for reserve{0,1}Adjusted, avoids stack too deep errors
-        uint balance0Adjusted = (balance0.mul(10000).sub(amount0In.mul(25)))/10;
-        uint balance1Adjusted = (balance1.mul(10000).sub(amount1In.mul(25)))/10;
-        require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(1000**2), 'Pancake: K');
+        uint balance0Adjusted = (balance0.mul(10000).sub(amount0In.mul(25)));
+        uint balance1Adjusted = (balance1.mul(10000).sub(amount1In.mul(25)));
+        require(balance0Adjusted.mul(balance1Adjusted) >= uint(_reserve0).mul(_reserve1).mul(10000**2), 'Pancake: K');
         }
 
         _update(balance0, balance1, _reserve0, _reserve1);

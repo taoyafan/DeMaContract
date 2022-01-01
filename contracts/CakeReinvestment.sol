@@ -16,6 +16,7 @@ contract CakeReinvestment is AReinvestment {
 
     constructor(
         address _masterchef,
+        uint256 /* Don't need */,
         address _cake,
         uint256 _reserveRatio           // will divide by 10000, 0 means not reserved.
     ) public AReinvestment(_masterchef, _cake, _reserveRatio) {
