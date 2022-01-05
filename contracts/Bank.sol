@@ -358,8 +358,12 @@ contract Bank is Ownable, ReentrancyGuard {
 
         Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
 
-        // get DEMA rewards
-        _getBankRewards();
+        if (config.canPayRewardsLending() == 1) {
+            _getBankRewardsPerToken(token);
+        } else if (config.canPayRewardsLending() == 2) {
+            // get DEMA rewards
+            _getBankRewards();
+        }
 
         if (token == address(0)) {//Bnb
             SafeToken.safeTransferETH(msg.sender, amount);
@@ -504,8 +508,12 @@ contract Bank is Ownable, ReentrancyGuard {
             positions[posId].owner = address(0);        // Clear pos owner in case create again.
             user.posNum[prodId] = user.posNum[prodId].sub(1);
 
-            // Get all rewards. Note that it MUST after user.posNum update.
-            _getRewardsAllProd();
+            if (config.canPayRewardsProd() == 1) {
+                _getRewardsPerProd(prodId);
+            } else if (config.canPayRewardsProd() == 2) {
+                // Get all rewards. Note that it MUST after user.posNum update.
+                _getRewardsAllProd();
+            }
         }
 
         emit OpPosition(posId, amount.debts, amount.backToken);

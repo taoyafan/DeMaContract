@@ -8,4 +8,7 @@ interface IBankConfig {
     function getReserveBps() external view returns (uint256);
 
     function getLiquidateBps() external view returns (uint256);
+
+    function canPayRewardsLending() external view returns (uint256);
+    function canPayRewardsProd() external view returns (uint256);
 }

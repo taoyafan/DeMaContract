@@ -42,6 +42,7 @@ module.exports = async function (deployer, network, accounts) {
     let setReserveBps = 1000;   // 10%
     let setLiquidateBps = 1000;     // 10%
     await bankConfig.setParams(setReserveBps, setLiquidateBps, TripleSlopeModel.address);
+    await bankConfig.setCanPayRewards(2, 1);
     await bank.updateConfig(bankConfig.address);
 
     let banksInfo = getBanksInfo(network);
