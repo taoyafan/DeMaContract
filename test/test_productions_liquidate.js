@@ -1,34 +1,30 @@
 const WBNB = artifacts.require("WBNB");
 const ERC20Token = artifacts.require("ERC20Token");
-const MdxToken = artifacts.require("MdxToken");
 const Bank = artifacts.require("Bank");
 const{ expectRevert  } = require('@openzeppelin/test-helpers');
 
 const BigNumber = require("bignumber.js");
 BigNumber.config({ EXPONENTIAL_AT: 30 })
-const fs = require('fs')
 
 const file = `test/log/prod_liquidate.json`;
+const dex = "Cake";
 
 const {
     bnbAddress,
-    MaxUint256,
+    getContractInstance,
+    setDex,
     setNetwork,
     saveLogToFile,
     initFile,
     getStates,
     equal,
-    swapAllLpToToken0,
     transfer,
-    approve,
-    getBalance,
     swapExactTo,
     swapToExact,
     addLiquidate,
     removeAllLiquidity,
     swapToTarget,
     getR0R1,
-    getTokenAmountInLp,
     toWei,
     fromWei,
     toNum,
@@ -36,9 +32,9 @@ const {
     aAddB,
     aMulB,
     aDivB,
-    tokensFilter,
 } = require("../js_utils/utils");
 
+setDex(dex);
 const {addressJson, name2Address} = setNetwork('development', web3)
 
 const {
@@ -57,30 +53,27 @@ contract("TestProductionLiquidate", (accounts) => {
     let wbnb;
     let usdt;
     let busd;
-    let mdx;
+    let dexToken;
     let bank;
 
-    let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], ['Mdx', 'Busd']];
+    let tokenPairs = [['Bnb', 'Busd'], ['Usdt', 'Busd'], ['Usdt', 'Busd'], [dex, 'Busd']];
     let r = [[10000, 2000000], [2000000, 2000000], [2000000, 10000], [10000, 2000000]]
 
     before('Init', async () => {
         initFile(file);
 
-        // factory = await MdexFactory.at(addressJson.MdexFactory);
         wbnb = await WBNB.at(addressJson.WBNB);
         usdt = await ERC20Token.at(addressJson.USDT);
         busd = await ERC20Token.at(addressJson.BUSD);
-        // router = await MdexRouter.at(addressJson.MdexRouter);
-        mdx = await MdxToken.at(addressJson.MdxToken);
         bank = await Bank.at(addressJson.Bank);
-        // reinvestment = await MdxReinvestment.at(addressJson.MdxReinvestment);
+        dexToken = await getContractInstance("DexToken");
 
         // Deposit token in bank.
         let amount = toWei(2000);
         await bank.deposit(bnbAddress, amount, {from: accounts[0], value: amount});
 
-        await mdx.approve(bank.address, amount, {from: accounts[0]});
-        await bank.deposit(mdx.address, amount, {from: accounts[0]});
+        await dexToken.approve(bank.address, amount, {from: accounts[0]});
+        await bank.deposit(dexToken.address, amount, {from: accounts[0]});
 
         await usdt.approve(bank.address, amount, {from: accounts[0]});
         await bank.deposit(usdt.address, amount, {from: accounts[0]});
