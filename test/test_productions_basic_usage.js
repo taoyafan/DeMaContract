@@ -10,29 +10,16 @@ const dex = "Cake";
 
 const {
     bnbAddress,
-    MaxUint256,
     getContractInstance,
     setDex,
     setNetwork,
     saveLogToFile,
     initFile,
     getStates,
-    equal,
-    swapAllLpToToken0,
-    approve,
-    getBalance,
     addLiquidate,
     removeAllLiquidity,
-    swapToTarget,
-    getR0R1,
-    getTokenAmountInLp,
     toWei,
     fromWei,
-    aSubB,
-    aAddB,
-    aMulB,
-    aDivB,
-    tokensFilter,
 } = require("../js_utils/utils");
 
 setDex(dex);
