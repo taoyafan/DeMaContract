@@ -403,7 +403,7 @@ contract Bank is Ownable, ReentrancyGuard {
         if (posId == 0) {
             // Create a new position
             posId = currentPos;
-            currentPos ++;
+            currentPos++;
             positions[posId].owner = msg.sender;
             positions[posId].productionId = prodId;
 
@@ -441,13 +441,15 @@ contract Bank is Ownable, ReentrancyGuard {
             // Save the amount of borrow token after borrowing before goblin work.
             if (amount.isBorrowBnb[i]) {
                 amount.sendBnb = amount.sendBnb.add(borrow[i]);
-                require(amount.sendBnb <= address(this).balance && amount.debts[i] <= totalToken(production.borrowToken[i]),
+                require(amount.sendBnb <= address(this).balance && 
+                    (borrow[i] == 0 || amount.debts[i] <= totalToken(production.borrowToken[i])),
                     "insufficient Bnb in the bank");
                 amount.beforeToken[i] = address(this).balance.sub(amount.sendBnb);
 
             } else {
                 amount.beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
-                require(borrow[i] <= amount.beforeToken[i] && amount.debts[i] <= totalToken(production.borrowToken[i]),
+                require(borrow[i] <= amount.beforeToken[i] && 
+                    (borrow[i] == 0 || amount.debts[i] <= totalToken(production.borrowToken[i])),
                     "insufficient borrowToken in the bank");
                 amount.beforeToken[i] = amount.beforeToken[i].sub(borrow[i]);
                 SafeToken.safeApprove(production.borrowToken[i], address(production.goblin), borrow[i]);
