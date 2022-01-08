@@ -45,6 +45,6 @@ contract BankConfig is IBankConfig, Ownable {
         IInterestModel interestModel = address(modelForToken[token]) == address(0) ?
             defaultModel : modelForToken[token];
 
-        return interestModel.getInterestRate(debt, floating);
+        return interestModel.getInterestRate(debt, floating, token);
     }
 }
