@@ -140,7 +140,6 @@ abstract contract AStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStra
         // 4. send lpToken and borrowTokens back to the sender.
         lpToken.transfer(msg.sender, lpToken.balanceOf(address(this)));
 
-        // TODO This can be skip if left token is too little to save gas
         if (BNBRelative == address(0)) {
             token0.safeTransfer(msg.sender, token0.myBalance());
             token1.safeTransfer(msg.sender, token1.myBalance());

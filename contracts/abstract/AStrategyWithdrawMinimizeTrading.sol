@@ -262,7 +262,6 @@ abstract contract AStrategyWithdrawMinimizeTrading is Ownable, ReentrancyGuard, 
             else {
 
                 // na/da > nb/db, swap A to B. If almost same, don't swap
-                // TODO Do same thing in another file
                 if (na.mul(db) > nb.mul(da).add(1e25)) {
                     uint256 amount = _swapAToBWithDebtsRatio(ra, rb, da, db, na, nb);
                     amount = amount > na ? na : amount;
