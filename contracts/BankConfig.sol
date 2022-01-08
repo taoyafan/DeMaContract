@@ -1,13 +1,22 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./Interface/IBankConfig.sol";
-import "./Interface/IInterestModel.sol";
+import "./interface/IBankConfig.sol";
+import "./interface/IInterestModel.sol";
 
 contract BankConfig is IBankConfig, Ownable {
 
     uint256 public override getReserveBps;      // Will divide 10000
     uint256 public override getLiquidateBps;
+
+    // Whether auto pay rewards to user when withdraw?
+    // 0: Do not auto pay rewards.
+    // 1: Only pay related rewards.
+    // 2: Pay all rewards. (May cost a lot of gas)
+    uint256 public override canPayRewardsLending = 2;
+    uint256 public override canPayRewardsProd = 2;  // Production
+    
     IInterestModel public defaultModel;
 
     mapping(address => IInterestModel) modelForToken;
@@ -21,6 +30,13 @@ contract BankConfig is IBankConfig, Ownable {
         defaultModel = _interestModel;
     }
 
+    function setCanPayRewards(uint256 _canPayRewardsLending, uint256 _canPayRewardsProd) external onlyOwner {
+        require(_canPayRewardsLending < 3, "canPayRewardsLending can only be 0, 1, 2");
+        require(_canPayRewardsProd < 3, "canPayRewardsProd can only be 0, 1, 2");
+        canPayRewardsLending = _canPayRewardsLending;
+        canPayRewardsProd = _canPayRewardsProd;
+    }
+
     function setInterestModelForToken(address token, IInterestModel _interestModel) external onlyOwner {
         modelForToken[token] = _interestModel;
     }
@@ -29,6 +45,6 @@ contract BankConfig is IBankConfig, Ownable {
         IInterestModel interestModel = address(modelForToken[token]) == address(0) ?
             defaultModel : modelForToken[token];
 
-        return interestModel.getInterestRate(debt, floating);
+        return interestModel.getInterestRate(debt, floating, token);
     }
 }

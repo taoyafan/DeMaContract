@@ -7,13 +7,15 @@ const Farm = artifacts.require("Farm");
 const BigNumber = require("bignumber.js");
 const{ time } = require('@openzeppelin/test-helpers');
 
-let {saveToJson, readAddressJson} = require('../js_utils/jsonRW.js');
+let {saveToJson} = require('../js_utils/jsonRW.js');
 let {getBanksInfo} = require('../js_utils/config.js');
+
+const {setNetwork} = require("../js_utils/utils");
 
 module.exports = async function (deployer, network, accounts) {
 
     // Read address
-    const addressJson = readAddressJson(network)
+    const { addressJson } = setNetwork(network, web3);
 
     await deployer.deploy(TripleSlopeModel);
     const bankConfig = await deployer.deploy(BankConfig);
@@ -42,6 +44,7 @@ module.exports = async function (deployer, network, accounts) {
     let setReserveBps = 1000;   // 10%
     let setLiquidateBps = 1000;     // 10%
     await bankConfig.setParams(setReserveBps, setLiquidateBps, TripleSlopeModel.address);
+    await bankConfig.setCanPayRewards(2, 1);
     await bank.updateConfig(bankConfig.address);
 
     let banksInfo = getBanksInfo(network);
@@ -49,7 +52,7 @@ module.exports = async function (deployer, network, accounts) {
 
     for (info of banksInfo) {
         farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
-        await bank.addToken(info.tokenAddress, farmId);
+        await bank.addToken(addressJson[info.token], farmId);
         saveToJson(`Bank${info.token}FarmPoolId`, farmId, network);
         ++farmId;
     }

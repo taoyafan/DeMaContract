@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20Capped.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 
-import "./Interface/IDEMA.sol";
+import "./interface/IDEMA.sol";
 
 contract DEMA is IDEMA, ERC20Capped{
 

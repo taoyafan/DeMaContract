@@ -74,6 +74,11 @@ module.exports = {
     // },
     // Useful for private networks
     bsctest: {
+      // https://data-seed-prebsc-1-s1.binance.org:8545
+      // https://data-seed-prebsc-2-s1.binance.org:8545
+      // https://data-seed-prebsc-1-s2.binance.org:8545
+      // https://data-seed-prebsc-2-s2.binance.org:8545
+      networkCheckTimeout: 10000000,
       provider: () => new HDWalletProvider(privateKey, "https://data-seed-prebsc-1-s1.binance.org:8545"),
       network_id: 97,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
@@ -81,6 +86,7 @@ module.exports = {
       // production: true        // Treats this network as if it was a public net. (default: false)
     },
     bscmain: {
+      networkCheckTimeout: 10000000,
       provider: () => new HDWalletProvider(privateKey, "https://bsc-dataseed.binance.org"),
       network_id: 56,
       confirmations: 2,
@@ -90,6 +96,7 @@ module.exports = {
       // production: true        // Treats this network as if it was a public net. (default: false)
     },
     matic: {
+      networkCheckTimeout: 10000000,
       provider: () => new HDWalletProvider(privateKey, "https://rpc-mainnet.maticvigil.com/"),
       network_id: 137,
       confirmations: 2,
@@ -99,6 +106,7 @@ module.exports = {
       // production: true        // Treats this network as if it was a public net. (default: false)
     },
     hecotest: {
+      networkCheckTimeout: 10000000,
       provider: () => new HDWalletProvider(privateKey, "https://http-testnet.hecochain.com"),
       network_id: 256,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -6,8 +7,8 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "./Interface/IFarm.sol";
-import "./Interface/IDEMA.sol";
+import "./interface/IFarm.sol";
+import "./interface/IDEMA.sol";
 import "./interface/IUserProfile.sol";
 
 // Check all the div params MUST not be 0;
@@ -566,7 +567,12 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.totalShares = 0;
     }
 
-    function stop(uint256 poolId) external onlyOwner {
+    function stop(uint256 poolId) 
+        external
+        checkPoolId(poolId)
+        updateRewards(poolId, address(0)) 
+        onlyOwner 
+    {
         PoolInfo storage pool = poolInfo[poolId];
 
         // Burn the leftover amount.

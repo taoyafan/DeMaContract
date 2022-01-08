@@ -4,24 +4,25 @@ BigNumber.config({ EXPONENTIAL_AT: 30 })
 const fs = require('fs')
 const path = require('path');
 
-const MdxGoblin = artifacts.require("MdxGoblin");
-const MdexFactory = artifacts.require("MdexFactory");
 const WBNB = artifacts.require("WBNB");
 const ERC20Token = artifacts.require("ERC20Token");
-const MdexRouter = artifacts.require("MdexRouter");
-const MdexPair = artifacts.require("MdexPair");
 const Bank = artifacts.require("Bank");
-const Reinvestment = artifacts.require("Reinvestment");
 
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-
+let {gContracts, getName, getAddress, getInstance} = require('./dex_adapter.js');
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
 let addressJson = null;
 let name2Address = null;
 let web3 = null;
+let dex = "Mdx";        // Can set to "Cake"
+
+function setDex(_dex) {
+    console.assert(_dex == "Mdx" || _dex =="Cake", "Dex only support Mdx and Cake");
+    dex = _dex;
+}
 
 function setNetwork(network, _web3) {
     web3 = _web3
@@ -35,12 +36,14 @@ function setNetwork(network, _web3) {
         'Eth': addressJson.ETH,
         'Btc': addressJson.BTC,
         'Mdx': addressJson.MdxToken,
+        'Cake': addressJson.CakeToken,
         'Dema': addressJson.DEMA,
     };
 
     let address2Name = {};
     for (let key in name2Address) {
         let value = name2Address[key];
+        addressJson[key] = value;
         address2Name[value] = key;
     }
 
@@ -89,8 +92,8 @@ function saveLogToFile(file, name, data = null) {
     }
 }
 
-async function getStates(posId, userAddress, tokensName) {
-    let tokensAddress = [name2Address[tokensName[0]], name2Address[tokensName[1]]];
+async function getStates(posId, userAddress, tokenNames) {
+    let tokensAddress = [name2Address[tokenNames[0]], name2Address[tokenNames[1]]];
 
     let states = {tokensAddress: tokensAddress};
 
@@ -100,6 +103,7 @@ async function getStates(posId, userAddress, tokensName) {
         await getBalance(tokensAddress[1], userAddress),
         await getBalance(addressJson['DEMA'], userAddress),
         await getBalance(addressJson['MdxToken'], userAddress),
+        await getBalance(addressJson['CakeToken'], userAddress),
     ];
 
     // bank amount
@@ -168,8 +172,7 @@ async function getStates(posId, userAddress, tokensName) {
     states.userProdId = await bank.userAllProdId(userAddress);
 
     // Goblin info
-    let goblinAddress = addressJson[`Mdx${tokensName[0]}${tokensName[1]}Goblin`];
-    let goblin = await MdxGoblin.at(goblinAddress);
+    let goblin = await getContractInstance("Goblin", tokenNames);
     {
         states.goblin = {}
 
@@ -177,8 +180,8 @@ async function getStates(posId, userAddress, tokensName) {
         globalInfo = await goblin.globalInfo();
         states.goblin.globalInfo = {
             totalLp: BigNumber(globalInfo.totalLp),
-            totalMdx: BigNumber(globalInfo.totalMdx),
-            accMdxPerLp: BigNumber(globalInfo.accMdxPerLp),
+            totalDexToken: BigNumber(globalInfo.totalDexToken),
+            accDexTokenPerLp: BigNumber(globalInfo.accDexTokenPerLp),
             lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
         }
 
@@ -187,8 +190,8 @@ async function getStates(posId, userAddress, tokensName) {
         states.goblin.userInfo = {
             totalLp: BigNumber(userInfo.totalLp),
             tokensAmountInLp: await getTokenAmountInLp(tokensAddress, userInfo.totalLp),
-            earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
-            accMdxPerLpStored: BigNumber(userInfo.accMdxPerLpStored),
+            earnedDexTokenStored: BigNumber(userInfo.earnedDexTokenStored),
+            accDexTokenPerLpStored: BigNumber(userInfo.accDexTokenPerLpStored),
             lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
         }
 
@@ -199,45 +202,42 @@ async function getStates(posId, userAddress, tokensName) {
                                     
     }
 
-    // mdx pool lp amount
+    // Dex pool lp amount
     {
         let _tokens = tokensFilter(tokensAddress[0], tokensAddress[1]);
-        let factory = await MdexFactory.at(addressJson.MdexFactory);
+        let factory = await getContractInstance("Factory");
         let lpAddress = await factory.getPair(_tokens[0], _tokens[1]);
-        states.mdxPoolLpAmount = await getBalance(lpAddress, addressJson.BSCPool)
+        
+        let dexPool = await getContractInstance("DexPool");
+        states.dexPoolLpAmount = await getBalance(lpAddress, dexPool.address)
     }
 
     // Reinvestment info
     {
         states.reinvest = {};
-        let reinvestment = await Reinvestment.at(addressJson.Reinvestment);
+        let reinvestment = await getContractInstance("Reinvestment");
 
         // - global info
-        let globalInfo = await reinvestment.globalInfo();
         states.reinvest.globalInfo = {
-            totalShares: BigNumber(globalInfo.totalShares),
-            totalMdx: BigNumber(globalInfo.totalMdx),
-            accMdxPerShare: BigNumber(globalInfo.accMdxPerShare),
-            lastUpdateTime: BigNumber(globalInfo.lastUpdateTime),
+            totalShares: BigNumber(await reinvestment.totalShares()),
+            totalAmount: BigNumber(await reinvestment.totalAmount()),
         }; 
 
         // - user info
         async function getUserInfo(userAddress) {
-            let userInfo = await reinvestment.userInfo(userAddress);
             return {
-                totalShares: BigNumber(userInfo.totalShares),
-                earnedMdxStored: BigNumber(userInfo.earnedMdxStored),
-                accMdxPerShareStored: BigNumber(userInfo.accMdxPerShareStored),
-                lastUpdateTime: BigNumber(userInfo.lastUpdateTime),
+                userShares: BigNumber(await reinvestment.userShares(userAddress)),
+                userAmount: BigNumber(await reinvestment.userAmount(userAddress)),
             }; 
         }
-        states.reinvest.userInfo = await getUserInfo(goblinAddress)
+        states.reinvest.userInfo = await getUserInfo(goblin.address)
 
         let ownerAddress = await reinvestment.owner() 
         states.reinvest.ownerInfo = await getUserInfo(ownerAddress)
 
-        // - Mdx balance
-        states.reinvest.mdxBalance = await getBalance(addressJson.MdxToken, reinvestment.address)
+        // - DexToken balance
+        let dexToken = await getContractInstance("DexToken");
+        states.reinvest.DexTokenBalance = await getBalance(dexToken.address, reinvestment.address)
     }
 
     return states
@@ -279,9 +279,9 @@ async function swapAllLpToToken0(token0, token1, lpAmount) {
     [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -335,7 +335,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
         tokens[1-fromIdx] = addressJson.WBNB;
     }
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await getContractInstance("Router");
     await approve(tokens[fromIdx], router.address, 0, from);
     await approve(tokens[fromIdx], router.address, MaxUint256, from);
 
@@ -352,7 +352,7 @@ async function swapExactTo(tokens, fromIdx, fromAmount, from) {
 
 async function swapToExact(tokens, fromIdx, toAmount, from) {
     let wbnb = await WBNB.at(addressJson.WBNB);
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await getContractInstance("Router");
 
     if (tokens[fromIdx] == bnbAddress) {
         tokens[fromIdx] = addressJson.WBNB;
@@ -380,7 +380,7 @@ async function createPair(token0, token1) {
 
 async function getPair(token0, token1) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
 
     if (lpAddress == bnbAddress) {
@@ -405,7 +405,7 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
     let lpAddress = await getPair(token0, token1);
 
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     await transfer(token0, lpAddress, r0, from)
     await transfer(token1, lpAddress, r1, from)
     await lp.mint(from)
@@ -416,12 +416,12 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
 async function removeAllLiquidity(token0, token1, from) {
     [token0, token1] = tokensFilter(token0, token1);
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await getContractInstance("Factory");
 
     let lpAddress = await factory.getPair(token0, token1);
     let lpAmount = await getBalance(lpAddress, from);
 
-    let router = await MdexRouter.at(addressJson.MdexRouter);
+    let router = await getContractInstance("Router");
     await approve(lpAddress, router.address, lpAmount, from)
     await router.removeLiquidity(token0, token1,
         lpAmount, 0, 0, from, MaxUint256, {from: from});
@@ -477,9 +477,9 @@ function _swapAllToA(na, nb, ra, rb) {
 async function getR0R1(token0, token1, log = false) {
     [token0, token1] = tokensFilter(token0, token1);
 
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
 
     let token0InLp = await lp.token0()
     res = await lp.getReserves();
@@ -502,9 +502,9 @@ async function getTokenAmountInLp(tokens, lpAmount) {
     let [_r0, _r1] = await getR0R1(token0, token1)
 
     // Get the value of incLp
-    let factory = await MdexFactory.at(addressJson.MdexFactory);
+    let factory = await getContractInstance("Factory");
     let lpAddress = await factory.getPair(token0, token1);
-    let lp = await MdexPair.at(lpAddress)
+    let lp = await getContractInstance("Pair", lpAddress)
     let totalLp = await lp.totalSupply();
 
     let token0AmountInLp = BigNumber(_r0).multipliedBy(lpAmount).dividedToIntegerBy(totalLp)
@@ -559,9 +559,43 @@ function logObj(obj, name) {
     console.log(JSON.stringify(obj, null, 2))
 }
 
+// Pair need param which is pair address.
+// Goblin need param which is array of token names.
+async function getContractInstance(name, param=null) {
+    let instance = await getInstance(addressJson, dex, name, param);
+    console.assert(instance, `Get instance error, Dex: ${dex}, name: ${name}, param: ${param}`);
+    return instance;
+}
+
+// Goblin need param which is array of token names.
+function getDexRelatedAddress(name, param=null) {
+    let address = getAddress(addressJson, dex, name, param);
+    console.assert(address!=null, `Get address error, Dex: ${dex}, name: ${name}, param: ${param}`);
+    return address;
+}
+
+// Goblin need param which is array of token names.
+function getDexRelatedName(name, param=null) {
+    let specName = getName(dex, name, param);
+    console.assert(specName!=null, `Get name error, Dex: ${dex}, name: ${name}, param: ${param}`);
+    return specName;
+}
+
+function getDexRelatedContract(name) {
+    let contract = gContracts[dex][name];
+    console.assert(contract, `Get contract error, Dex: ${dex}, name: ${name}`);
+    return contract;
+}
+
 module.exports = {
     bnbAddress,
     MaxUint256,
+    dex,
+    getDexRelatedName,
+    getDexRelatedAddress,
+    getDexRelatedContract,
+    getContractInstance,
+    setDex,
     setNetwork,
     getConfig,
     erc20TokenGetBalance,

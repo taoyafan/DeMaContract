@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 // This is a test for plugin. 
 // The introduction will cost a lot of gas. We may use IPFS to save data.
 
-import "./Interface/IPlugin.sol";
+import "./interface/IPlugin.sol";
 
 contract PlgUserIntroduction is IPlugin{ 
     /// @notice Events

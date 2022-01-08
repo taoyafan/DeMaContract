@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -308,7 +309,7 @@ contract Bank is Ownable, ReentrancyGuard {
 
     function userEarnPerProd(address account, uint256 prodId) external view returns (uint256, uint256) {
         Production storage prod = productions[prodId];
-        return prod.goblin.userEarnedAmount(account);
+        return prod.goblin.userAmount(account);
     }
 
     /* ==================================== Write ==================================== */
@@ -357,8 +358,12 @@ contract Bank is Ownable, ReentrancyGuard {
 
         Farm.withdraw(bank.poolId, msg.sender, withdrawShares);
 
-        // get DEMA rewards
-        getBankRewards();
+        if (config.canPayRewardsLending() == 1) {
+            _getBankRewardsPerToken(token);
+        } else if (config.canPayRewardsLending() == 2) {
+            // get DEMA rewards
+            _getBankRewards();
+        }
 
         if (token == address(0)) {//Bnb
             SafeToken.safeTransferETH(msg.sender, amount);
@@ -398,7 +403,7 @@ contract Bank is Ownable, ReentrancyGuard {
         if (posId == 0) {
             // Create a new position
             posId = currentPos;
-            currentPos ++;
+            currentPos++;
             positions[posId].owner = msg.sender;
             positions[posId].productionId = prodId;
 
@@ -436,13 +441,15 @@ contract Bank is Ownable, ReentrancyGuard {
             // Save the amount of borrow token after borrowing before goblin work.
             if (amount.isBorrowBnb[i]) {
                 amount.sendBnb = amount.sendBnb.add(borrow[i]);
-                require(amount.sendBnb <= address(this).balance && amount.debts[i] <= totalToken(production.borrowToken[i]),
+                require(amount.sendBnb <= address(this).balance && 
+                    (borrow[i] == 0 || amount.debts[i] <= totalToken(production.borrowToken[i])),
                     "insufficient Bnb in the bank");
                 amount.beforeToken[i] = address(this).balance.sub(amount.sendBnb);
 
             } else {
                 amount.beforeToken[i] = SafeToken.myBalance(production.borrowToken[i]);
-                require(borrow[i] <= amount.beforeToken[i] && amount.debts[i] <= totalToken(production.borrowToken[i]),
+                require(borrow[i] <= amount.beforeToken[i] && 
+                    (borrow[i] == 0 || amount.debts[i] <= totalToken(production.borrowToken[i])),
                     "insufficient borrowToken in the bank");
                 amount.beforeToken[i] = amount.beforeToken[i].sub(borrow[i]);
                 SafeToken.safeApprove(production.borrowToken[i], address(production.goblin), borrow[i]);
@@ -503,8 +510,12 @@ contract Bank is Ownable, ReentrancyGuard {
             positions[posId].owner = address(0);        // Clear pos owner in case create again.
             user.posNum[prodId] = user.posNum[prodId].sub(1);
 
-            // Get all rewards. Note that it MUST after user.posNum update.
-            getRewardsAllProd();
+            if (config.canPayRewardsProd() == 1) {
+                _getRewardsPerProd(prodId);
+            } else if (config.canPayRewardsProd() == 2) {
+                // Get all rewards. Note that it MUST after user.posNum update.
+                _getRewardsAllProd();
+            }
         }
 
         emit OpPosition(posId, amount.debts, amount.backToken);
@@ -573,7 +584,29 @@ contract Bank is Ownable, ReentrancyGuard {
     /* ----------------- Get rewards ----------------- */
 
     // Send earned DEMA from per token bank to user.
-    function getBankRewardsPerToken(address token) public {
+    function getBankRewardsPerToken(address token) public nonReentrant{
+        _getBankRewardsPerToken(token);
+    }
+
+    // Send earned DEMA from all tokens to user.
+    function getBankRewards() external nonReentrant{
+        _getBankRewards();
+    }
+
+    // Get MDX and DEMA rewards of per production
+    function getRewardsPerProd(uint256 prodId) external nonReentrant{
+        _getRewardsPerProd(prodId);
+    }
+
+    // Get MDX and DEMA rewards of all productions
+    function getRewardsAllProd() external nonReentrant{
+        _getRewardsAllProd();
+    }
+
+    /* ==================================== Internal ==================================== */
+
+    // Send earned DEMA from per token bank to user.
+    function _getBankRewardsPerToken(address token) internal {
         TokenBank storage bank = banks[token];
         Farm.getStakeRewardsPerPool(bank.poolId, msg.sender);
 
@@ -585,14 +618,14 @@ contract Bank is Ownable, ReentrancyGuard {
     }
 
     // Send earned DEMA from all tokens to user.
-    function getBankRewards() public {
+    function _getBankRewards() internal {
         for (uint256 index = userBanksNum(msg.sender); index > 0; --index) {
-            getBankRewardsPerToken(userBankAddress(msg.sender, index - 1));
+            _getBankRewardsPerToken(userBankAddress(msg.sender, index - 1));
         }
     }
 
     // Get MDX and DEMA rewards of per production
-    function getRewardsPerProd(uint256 prodId) public {
+    function _getRewardsPerProd(uint256 prodId) internal {
         productions[prodId].goblin.getAllRewards(msg.sender);
 
         // Delete pool if no left pos.
@@ -600,17 +633,14 @@ contract Bank is Ownable, ReentrancyGuard {
         if (user.posNum[prodId] == 0) {
             EnumerableSet.remove(user.prodId, prodId);
         }
-
     }
 
     // Get MDX and DEMA rewards of all productions
-    function getRewardsAllProd() public {
+    function _getRewardsAllProd() internal {
         for (uint256 i = userProdNum(msg.sender); i > 0; --i) {
-            getRewardsPerProd(userProdId(msg.sender, i-1));
+            _getRewardsPerProd(userProdId(msg.sender, i-1));
         }
     }
-
-    /* ==================================== Internal ==================================== */
 
     function _addDebt(Position storage pos, Production storage production, uint256[2] memory debtVal) internal {
         for (uint256 i = 0; i < 2; ++i) {

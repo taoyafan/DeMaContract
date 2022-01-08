@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.6.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./Interface/IUserProfile.sol";
-import "./Interface/IPlugin.sol";
+import "./interface/IUserProfile.sol";
+import "./interface/IPlugin.sol";
 
 contract UserProfile is IUserProfile, Ownable {
 

@@ -1,6 +1,6 @@
 const MdxToken = artifacts.require('MdxToken');
 const BoardRoom = artifacts.require("BoardRoomMDX");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const BigNumber = require("bignumber.js");
 
@@ -27,7 +27,7 @@ contract("TestReinvestment", (accounts) => {
         // initiate
         mdxToken = await MdxToken.deployed();
         boardRoom = await BoardRoom.deployed();
-        reinvestment = await Reinvestment.deployed();
+        reinvestment = await MdxReinvestment.deployed();
         poolLengthBeforeAdd = await boardRoom.poolLength();
 
         poolLength = parseInt(await boardRoom.poolLength(), 10);
@@ -86,10 +86,10 @@ contract("TestReinvestment", (accounts) => {
         assert.equal(diffAccMdxPerShare, diffAccMdxPerShare);
     });
 
-    it("userEarnedAmount", async () => {
-        let accounts0EarnedAmount = await reinvestment.userEarnedAmount(accounts[0]);
+    it("userAmount", async () => {
+        let accounts0EarnedAmount = await reinvestment.userAmount(accounts[0]);
         assert.equal(accounts0EarnedAmount.toNumber(), depositAmount);
-        let accounts1EarnedAmount = await reinvestment.userEarnedAmount(accounts[1]);
+        let accounts1EarnedAmount = await reinvestment.userAmount(accounts[1]);
         assert.equal(accounts1EarnedAmount.toNumber(), 0);
     });
 

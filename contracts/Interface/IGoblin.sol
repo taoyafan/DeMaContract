@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.5.0 <0.8.0;
 
 
@@ -5,7 +6,7 @@ interface IGoblin {
     /* ==================================== Read ==================================== */
 
     /// @return Earned MDX and DEMA amount.
-    function userEarnedAmount(address account) external view returns (uint256, uint256);
+    function userAmount(address account) external view returns (uint256, uint256);
 
     /// @dev Get the lp amount at given posId.
     function posLPAmount(uint256 posId) external view returns (uint256);

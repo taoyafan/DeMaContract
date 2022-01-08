@@ -1,6 +1,6 @@
 const MdxToken = artifacts.require('MdxToken');
 const BoardRoom = artifacts.require("BoardRoomMDX");
-const Reinvestment = artifacts.require("Reinvestment");
+const MdxReinvestment = artifacts.require("MdxReinvestment");
 
 const BigNumber = require("bignumber.js");
 
@@ -29,7 +29,7 @@ contract("TestReinvestment", (accounts) => {
         mdxToken.transfer(user, depositAmount);
         boardRoom = await BoardRoom.deployed();
         await boardRoom.setCycle(cycles);
-        reinvestment = await Reinvestment.deployed();
+        reinvestment = await MdxReinvestment.deployed();
         poolLengthBeforeAdd = await boardRoom.poolLength();
     
         poolLength = parseInt(await boardRoom.poolLength(), 10);
@@ -105,8 +105,8 @@ contract("TestReinvestment", (accounts) => {
         // console.log(`boardUserInfoAfterUpdatePool :${JSON.stringify(boardUserInfoAfterUpdatePool)}`);
 
         let totalRewardsAfterUpdatePool = await reinvestment.totalRewards();
-        let userRewardsAfterUpdatePool = await reinvestment.userEarnedAmount(user);
-        let ownerRewardsAfterUpdatePool = await reinvestment.userEarnedAmount(owner);
+        let userRewardsAfterUpdatePool = await reinvestment.userAmount(user);
+        let ownerRewardsAfterUpdatePool = await reinvestment.userAmount(owner);
 
         console.log(`totalRewardsAfterUpdatePool: ${totalRewardsAfterUpdatePool}`);
         console.log(`userRewardsAfterUpdatePool: ${userRewardsAfterUpdatePool}`);

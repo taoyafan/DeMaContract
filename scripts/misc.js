@@ -13,9 +13,10 @@ const {addressJson} = setNetwork('bsctest', web3)
 async function transferToTestAccount(from) {
     const testAccounts = [
         // "0xBd3Befc7e3859CFfc6E3b85b5773F620780E2419",
-        "0xD56936ED720550AC0e0008e6b928884B7a3d82CD",
-        "0xdF385C23be07789a6115Ff371D68Cf056589B485",
-        "0x271e565C662c174aDFBe876D4c5d5Cb55a12427B",
+        // "0xD56936ED720550AC0e0008e6b928884B7a3d82CD",
+        // "0xdF385C23be07789a6115Ff371D68Cf056589B485",
+        // "0x271e565C662c174aDFBe876D4c5d5Cb55a12427B",
+        "0x47f0a028B5B3eF557ffEe65f88ffb3C52305e040",
     ];
 
     for (testAccount of testAccounts) {
