@@ -567,7 +567,12 @@ contract Farm is IFarm, Ownable, ReentrancyGuard {
         pool.totalShares = 0;
     }
 
-    function stop(uint256 poolId) external onlyOwner {
+    function stop(uint256 poolId) 
+        external
+        checkPoolId(poolId)
+        updateRewards(poolId, address(0)) 
+        onlyOwner 
+    {
         PoolInfo storage pool = poolInfo[poolId];
 
         // Burn the leftover amount.
