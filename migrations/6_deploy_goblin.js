@@ -31,6 +31,7 @@ module.exports = async function (deployer, network, accounts) {
     
     for (let dex of ["Mdx", "Cake"]) {
         setDex(dex);
+        console.log(`Begin to add goblin of ${dex}`);
 
         const productions = getProdInfo(network, dex);
         
@@ -52,12 +53,17 @@ module.exports = async function (deployer, network, accounts) {
         saveToJson(gFName("StrategyAddTwoSidesOptimal"), addStrategy.address, network);
     
         for (prod of productions) {
-    
+            console.log(`Begin to add goblin of ${prod.token0} and ${prod.token1}`);
+            
             prod.farmPoolId = await farm.nextPoolId();
             
             // Get dex pool id
             prod.dexPoolId = gFAddress("PoolId", [prod.token0, prod.token1]);
-    
+            
+            // Get token address
+            prod.token0Address = addressJson[prod.token0];
+            prod.token1Address = addressJson[prod.token1];
+            
             // Deploy
             prod.goblin = await deployer.deploy(
                 gFContract("Goblin"),

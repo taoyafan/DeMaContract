@@ -23,7 +23,9 @@ const {
 module.exports = async function (deployer, network, accounts) {
     
     if (network == 'development' || network == 'bsctest') {
-        const { addressJson } = setNetwork(network, web3);
+        console.log(`Begin to config MDX`);
+
+        let { addressJson } = setNetwork(network, web3);
         const busdAddress = addressJson.BUSD;
 
         await deployer.deploy(MdxToken)      // Mdex Token
@@ -112,10 +114,14 @@ module.exports = async function (deployer, network, accounts) {
         let poolId = 0;
         
         // Update addressJson in utils 
-        setNetwork(network, web3);
+        ({addressJson} = setNetwork(network, web3));
         
         for (prod of productions) {
             console.log(`Begin to config ${prod.token0} and ${prod.token1} of account ${accounts[0]}`);
+
+            // Get token address
+            prod.token0Address = addressJson[prod.token0];
+            prod.token1Address = addressJson[prod.token1];
 
             let lp = await createPair(prod.token0Address, prod.token1Address);
             await bscPool.add(1000, lp, false);

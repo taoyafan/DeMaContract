@@ -43,6 +43,7 @@ function setNetwork(network, _web3) {
     let address2Name = {};
     for (let key in name2Address) {
         let value = name2Address[key];
+        addressJson[key] = value;
         address2Name[value] = key;
     }
 

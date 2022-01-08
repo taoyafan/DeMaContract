@@ -22,7 +22,9 @@ const {
 module.exports = async function (deployer, network, accounts) {
 
     if (network == 'development' || network == 'bsctest') {
-        const { addressJson } = setNetwork(network, web3);
+        console.log(`Begin to config Cake`);
+
+        let { addressJson } = setNetwork(network, web3);
         setDex("Cake");
 
         // let cake = await deployer.deploy(CakeToken); // Has bug that cake is undefined
@@ -72,10 +74,14 @@ module.exports = async function (deployer, network, accounts) {
         let poolId = 1;
 
         // - Update addressJson in utils
-        setNetwork(network, web3);
+        ({ addressJson } = setNetwork(network, web3));
 
         for (prod of productions) {
             console.log(`Begin to config ${prod.token0} and ${prod.token1} of account ${accounts[0]}`);
+            
+            // Get token address
+            prod.token0Address = addressJson[prod.token0];
+            prod.token1Address = addressJson[prod.token1];
 
             let lp = await createPair(prod.token0Address, prod.token1Address);
             await masterChef.add(1000, lp, false);
