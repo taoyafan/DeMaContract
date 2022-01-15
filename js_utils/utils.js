@@ -11,6 +11,8 @@ const Bank = artifacts.require("Bank");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
+const networkNames = {97: "bsctest"}
+
 let {gContracts, getName, getAddress, getInstance} = require('./dex_adapter.js');
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
 
@@ -587,6 +589,14 @@ function getDexRelatedContract(name) {
     return contract;
 }
 
+function networkId2Name(id) {
+    if (id in networkNames) {
+        return networkNames[id];
+    } else {
+        throw new Error("Network id not support: ", id);
+    }
+}
+
 module.exports = {
     bnbAddress,
     MaxUint256,
@@ -626,4 +636,5 @@ module.exports = {
     aDivB,
     tokensFilter,
     logObj,
+    networkId2Name,
 }
