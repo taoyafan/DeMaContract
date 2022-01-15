@@ -105,7 +105,7 @@ javascript calling example:
 
 ``` javascript
 // Note: need to approve to addStrategy from user.
-function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, account) {
+function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, canSwap, account) {
     // pid is the production id should be number
     // tokens should be array of two address string
     // depositAmount should be array of deposit amount(BigNumber) of [token0, token1]
@@ -123,8 +123,8 @@ function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, ac
     }
 
     let strategyDate = web3.eth.abi.encodeParameters(
-        ["address", "address", "uint256", "uint256", "uint256"],
-        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount]);
+        ["address", "address", "uint256", "uint256", "uint256", "bool"],
+        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount, canSwap]);
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);
@@ -132,7 +132,7 @@ function BankPosCreate(pid, tokens, depositAmount, borrowAmount, minLPAmount, ac
     bank.methods.opPosition(0, pid, borrowAmount, data).send({from: account, value: bnbValue});
 }
 
-function BankPosAdd(posId, pid, tokens, depositAmount, borrowAmount, minLPAmount, account) {
+function BankPosAdd(posId, pid, tokens, depositAmount, borrowAmount, minLPAmount, canSwap, account) {
     // posId is the position id should be number
     // pid is the production id should be number
     // tokens should be array of two address string
@@ -151,8 +151,8 @@ function BankPosAdd(posId, pid, tokens, depositAmount, borrowAmount, minLPAmount
     }
 
     let strategyDate = web3.eth.abi.encodeParameters(
-        ["address", "address", "uint256", "uint256", "uint256"],
-        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount]);
+        ["address", "address", "uint256", "uint256", "uint256"， "bool"],
+        [tokens[0], tokens[1], depositAmount[0], depositAmount[1], minLPAmount, canSwap]);
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
         [addStrategyAddress, strategyDate]);

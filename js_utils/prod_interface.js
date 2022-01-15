@@ -55,7 +55,7 @@ async function withdraw(posId, tokensName, userAddress, withdrawRate, whichWantB
     await bank.opPosition(posId, 0, [0, 0], data, {from: userAddress});
 }
 
-async function _addLp(posId, userAddress, tokensName, amounts, borrows, minDebt) {
+async function _addLp(posId, userAddress, tokensName, amounts, borrows, minDebt, canSwap=true) {
     bank = await Bank.at(addressJson.Bank);
     let token0Address = name2Address[tokensName[0]];
     let token1Address = name2Address[tokensName[1]];
@@ -71,8 +71,8 @@ async function _addLp(posId, userAddress, tokensName, amounts, borrows, minDebt)
     let addStrategyAddress = gFAddress("StrategyAddTwoSidesOptimal")
 
     let strategyDate = web3.eth.abi.encodeParameters(
-        ["address", "address", "uint256", "uint256", "uint256"],
-        [token0Address, token1Address, amounts[0], amounts[1], minDebt]);
+        ["address", "address", "uint256", "uint256", "uint256", "bool"],
+        [token0Address, token1Address, amounts[0], amounts[1], minDebt, canSwap]);
 
     let data = web3.eth.abi.encodeParameters(
         ["address", "bytes" ],
