@@ -24,6 +24,16 @@ abstract contract AStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStra
     address public router;
     address public wBNB;
 
+    // Used in execute to prevent stack over deep
+    struct InputData {
+        address token0;
+        address token1;
+        uint256 token0Amount;
+        uint256 token1Amount;
+        uint256 minLPAmount;
+        bool canSwap;
+    }
+
     constructor(address _router) public {
         factory = IRouter(_router).factory();
         router = _router;
@@ -81,18 +91,20 @@ abstract contract AStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStra
         nonReentrant
         returns (uint256[2] memory)
     {
+        InputData memory dt;    // input data
         // 1. decode token and amount info, and transfer to contract.
-        (address token0, address token1, uint256 token0Amount, uint256 token1Amount, uint256 minLPAmount) =
-            abi.decode(data, (address, address, uint256, uint256, uint256));
+        // TODO change all interface related place
+        (dt.token0, dt.token1, dt.token0Amount, dt.token1Amount, dt.minLPAmount, dt.canSwap) =
+            abi.decode(data, (address, address, uint256, uint256, uint256, bool));
         {
-            require(((borrowTokens[0] == token0) && (borrowTokens[1] == token1)) ||
-                    ((borrowTokens[0] == token1) && (borrowTokens[1] == token0)), "borrowTokens not token0 and token1");
+            require(((borrowTokens[0] == dt.token0) && (borrowTokens[1] == dt.token1)) ||
+                    ((borrowTokens[0] == dt.token1) && (borrowTokens[1] == dt.token0)), "borrowTokens not token0 and token1");
 
-            if (token0Amount > 0 && token0 != address(0)) {
-                token0.safeTransferFrom(user, address(this), token0Amount);
+            if (dt.token0Amount > 0 && dt.token0 != address(0)) {
+                dt.token0.safeTransferFrom(user, address(this), dt.token0Amount);
             }
-            if (token1Amount > 0 && token1 != address(0)) {
-                token1.safeTransferFrom(user, address(this), token1Amount);
+            if (dt.token1Amount > 0 && dt.token1 != address(0)) {
+                dt.token1.safeTransferFrom(user, address(this), dt.token1Amount);
             }
         }
 
@@ -104,13 +116,13 @@ abstract contract AStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStra
             if (borrows[1] > 0 && borrowTokens[1] != address(0)) {
                 borrowTokens[1].safeTransferFrom(msg.sender, address(this), borrows[1]);
             }
-            if (token0 == address(0)){
-                token0 = wBNB;
-                BNBRelative = token1;
+            if (dt.token0 == address(0)){
+                dt.token0 = wBNB;
+                BNBRelative = dt.token1;
             }
-            if (token1 == address(0)){
-                token1 = wBNB;
-                BNBRelative = token0;
+            if (dt.token1 == address(0)){
+                dt.token1 = wBNB;
+                BNBRelative = dt.token0;
             }
 
             // change all BNB to WBNB if need.
@@ -121,40 +133,42 @@ abstract contract AStrategyAddTwoSidesOptimal is Ownable, ReentrancyGuard, IStra
         }
         // tokens are all ERC20 token now.
 
-        IPair lpToken = IPair(IFactory(factory).getPair(token0, token1));
+        IPair lpToken = IPair(IFactory(factory).getPair(dt.token0, dt.token1));
         // 2. Compute the optimal amount of token0 and token1 to be converted.
         {
-            token0.safeApprove(router, 0);
-            token0.safeApprove(router, uint256(-1));
+            dt.token0.safeApprove(router, 0);
+            dt.token0.safeApprove(router, uint256(-1));
 
-            token1.safeApprove(router, 0);
-            token1.safeApprove(router, uint256(-1));
+            dt.token1.safeApprove(router, 0);
+            dt.token1.safeApprove(router, uint256(-1));
 
-            // 3. swap and mint LP tokens.
-            calAndSwap(lpToken, token0, token1);
+            if (dt.canSwap) {
+                // 3. swap and mint LP tokens.
+                calAndSwap(lpToken, dt.token0, dt.token1);
+            }
 
-            (,, uint256 moreLPAmount) = IRouter(router).addLiquidity(token0, token1, token0.myBalance(), token1.myBalance(), 0, 0, address(this), now);
-            require(moreLPAmount >= minLPAmount, "insufficient LP tokens received");
+            (,, uint256 moreLPAmount) = IRouter(router).addLiquidity(dt.token0, dt.token1, dt.token0.myBalance(), dt.token1.myBalance(), 0, 0, address(this), now);
+            require(moreLPAmount >= dt.minLPAmount, "insufficient LP tokens received");
         }
 
         // 4. send lpToken and borrowTokens back to the sender.
         lpToken.transfer(msg.sender, lpToken.balanceOf(address(this)));
 
         if (BNBRelative == address(0)) {
-            token0.safeTransfer(msg.sender, token0.myBalance());
-            token1.safeTransfer(msg.sender, token1.myBalance());
+            dt.token0.safeTransfer(msg.sender, dt.token0.myBalance());
+            dt.token1.safeTransfer(msg.sender, dt.token1.myBalance());
         } else {
-            safeUnWrapperAndAllSend(token0, msg.sender);
-            safeUnWrapperAndAllSend(token1, msg.sender);
+            safeUnWrapperAndAllSend(dt.token0, msg.sender);
+            safeUnWrapperAndAllSend(dt.token1, msg.sender);
         }
 
-        if (borrowTokens[0] == token0 || (borrowTokens[0] == address(0) && token0 == wBNB))
+        if (borrowTokens[0] == dt.token0 || (borrowTokens[0] == address(0) && dt.token0 == wBNB))
         {
-            emit posDeposit([token0Amount, token1Amount]);
-            return [token0Amount, token1Amount];
+            emit posDeposit([dt.token0Amount, dt.token1Amount]);
+            return [dt.token0Amount, dt.token1Amount];
         } else {
-            emit posDeposit([token1Amount, token0Amount]);
-            return [token1Amount, token0Amount];
+            emit posDeposit([dt.token1Amount, dt.token0Amount]);
+            return [dt.token1Amount, dt.token0Amount];
         }
     }
 

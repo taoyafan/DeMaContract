@@ -179,8 +179,8 @@ contract("TestAddStrategy", (accounts) => {
 
                     it(`Call execute`, async () => {
                         let data = web3.eth.abi.encodeParameters(
-                            ["address", "address", "uint256", "uint256", "uint256"],
-                            [token0, token1, amount0, amount1, 0]);
+                            ["address", "address", "uint256", "uint256", "uint256", "bool"],
+                            [token0, token1, amount0, amount1, 0, true]);
 
                         await addStrategy.execute(user, [token0, token1], [borrow0, borrow1],
                             [borrow0, borrow1], data, {from: goblin, value: value})
