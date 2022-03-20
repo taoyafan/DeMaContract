@@ -26,59 +26,66 @@ function getMktSellAmount(aIn, rIn, rOut) {
 //      1: 还贷后全部转换为 Token1
 //      2: 还贷后不再转换
 function expectReturn(ns, ds, rs, rate, whichWantBack) {
-    let leftDebts = [ds[0] * (1 - rate), ds[1] * (1 - rate)];
-    let leftAmount = [ns[0] * (1 - rate), ns[1] * (1 - rate)];
-
-    let repayAmount = [ds[0] * rate, ds[1] * rate];
-    ns = [ns[0] * rate, ns[1] * rate];
-
+    let leftDebts = [ds[0] * (1 - rate), ds[1] * (1 - rate)]
+    let leftAmount = [ns[0] * (1 - rate), ns[1] * (1 - rate)]
+  
+    let repayAmount = [ds[0] * rate, ds[1] * rate]
+    ns = [ns[0] * rate, ns[1] * rate]
+    rs = [rs[0] - ns[0], rs[1] - ns[1]]
+  
+    let dr = [0, 0]
+  
     // 1. 计算还贷后的剩余数量
-    {
-        if (ns[0] >= repayAmount[0] && ns[1] >= repayAmount[1]) {
-            
-            // 无需交易，直接还贷
-            ns[0] -= repayAmount[0];
-            ns[1] -= repayAmount[1];
-            
-        } else if (ns[0] >= repayAmount[0] && getMktSellAmount(ns[0] - repayAmount[0], rs[0], rs[1]) > (repayAmount[1] - ns[1])) {
-    
-            // 无法直接还贷，将多余的 Token0 转换为 Token1 足以还贷
-            ns[0] -= repayAmount[0] + getMktSellInAmount(repayAmount[1] - ns[1], rs[0], rs[1]);
-            ns[1] = 0;
-    
-        } else if (ns[1] >= repayAmount[1] && getMktSellAmount(ns[1] - repayAmount[1], rs[1], rs[0]) > (repayAmount[0] - ns[0])) {
-    
-            // 无法直接还贷，将多余的 Token1 转换为 Token0 足以还贷
-            ns[1] -= repayAmount[1] + getMktSellInAmount(repayAmount[0] - ns[0], rs[1], rs[0]);
-            ns[0] = 0;
-    
-        } else {
-    
-            // 资金不足以还贷，无剩余本金
-            ns[0] = 0;
-            ns[1] = 0;
-        }
-    }
-
-    console.log(`Surplus amounts after repay is ${ns}`);
-
-    // 2. 按照用户要求的返回方式进行交易
-    if (whichWantBack == 0 && ns[1] > 0) {
-        ns[0] += getMktSellAmount(ns[1], rs[1], rs[0]);
-        ns[1] = 0;
-    
-    } else if (whichWantBack == 1 && ns[0] > 0) {
-        ns[1] += getMktSellAmount(ns[0], rs[0], rs[1]);
-        ns[0] = 0;
-    
+    // {
+    if (ns[0] >= repayAmount[0] && ns[1] >= repayAmount[1]) {
+  
+      // 无需交易，直接还贷
+      ns[0] -= repayAmount[0]
+      ns[1] -= repayAmount[1]
+  
+    } else if (ns[0] >= repayAmount[0] && getMktSellAmount(ns[0] - repayAmount[0], rs[0], rs[1]) > (repayAmount[1] - ns[1])) {
+  
+      // 无法直接还贷，将多余的 Token0 转换为 Token1 足以还贷
+      dr = [getMktSellInAmount(repayAmount[1] - ns[1], rs[0], rs[1]), -(repayAmount[1] - ns[1])]
+      ns[0] -= repayAmount[0] + getMktSellInAmount(repayAmount[1] - ns[1], rs[0], rs[1])
+      ns[1] = 0
+  
+  
+    } else if (ns[1] >= repayAmount[1] && getMktSellAmount(ns[1] - repayAmount[1], rs[1], rs[0]) > (repayAmount[0] - ns[0])) {
+  
+      // 无法直接还贷，将多余的 Token1 转换为 Token0 足以还贷
+      dr = [-(repayAmount[0] - ns[0]), getMktSellInAmount(repayAmount[0] - ns[0], rs[1], rs[0])]
+      ns[1] -= repayAmount[1] + getMktSellInAmount(repayAmount[0] - ns[0], rs[1], rs[0])
+      ns[0] = 0
+  
     } else {
-        // 不再交易
+  
+      // 资金不足以还贷，无剩余本金
+      ns[0] = 0
+      ns[1] = 0
     }
-
+    // }
+  
+    rs = [rs[0] + dr[0], rs[1] + dr[1]]
+    // console.log(`Surplus amounts after repay is ${ns}`)
+  
+    // 2. 按照用户要求的返回方式进行交易
+    if (whichWantBack === 0 && ns[1] > 0) {
+      ns[0] += getMktSellAmount(ns[1], rs[1], rs[0])
+      ns[1] = 0
+  
+    } else if (whichWantBack === 1 && ns[0] > 0) {
+      ns[1] += getMktSellAmount(ns[0], rs[0], rs[1])
+      ns[0] = 0
+  
+    } else {
+      // 不再交易
+    }
+  
     console.log(`Return amount is ${ns}`)
     console.log(`Left amount is ${leftAmount}`)
     console.log(`Left debts is ${leftDebts}`)
-
+  
     return ns
 }
 
