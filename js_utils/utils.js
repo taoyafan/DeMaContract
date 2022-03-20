@@ -166,6 +166,7 @@ async function getStates(posId, userAddress, tokenNames) {
     let allPosIdAndHealth = await bank.posIdAndHealth(0, MaxUint256);
     [states.allPosId, states.allPosHealth] = [allPosIdAndHealth[0], allPosIdAndHealth[1]];
     for (i = 0; i < states.allPosHealth.length; i++) {
+        states.allPosId[i] = BigNumber(states.allPosId[i]);
         states.allPosHealth[i] = BigNumber(states.allPosHealth[i]);
     }
 
