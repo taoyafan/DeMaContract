@@ -1,14 +1,60 @@
 global.artifacts = artifacts
-const BigNumber = require("bignumber.js");
+const Bank = artifacts.require("Bank");
 
+const BigNumber = require("bignumber.js");
 const { assert } = require('console');
 let {
     bnbAddress,
+    fromWei,
+    setDex,
     setNetwork,
+    getBalance,
     transfer,
     removeAllLiquidity,
+    getContractInstance,
 } = require('../js_utils/utils.js');
-const {addressJson} = setNetwork('bsctest', web3)
+
+let {getBanksInfo} = require('../js_utils/config.js');
+
+async function  getBankRewards(network, from) {
+    const {addressJson} = setNetwork(network, web3)
+    let bankConfig = getBanksInfo(network);
+    
+    const bank = await Bank.at(addressJson.Bank);
+    
+    for (const configPerToken of bankConfig) {
+        const tokenName = configPerToken.token;
+        const tokenAddress = addressJson[tokenName];
+        console.log(`Start to get reward of ${tokenName}, address: ${tokenAddress}`);
+
+        const info =  await bank.banks(tokenAddress); 
+        const totalReserve = BigNumber(info.totalReserve);
+        console.log(`Total reserve is ${fromWei(totalReserve)}`);
+
+        // Get rewards
+        if (totalReserve > 0) {
+            const beforeBalance = await getBalance(tokenAddress, from);
+            await bank.withdrawReserve(tokenAddress, from, totalReserve);
+            const afterBalance = await getBalance(tokenAddress, from);
+            const reveivedBalance = afterBalance.minus(beforeBalance);
+            console.log(`Reserved successd with amount is ${fromWei(reveivedBalance)}`);
+        }
+
+        console.log('\n')
+    }
+}
+
+async function getDexRewards(dex, from) {
+    setDex(dex);
+    const reinvestment = await getContractInstance("Reinvestment");
+    const balance = await reinvestment.userAmount(from);
+    console.log(`User balance of ${dex}: ${fromWei(balance)}`);
+
+    await reinvestment.withdraw(balance);
+    
+    const afterBalance = await reinvestment.userAmount(from);
+    console.log(`After withdrawn, user balance of ${dex}: ${fromWei(afterBalance)}`);
+}
 
 async function transferToTestAccount(from) {
     const testAccounts = [
@@ -42,11 +88,19 @@ function main(callback) {
     async function fun() {
         try {
             const networkId = await web3.eth.net.getId();
-            assert(networkId == 97)
-            const accounts = await web3.eth.getAccounts();
             
-            // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
-            await transferToTestAccount(accounts[0]);
+            if (networkId == 97) {
+                const network = 'bsctest';
+                const {addressJson} = setNetwork(network, web3)
+                const accounts = await web3.eth.getAccounts();
+                
+                // await getBankRewards(network, accounts[0])
+                // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
+                await transferToTestAccount(accounts[0]);
+                // await getDexRewards('Mdx', accounts[0]);
+                // await getDexRewards('Cake', accounts[0]);
+            }
+            
         } catch(err) {
             console.error(err)
         }
