@@ -21,6 +21,9 @@ module.exports = async function(deployer, network, accounts) {
         saveToJson("ETH", eth.address, network);
         saveToJson("BTC", btc.address, network);
         saveToJson("DEMA", dema.address, network);
+    } else if (network == 'bscmain' || network == 'matic') {
+        await deployer.deploy(DEMA);
+        saveToJson("DEMA", DEMA.address, network);
     } else {
         throw new Error('Init for other network unfinished');
     }
