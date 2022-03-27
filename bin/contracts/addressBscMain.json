@@ -7,5 +7,11 @@
   "MdxToken": "0x9c65ab58d8d978db963e63f2bfb7121627e3a739",
   "CakeToken": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
   "UserProfile": "0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94",
-  "DEMA": "0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1"
+  "DEMA": "0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1",
+  "TripleSlopeModel": "0x226b6767e16b4fec42e5fd8d320c999f0349ec34",
+  "BankConfig": "0x6fd136d28de7594b0322f172f67616b322997d41",
+  "Farm": "0x48f062b77198762ab0444b9a83b1a62d5b7b9e60",
+  "Bank": "0x961f3403c02d61ab4ec400abea133d4c64689dd8",
+  "BankUsdtFarmPoolId": 0,
+  "BankBnbFarmPoolId": 1
 }
