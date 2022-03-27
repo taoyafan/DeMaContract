@@ -87,7 +87,7 @@ module.exports = {
     },
     bscmain: {
       networkCheckTimeout: 10000000,
-      provider: () => new HDWalletProvider(privateKey, "https://bsc-dataseed.binance.org"),
+      provider: () => new HDWalletProvider(privateKey, "https://bsc-dataseed4.ninicoin.io/"),
       network_id: 56,
       confirmations: 2,
       timeoutBlocks: 200,
@@ -97,12 +97,12 @@ module.exports = {
     },
     matic: {
       networkCheckTimeout: 10000000,
-      provider: () => new HDWalletProvider(privateKey, "https://rpc-mainnet.maticvigil.com/"),
+      provider: () => new HDWalletProvider(privateKey, "https://matic-mainnet.chainstacklabs.com"),
       network_id: 137,
       confirmations: 2,
       timeoutBlocks: 200,
       gas: 8000000,           // Gas sent with each transaction (default: ~6700000)
-      gasPrice: 3500000000,   // 3.5 gwei (in wei)
+      gasPrice: 50000000000,   // 50 gwei (in wei)
       // production: true        // Treats this network as if it was a public net. (default: false)
     },
     hecotest: {
