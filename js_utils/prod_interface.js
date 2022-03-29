@@ -21,7 +21,7 @@ const {
 } = require("./utils");
 const gFAddress = getDexRelatedAddress;
 
-const { addressJson, name2Address } = getConfig();
+const { addressJson, name2Address, web3 } = getConfig();
 
 async function createPosition(tokensName, userAddress, amounts, borrows, minDebt) {
     bank = await Bank.at(addressJson.Bank);

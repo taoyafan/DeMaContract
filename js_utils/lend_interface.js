@@ -17,7 +17,7 @@ const {
     aDivB,
 } = require("./utils");
 
-const { addressJson, name2Address } = getConfig();
+const { addressJson, name2Address, web3 } = getConfig();
 
 async function bankDeposit(tokenName, amount, user) {
     console.log(`-------------- Depositing ${fromWei(amount)} ${tokenName} --------------`)
