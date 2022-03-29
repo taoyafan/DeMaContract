@@ -50,10 +50,12 @@ async function getDexRewards(dex, from) {
     const balance = await reinvestment.userAmount(from);
     console.log(`User balance of ${dex}: ${fromWei(balance)}`);
 
-    await reinvestment.withdraw(balance);
-    
-    const afterBalance = await reinvestment.userAmount(from);
-    console.log(`After withdrawn, user balance of ${dex}: ${fromWei(afterBalance)}`);
+    if (balance > 0){
+        await reinvestment.withdraw(balance);
+        
+        const afterBalance = await reinvestment.userAmount(from);
+        console.log(`After withdrawn, user balance of ${dex}: ${fromWei(afterBalance)}`);
+    }
 }
 
 async function transferToTestAccount(from) {
@@ -96,8 +98,8 @@ function main(callback) {
                 
                 // await getBankRewards(network, accounts[0])
                 // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
-                await transferToTestAccount(accounts[0]);
-                // await getDexRewards('Mdx', accounts[0]);
+                // await transferToTestAccount(accounts[0]);
+                await getDexRewards('Mdx', accounts[0]);
                 // await getDexRewards('Cake', accounts[0]);
             }
             
