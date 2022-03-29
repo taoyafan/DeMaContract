@@ -47,6 +47,9 @@
     "getstatus:test": "truffle exec ./scripts/get_status.js --network bsctest",
     "misc:test": "truffle exec ./scripts/misc.js --network bsctest",
 
+    "openpos:bsc": "truffle exec ./scripts/open_position.js --network bscmain",
+    "dexinit:bsc": "truffle exec ./scripts/dex_init.js --network bscmain",
+
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",
 
@@ -61,6 +64,8 @@
     "vbankconfig:bsc": "truffle run verify BankConfig@0x6fd136d28de7594b0322f172f67616b322997d41 --network bscmain",
     "vfarm:bsc": "truffle run verify Farm@0x48f062b77198762ab0444b9a83b1a62d5b7b9e60 --network bscmain",
     "vbank:bsc": "truffle run verify Bank@0x961f3403c02d61ab4ec400abea133d4c64689dd8 --network bscmain",
+    "vgoblin:bsc": "truffle run verify CakeGoblin@0x139abA041E1B446F7f7aF551eE8a98fA4Cd82261 --network bscmain",
+    "vreinvest:bsc": "truffle run verify CakeReinvestment@0x5532c7ae6762c9d2c00bb760ec45d023b9760732 --network bscmain",
 
     "testbank": "truffle test ./test/test_bank.js",
     "testuser": "truffle test ./test/test_UserProfile.js --show-events",
