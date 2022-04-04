@@ -42,4 +42,8 @@ contract MdxReinvestment is AReinvestment {
     function _dexWithdraw(uint256 amount) internal override {
         boardRoom.withdraw(boardRoomPid, amount);
     }
+
+    function _recoverCheck(address token) internal override {
+        require(token != dexToken, "Recover token cannot be MDX");
+    }
 }
