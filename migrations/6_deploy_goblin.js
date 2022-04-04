@@ -23,8 +23,8 @@ const [gFName, gFAddress, gFContract, gFInstance] =
     [getDexRelatedName, getDexRelatedAddress, getDexRelatedContract, getContractInstance];
 
 const migrateTable = {
-    allDexs: ["Cake"],
-    reinvestment:       false,
+    allDexs: ["Mdx", "Cake"],
+    reinvestment:       true,
     withdrawStrategy:   true,
     addStrategy:        true,
     goblin:             true,

@@ -212,11 +212,11 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
                 borrowTokens[1] == token1 ||
                 borrowTokens[1] == address(0), "borrowTokens[1] not token0 and token1");
 
-        // 1. Get the position's LP balance and LP total supply.
-        uint256 lpBalance = posLPAmount[id];
         uint256[2] storage N = principal[id];
 
         if (N[0] > 0 || N[1] > 0) {
+            // Get the position's LP balance and LP total supply.
+            uint256 lpBalance = posLPAmount[id];
             uint256 lpSupply = lpToken.totalSupply();
             // Ignore pending mintFee as it is insignificant
 
@@ -350,7 +350,9 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         (address strategy, bytes memory ext) = abi.decode(data, (address, bytes));
         require(strategiesOk[strategy], "unapproved work strategy");
 
-        lpToken.transfer(strategy, lpToken.balanceOf(address(this)));
+        if (lpToken.balanceOf(address(this)) > 0) {
+            lpToken.transfer(strategy, lpToken.balanceOf(address(this)));
+        }
 
         for (uint256 i = 0; i < 2; ++i) {
             // transfer the borrow token.
@@ -386,15 +388,6 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         // Handle stake reward.
         temp.afterLPAmount = posLPAmount[id];
 
-        // Update principal.
-        uint256[2] storage N = principal[id];
-        (uint256 ra, uint256 rb,) = lpToken.getReserves();
-
-        if (borrowTokens[0] == token1 || (borrowTokens[0] == address(0) && token1 == wBNB)){
-            // If reverse
-            (ra, rb) = (rb, ra);
-        }
-
         // 4. Update stored info after withdraw or deposit.
 
         // If withdraw some LP.
@@ -402,65 +395,31 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
             temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
             farm.withdraw(poolId, account, temp.deltaAmount);
 
-            if (deltaN[0] > 0 || deltaN[1] > 0){
-                // Decrease some principal.
-                if (N[0] > 0) {
-                    uint256 decN0 = _getEqAmount(deltaN[1], rb, ra);
-                    if (N[0] > deltaN[0].add(decN0)) {
-                        N[0] = N[0].sub(deltaN[0]).sub(decN0);
-                    } else {
-                        N[0] = 1;   // Never return to 0
-                    }
-                } else {
-                    // N[1] >= 0
-                    uint256 decN1 = _getEqAmount(deltaN[0], ra, rb);
-                    if (N[1] > deltaN[1].add(decN1)) {
-                        N[1] = N[1].sub(deltaN[1]).sub(decN1);
-                    } else {
-                        N[1] = 1;   // Never return to 0
-                    }
-                }
+            (/* token0 */, /* token1 */, uint256 rate, uint256 whichWantBack) =
+                abi.decode(ext, (address, address, uint256, uint256));
+
+            // If it is repay, don't update principle.
+            if (whichWantBack < 3) {
+                _updatePrinciple(id, true, borrowTokens, deltaN, rate);
             }
         }
-
         // If depoist some LP.
         else if (temp.beforeLPAmount < temp.afterLPAmount) {
             temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
             farm.stake(poolId, account, temp.deltaAmount);
-
-            if (N[0] == 0 && N[1] == 0) {
-                // First time open the position, get the principal.
-                // if deltaN[0] / deltaN[1] > ra / rb, that means token0 is worth more than token1.
-                if (deltaN[0].mul(rb) > deltaN[1].mul(ra)) {
-                    uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
-                    N[0] = deltaN[0].add(incN0);
-                } else {
-                    uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
-                    N[1] = deltaN[1].add(incN1);
-                }
-            } else {
-                // Not the first time.
-                if (deltaN[0] > 0 || deltaN[1] > 0){
-                    // Increase some principal.
-                    if (N[0] > 0) {
-                        uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
-                        N[0] = N[0].add(deltaN[0]).add(incN0);
-                    } else {
-                        // N[1] > 0
-                        uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
-                        N[1] = N[1].add(deltaN[1]).add(incN1);
-                    }
-                }
-            }
+            _updatePrinciple(id, false, borrowTokens, deltaN, 0);
         }
 
         // 5. Send tokens back.
         for (uint256 i = 0; i < 2; ++i) {
             if (borrowTokens[i] == address(0)) {
-                SafeToken.safeTransferETH(msg.sender, address(this).balance);
+                uint256 borrowTokenAmount = address(this).balance;
+                if (borrowTokenAmount > 0) {
+                    SafeToken.safeTransferETH(msg.sender, borrowTokenAmount);
+                }
             } else {
                 uint256 borrowTokenAmount = borrowTokens[i].myBalance();
-                if(borrowTokenAmount > 0){
+                if(borrowTokenAmount > 0) {
                     SafeToken.safeTransfer(borrowTokens[i], msg.sender, borrowTokenAmount);
                 }
             }
@@ -524,10 +483,14 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         for (uint256 i = 0; i < 2; ++i) {
             if (borrowTokens[i] == address(0)) {
                 tokensLiquidate[i] = address(this).balance;
-                SafeToken.safeTransferETH(msg.sender, tokensLiquidate[i]);
+                if (tokensLiquidate[i] > 0) {
+                    SafeToken.safeTransferETH(msg.sender, tokensLiquidate[i]);
+                }
             } else {
                 tokensLiquidate[i] = borrowTokens[i].myBalance();
-                borrowTokens[i].safeTransfer(msg.sender, tokensLiquidate[i]);
+                if (tokensLiquidate[i] > 0) {
+                    borrowTokens[i].safeTransfer(msg.sender, tokensLiquidate[i]);
+                }
             }
 
             // Clear principal
@@ -588,6 +551,76 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
     ) internal pure virtual returns (uint256);
 
     // ------------------------------------------------------------------------
+
+    function _updatePrinciple(
+        uint256 id,
+        bool isWithdraw,
+        address[2] calldata borrowTokens,
+        uint256[2] memory deltaN,     // Only used for deposit
+        uint256 rate    // Only used for withdraw
+    ) 
+        internal 
+    {
+        // Update principal.
+        uint256[2] storage N = principal[id];
+        (uint256 ra, uint256 rb,) = lpToken.getReserves();
+
+        if (borrowTokens[0] == token1 || (borrowTokens[0] == address(0) && token1 == wBNB)) {
+            // If reverse
+            (ra, rb) = (rb, ra);
+        }
+
+        // If withdraw some LP.
+        if (isWithdraw) {
+
+            if (deltaN[0] > 0 || deltaN[1] > 0) {
+                // Decrease some principal.
+                if (N[0] > 0) {
+                    if (rate < 10000) {
+                        N[0] = N[0].mul(10000 - rate).div(10000);
+                    } else {
+                        N[0] = 1;   // Never return to 0
+                    }
+                } else {
+                    // N[1] >= 0
+                    if (rate < 10000) {
+                        N[1] = N[1].mul(10000 - rate).div(10000);
+                    } else {
+                        N[1] = 1;   // Never return to 0
+                    }
+                }
+            }
+        }
+
+        // If depoist some LP.
+        else {
+
+            if (N[0] == 0 && N[1] == 0) {
+                // First time open the position, get the principal.
+                // if deltaN[0] / deltaN[1] > ra / rb, that means token0 is worth more than token1.
+                if (deltaN[0].mul(rb) > deltaN[1].mul(ra)) {
+                    uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
+                    N[0] = deltaN[0].add(incN0);
+                } else {
+                    uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
+                    N[1] = deltaN[1].add(incN1);
+                }
+            } else {
+                // Not the first time.
+                if (deltaN[0] > 0 || deltaN[1] > 0){
+                    // Increase some principal.
+                    if (N[0] > 0) {
+                        uint256 incN0 = _getMktSellAmount(deltaN[1], rb, ra);
+                        N[0] = N[0].add(deltaN[0]).add(incN0);
+                    } else {
+                        // N[1] > 0
+                        uint256 incN1 = _getMktSellAmount(deltaN[0], ra, rb);
+                        N[1] = N[1].add(deltaN[1]).add(incN1);
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * @dev Return equivalent output given the input amount and the status of Uniswap reserves.
@@ -694,7 +727,11 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
      * @param value The number of tokens to transfer to `to`.
      */
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
-        token.safeTransfer(to, value);
+        if (token == address(0)) {
+            SafeToken.safeTransferETH(to, value);
+        } else {
+            SafeToken.safeTransfer(token, to, value);
+        }
     }
 
     /**

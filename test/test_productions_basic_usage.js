@@ -77,7 +77,7 @@ contract("TestProduction", (accounts) => {
         //     forEachTokenPair(tokenPairs[i], r[i]);
         // }
 
-        forEachTokenPair(tokenPairs[1], r[1]);
+        forEachTokenPair(tokenPairs[2], r[2]);
 
 
         async function forEachTokenPair(tokensName, r) {
@@ -92,13 +92,13 @@ contract("TestProduction", (accounts) => {
                 borrows.forEach((a, i, arr) => { arr[i] = r[i] / 10000 * a })
             })
 
-            // for (deposits of depositArray) {
-            //     for (borrows of borrowsArray) {
-            //         forEachBorrow(tokensName, deposits, borrows, r);
-            //     }
-            // }
+            for (deposits of depositArray) {
+                for (borrows of borrowsArray) {
+                    forEachBorrow(tokensName, deposits, borrows, r);
+                }
+            }
 
-            forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
+            // forEachBorrow(tokensName, depositArray[2], borrowsArray[3], r);
 
             async function forEachBorrow(tokensName, deposits, borrows, r) {
 
@@ -182,7 +182,7 @@ contract("TestProduction", (accounts) => {
 
                         it(`Repay ${withdrawRate/100}%`, async () => {
                             let [deposits, borrows] = await convertWithdrawFormat(beforeStates, withdrawRate, 3);
-                            await checkPosResult(beforeStates, afterStates, deposits, borrows)
+                            await checkPosResult(beforeStates, afterStates, deposits, borrows, true)
                         })
                     })
 
