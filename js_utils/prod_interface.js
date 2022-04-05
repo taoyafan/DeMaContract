@@ -21,7 +21,7 @@ const {
 } = require("./utils");
 const gFAddress = getDexRelatedAddress;
 
-const { addressJson, name2Address } = getConfig();
+const { addressJson, name2Address, web3 } = getConfig();
 
 async function createPosition(tokensName, userAddress, amounts, borrows, minDebt) {
     bank = await Bank.at(addressJson.Bank);
@@ -179,7 +179,7 @@ async function convertWithdrawFormat(beforeStates, withdrawRate, whichWantBack) 
 }
 
 // Assuming there is no time elapse
-async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowAmounts) {
+async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowAmounts, isRepay=false) {
     const tokens = afterStates.tokensAddress;
 
     for (i = 0; i < 2; ++i) {
@@ -248,26 +248,19 @@ async function checkPosResult(beforeStates, afterStates, depositAmounts, borrowA
             }
         } else {
             // Withdraw
-
-            if (beforeStates.goblin.principals[0].toNumber() > 0) {
-                targetPrincipal[0] = await getEqAmount(tokens, depositAmounts, 0);
+            if (isRepay) {
+                targetPrincipal = [0, 0]    // Not change
             } else {
-                targetPrincipal[1] = await getEqAmount(tokens, depositAmounts, 1);
+                rate = afterStates.posInfo.lpAmount.toNumber() / 
+                        beforeStates.posInfo.lpAmount.toNumber()
+
+                targetPrincipal = beforeStates.goblin.principals.map(p => -p*(1-rate))
             }
         }
     }
 
     for (i = 0; i < 2; ++i) {
         let principal = aSubB(afterStates.goblin.principals[i], beforeStates.goblin.principals[i]);
-        if (targetPrincipal[i] < 0) {
-            // It's a withdraw operation
-            
-            if (BigNumber(-targetPrincipal[i]).isGreaterThan(beforeStates.goblin.principals[i])) 
-            {
-                // Withdraw all token
-                targetPrincipal[i] = BigNumber(beforeStates.goblin.principals[i])
-            }
-        }
 
         // If remove pos, We don't care the principal.
         if (afterStates.posInfo.lpAmount.toNumber() != 0) {

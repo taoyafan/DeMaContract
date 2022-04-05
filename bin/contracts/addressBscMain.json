@@ -1,3 +1,32 @@
 {
-  "UserProfile": "0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94"
+  "WBNB": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+  "USDT": "0x55d398326f99059ff775485246999027b3197955",
+  "BUSD": "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
+  "ETH": "0x2170ed0880ac9a755fd29b2688956bd959f933f8",
+  "BTC": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c",
+  "MdxToken": "0x9c65ab58d8d978db963e63f2bfb7121627e3a739",
+  "CakeToken": "0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82",
+  "MasterChef": "0x73feaa1eE314F8c655E354234017bE2193C9E24E",
+  "PancakeFactory": "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
+  "PancakeRouter": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
+  "CakeBnbUsdtPoolId": 264,
+  "UserProfile": "0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94",
+  "DEMA": "0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1",
+  "TripleSlopeModel": "0x226b6767e16b4fec42e5fd8d320c999f0349ec34",
+  "BankConfig": "0x6fd136d28de7594b0322f172f67616b322997d41",
+  "Farm": "0x48f062b77198762ab0444b9a83b1a62d5b7b9e60",
+  "Bank": "0x961f3403c02d61ab4ec400abea133d4c64689dd8",
+  "BankUsdtFarmPoolId": 0,
+  "BankBnbFarmPoolId": 1,
+  "CakeReinvestment": "0x5532c7ae6762c9d2c00bb760ec45d023b9760732",
+  "CakeStrategyWithdrawMinimizeTrading": "0x01165F18B41a4a3a72f4aacEea764aC81B698916",
+  "CakeStrategyAddTwoSidesOptimal": "0x10602Ae100a46E2A4E61f848112416561b62De7d",
+  "CakeBnbUsdtGoblin": "0x139abA041E1B446F7f7aF551eE8a98fA4Cd82261",
+  "CakeBnbUsdtFarmPoolId": 2,
+  "CakeBnbUsdtProdId": 1,
+  "CakeUsdtBnbProdId": 1,
+  "CakeProd1Tokens": [
+    "Bnb",
+    "Usdt"
+  ]
 }

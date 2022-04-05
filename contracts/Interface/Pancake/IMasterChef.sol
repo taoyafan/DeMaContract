@@ -2,6 +2,8 @@
 pragma solidity ^0.6.12;
 
 interface IMasterChef {
+    function syrup() view external returns(address);
+    
     function cakePerBlock() view external returns(uint);
     function totalAllocPoint() view external returns(uint);
 

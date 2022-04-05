@@ -18,41 +18,52 @@ module.exports = async function (deployer, network, accounts) {
     const { addressJson } = setNetwork(network, web3);
 
     await deployer.deploy(TripleSlopeModel);
-    const bankConfig = await deployer.deploy(BankConfig);
+    const model = await TripleSlopeModel.deployed();
+    saveToJson("TripleSlopeModel", model.address, network);
+
+    await deployer.deploy(BankConfig);
+    const bankConfig = await BankConfig.deployed();
+    saveToJson("BankConfig", bankConfig.address, network);
+
     const dema = await DEMA.at(addressJson.DEMA);
-    const farm = await deployer.deploy(
+    await deployer.deploy(
         Farm,
-        UserProfile.address,
+        addressJson.UserProfile,
         dema.address,
         500,    // inviterBonusRatio 5%
         500     // bonusRatio 5%
     );
-    const bank = await deployer.deploy(
+    const farm = await Farm.deployed();
+    saveToJson("Farm", farm.address, network);
+
+    await deployer.deploy(
         Bank,
-        Farm.address
+        farm.address
     );
+    const bank = await Bank.deployed();
+    saveToJson("Bank", bank.address, network);
 
     // Add minter of dema for farm.
-    dema.addMinter(farm.address);
-
-    saveToJson("TripleSlopeModel", TripleSlopeModel.address, network);
-    saveToJson("BankConfig", bankConfig.address, network);
-    saveToJson("Farm", farm.address, network);
-    saveToJson("Bank", bank.address, network);
+    await dema.addMinter(farm.address);
+    console.log("addMinter succeed");
 
     // Add bank config
     let setReserveBps = 1000;   // 10%
     let setLiquidateBps = 1000;     // 10%
     await bankConfig.setParams(setReserveBps, setLiquidateBps, TripleSlopeModel.address);
+    console.log("setParams succeed");
     await bankConfig.setCanPayRewards(2, 1);
+    console.log("setCanPayRewards succeed");
     await bank.updateConfig(bankConfig.address);
+    console.log("updateConfig succeed");
 
     let banksInfo = getBanksInfo(network);
-    let farmId = 0;
+    let farmId = await farm.nextPoolId();
 
     for (info of banksInfo) {
         farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
         await bank.addToken(addressJson[info.token], farmId);
+        console.log(`addToken for ${info.token} succeed`);
         saveToJson(`Bank${info.token}FarmPoolId`, farmId, network);
         ++farmId;
     }

@@ -11,7 +11,7 @@ const Bank = artifacts.require("Bank");
 const bnbAddress = '0x0000000000000000000000000000000000000000'
 const MaxUint256 = BigNumber("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-const networkNames = {97: "bsctest"}
+const networkNames = {97: "bsctest", 56: "bscmain"}
 
 let {gContracts, getName, getAddress, getInstance} = require('./dex_adapter.js');
 let {saveToJson, readAddressJson} = require('./jsonRW.js');
@@ -20,15 +20,17 @@ let addressJson = null;
 let name2Address = null;
 let web3 = null;
 let dex = "Mdx";        // Can set to "Cake"
+let network = "development";
 
 function setDex(_dex) {
     console.assert(_dex == "Mdx" || _dex =="Cake", "Dex only support Mdx and Cake");
     dex = _dex;
 }
 
-function setNetwork(network, _web3) {
+function setNetwork(_network, _web3) {
+    network = _network
     web3 = _web3
-    addressJson = readAddressJson(network);
+    addressJson = readAddressJson(_network);
 
     name2Address = {
         'Bnb': bnbAddress,
@@ -57,7 +59,7 @@ function getConfig() {
         throw new Error('Haven\'t set network');
     }
 
-    return {addressJson, name2Address}
+    return {addressJson, name2Address, web3}
 }
 
 // Return a BigNumber of balance that has divided decimals
@@ -166,6 +168,7 @@ async function getStates(posId, userAddress, tokenNames) {
     let allPosIdAndHealth = await bank.posIdAndHealth(0, MaxUint256);
     [states.allPosId, states.allPosHealth] = [allPosIdAndHealth[0], allPosIdAndHealth[1]];
     for (i = 0; i < states.allPosHealth.length; i++) {
+        states.allPosId[i] = BigNumber(states.allPosId[i]);
         states.allPosHealth[i] = BigNumber(states.allPosHealth[i]);
     }
 
@@ -407,13 +410,16 @@ async function addLiquidate(token0, token1, r0, r1, from) {
 
     let lpAddress = await getPair(token0, token1);
 
-    let lp = await getContractInstance("Pair", lpAddress)
-    await transfer(token0, lpAddress, r0, from)
-    await transfer(token1, lpAddress, r1, from)
-    await lp.mint(from)
+    if (network != 'bscmain') {
+        let lp = await getContractInstance("Pair", lpAddress)
 
-    console.log(`After init add liquidity:`)
-    await getR0R1(token0, token1, true);
+        await transfer(token0, lpAddress, r0, from)
+        await transfer(token1, lpAddress, r1, from)
+        await lp.mint(from)
+
+        console.log(`After init add liquidity:`)
+        await getR0R1(token0, token1, true);
+    }
 }
 
 async function removeAllLiquidity(token0, token1, from) {

@@ -37,7 +37,7 @@ contract CakeGoblin is AGoblin {
     }
 
     function _dexPoolPendingRewards() internal view override returns (uint256) {
-        return IMasterChef(dexPool).pendingCake(0, address(this));
+        return IMasterChef(dexPool).pendingCake(dexPoolId, address(this));
     }
 
     function _dexPoolDeposit(uint256 amount) internal override {

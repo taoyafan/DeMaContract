@@ -13,6 +13,7 @@ contract CakeReinvestment is AReinvestment {
     using SafeMath for uint256;
 
     IMasterChef public masterChef;
+    address public syrup;
 
     constructor(
         address _masterchef,
@@ -21,6 +22,7 @@ contract CakeReinvestment is AReinvestment {
         uint256 _reserveRatio           // will divide by 10000, 0 means not reserved.
     ) public AReinvestment(_masterchef, _cake, _reserveRatio) {
         masterChef = IMasterChef(_masterchef);
+        syrup = masterChef.syrup();
     }
 
     /* ==================================== Internal ==================================== */
@@ -40,5 +42,10 @@ contract CakeReinvestment is AReinvestment {
 
     function _dexWithdraw(uint256 amount) internal override {
         masterChef.leaveStaking(amount);
+    }
+
+    function _recoverCheck(address token) internal override {
+        require(token != dexToken, "Recover token cannot be Cake");
+        require(token != syrup, "Recover token cannot be syrup");
     }
 }

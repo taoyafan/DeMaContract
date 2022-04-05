@@ -146,6 +146,8 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
 
     function _dexWithdraw(uint256 amount) internal virtual;
 
+    function _recoverCheck(address token) internal virtual;
+
     // ------------------------------------------------------------------------
 
     /// @dev try to withdraw dexToken with amount from board room.
@@ -169,8 +171,13 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
 
     // Recover ERC20 tokens (Rather than dexToken) that were accidentally sent to this smart contract.
     function recover(address token, address to, uint256 value) external onlyOwner nonReentrant {
-        require(token != dexToken, "Recover token cannot be dexToken");
-        token.safeTransfer(to, value);
+        _recoverCheck(token);
+        
+        if (token == address(0)) {
+            SafeToken.safeTransferETH(to, value);
+        } else {
+            SafeToken.safeTransfer(token, to, value);
+        }
     }
 
     // Used when DEX is closed.
