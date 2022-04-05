@@ -25,11 +25,12 @@ function mdxInit(callback) {
             // await addLiquidate(addressJson.BTC, addressJson.USDT, BigNumber(10e18), BigNumber(500000e18), accounts[0]);
             // await addLiquidate(addressJson.ETH, addressJson.USDT, BigNumber(100e18), BigNumber(400000e18), accounts[0]);
             // await addLiquidate(addressJson.DEMA, addressJson.USDT, BigNumber(250000e18), BigNumber(500000e18), accounts[0]);
-            setDex("Mdx");  // 0.5U
-            await addLiquidate(addressJson.Mdx, addressJson.USDT, BigNumber(20000e18), BigNumber(10000e18), accounts[0]);
             
-            setDex("Cake"); // 1U
-            await addLiquidate(addressJson.Cake, addressJson.USDT, BigNumber(10000e18), BigNumber(10000e18), accounts[0]);
+            // setDex("Mdx");  // 0.5U
+            // await addLiquidate(addressJson.Mdx, addressJson.USDT, BigNumber(20000e18), BigNumber(10000e18), accounts[0]);
+            
+            setDex("Cake"); // 6U
+            await addLiquidate(addressJson.Cake, addressJson.USDT, BigNumber(1000e18), BigNumber(6000e18), accounts[0]);
 
         } else if (network == 'bscmain') {
             setDex("Cake"); 

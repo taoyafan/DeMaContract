@@ -113,6 +113,8 @@ function main(callback) {
                 
                 // await getBankRewards(network, accounts[0])
                 
+                setDex("Cake");
+                await removeAllLiquidity(addressJson.Cake, addressJson.USDT, accounts[0]);
                 // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
                 
                 // await getDexRewards('Mdx', accounts[0]);
