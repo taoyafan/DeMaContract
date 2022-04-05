@@ -25,8 +25,8 @@ const [gFName, gFAddress, gFContract, gFInstance] =
 const migrateTable = {
     allDexs: ["Mdx", "Cake"],
     reinvestment:       true,
-    withdrawStrategy:   true,
-    addStrategy:        true,
+    withdrawStrategy:   false,
+    addStrategy:        false,
     goblin:             true,
 }
 
