@@ -18,14 +18,14 @@
   "Bank": "0x961f3403c02d61ab4ec400abea133d4c64689dd8",
   "BankUsdtFarmPoolId": 0,
   "BankBnbFarmPoolId": 1,
-  "CakeReinvestment": "0x5532c7ae6762c9d2c00bb760ec45d023b9760732",
+  "CakeReinvestment": "0xDdd2fEc7132950037CC81a0EBD5Bd91738558895",
   "CakeStrategyWithdrawMinimizeTrading": "0x01165F18B41a4a3a72f4aacEea764aC81B698916",
   "CakeStrategyAddTwoSidesOptimal": "0x10602Ae100a46E2A4E61f848112416561b62De7d",
-  "CakeBnbUsdtGoblin": "0x139abA041E1B446F7f7aF551eE8a98fA4Cd82261",
-  "CakeBnbUsdtFarmPoolId": 2,
-  "CakeBnbUsdtProdId": 1,
-  "CakeUsdtBnbProdId": 1,
-  "CakeProd1Tokens": [
+  "CakeBnbUsdtGoblin": "0x2a93b94AC5B88F59693d2bF31e2aE88584b2a689",
+  "CakeBnbUsdtFarmPoolId": 3,
+  "CakeBnbUsdtProdId": 2,
+  "CakeUsdtBnbProdId": 2,
+  "CakeProd2Tokens": [
     "Bnb",
     "Usdt"
   ]
