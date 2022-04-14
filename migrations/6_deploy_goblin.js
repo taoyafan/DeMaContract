@@ -24,9 +24,11 @@ const [gFName, gFAddress, gFContract, gFInstance] =
 
 const migrateTable = {
     allDexs: ["Cake"],
-    reinvestment:       true,
+    reinvestment:       false,
     withdrawStrategy:   false,
     addStrategy:        false,
+
+    // TODO when deploy goblin, need to add dex pool id in address.json
     goblin:             true,
 }
 
@@ -100,7 +102,7 @@ module.exports = async function (deployer, network, accounts) {
                     gFContract("Goblin"),
                     addressJson.Bank,
                     addressJson.Farm,
-                    prod.farmPoolId,                     // Farm pool id, Goblin begin from 100
+                    prod.farmPoolId,                     // Farm pool id
                     reinvestment.address,
                     gFAddress("DexPool"),
                     prod.dexPoolId,                      // Bsc pool id

@@ -173,11 +173,16 @@ function getProdInfo(network, dex="Mdx") {
     } else if (network == "bscmain") {
         productions = {
             "Cake": [
-                {
-                    token0: "Bnb",
-                    token1: "Usdt",
-                    rewardFirstPeriod: BigNumber(5415).multipliedBy(1e18),
-                },
+                // {
+                //     token0: "Bnb",
+                //     token1: "Usdt",
+                //     rewardFirstPeriod: BigNumber(5415).multipliedBy(1e18),
+                // },
+                // {
+                //     token0: "Bnb",
+                //     token1: "Busd",
+                //     rewardFirstPeriod: BigNumber(5415).multipliedBy(1e18),
+                // },
             ]
         }
     } else {

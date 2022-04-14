@@ -10,6 +10,9 @@
   "PancakeFactory": "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73",
   "PancakeRouter": "0x10ED43C718714eb63d5aA57B78B54704E256024E",
   "CakeBnbUsdtPoolId": 264,
+  "CakeUsdtBnbPoolId": 264,
+  "CakeBnbBusdPoolId": 252,
+  "CakeBusdBnbPoolId": 252,
   "UserProfile": "0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94",
   "DEMA": "0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1",
   "TripleSlopeModel": "0x226b6767e16b4fec42e5fd8d320c999f0349ec34",
@@ -29,5 +32,13 @@
   "CakeProd2Tokens": [
     "Bnb",
     "Usdt"
+  ],
+  "CakeBnbBusdGoblin": "0xCC57BE24f39a3d831Be47BFB38C62e57821664F7",
+  "CakeBnbBusdFarmPoolId": 5,
+  "CakeBnbBusdProdId": 3,
+  "CakeBusdBnbProdId": 3,
+  "CakeProd3Tokens": [
+    "Bnb",
+    "Busd"
   ]
 }
