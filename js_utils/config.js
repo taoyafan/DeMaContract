@@ -55,14 +55,18 @@ function getBanksInfo(network) {
         ]
     } else if (network == "bscmain") {
         bankInfo = [
-            {
-                token: "Usdt",
-                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
-            },
-            {
-                token: "Bnb",
-                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
-            },
+            // {
+            //     token: "Usdt",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Bnb",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Busd",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
         ]
     } else {
         throw new Error("Network not support");

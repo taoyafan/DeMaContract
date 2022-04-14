@@ -18,6 +18,7 @@
   "Bank": "0x961f3403c02d61ab4ec400abea133d4c64689dd8",
   "BankUsdtFarmPoolId": 0,
   "BankBnbFarmPoolId": 1,
+  "BankBusdFarmPoolId": 4,
   "CakeReinvestment": "0xDdd2fEc7132950037CC81a0EBD5Bd91738558895",
   "CakeStrategyWithdrawMinimizeTrading": "0x01165F18B41a4a3a72f4aacEea764aC81B698916",
   "CakeStrategyAddTwoSidesOptimal": "0x10602Ae100a46E2A4E61f848112416561b62De7d",

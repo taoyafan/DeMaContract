@@ -61,7 +61,7 @@ module.exports = async function (deployer, network, accounts) {
     let farmId = await farm.nextPoolId();
 
     for (info of banksInfo) {
-        farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
+        await farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
         await bank.addToken(addressJson[info.token], farmId);
         console.log(`addToken for ${info.token} succeed`);
         saveToJson(`Bank${info.token}FarmPoolId`, farmId, network);

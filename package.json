@@ -47,6 +47,7 @@
     "getstatus:test": "truffle exec ./scripts/get_status.js --network bsctest",
     "misc:test": "truffle exec ./scripts/misc.js --network bsctest",
 
+    "bankAddPool:bsc": "truffle exec ./scripts/bank_add_pool.js --network bscmain",
     "openpos:bsc": "truffle exec ./scripts/open_position.js --network bscmain",
     "dexinit:bsc": "truffle exec ./scripts/dex_init.js --network bscmain",
 
