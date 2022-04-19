@@ -50,6 +50,7 @@
     "bankAddPool:bsc": "truffle exec ./scripts/bank_add_pool.js --network bscmain",
     "openpos:bsc": "truffle exec ./scripts/open_position.js --network bscmain",
     "dexinit:bsc": "truffle exec ./scripts/dex_init.js --network bscmain",
+    "misc:bsc": "truffle exec ./scripts/misc.js --network bscmain",
 
     "console": "truffle console",
     "consolebsc": "truffle console --network bsctest",

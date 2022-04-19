@@ -12,6 +12,7 @@ let {
     transfer,
     removeAllLiquidity,
     getContractInstance,
+    networkId2Name,
 } = require('../js_utils/utils.js');
 
 let {getBanksInfo} = require('../js_utils/config.js');
@@ -30,7 +31,7 @@ async function reinvest(dex, network) {
     console.log(`After amount: ${fromWei(afterBalance)}`)
 }
 
-async function  getBankRewards(network, from) {
+async function  checkBankRewards(network, from, isWithdraw=false) {
     const {addressJson} = setNetwork(network, web3)
     let bankConfig = getBanksInfo(network);
     
@@ -46,7 +47,7 @@ async function  getBankRewards(network, from) {
         console.log(`Total reserve is ${fromWei(totalReserve)}`);
 
         // Get rewards
-        if (totalReserve > 0) {
+        if (totalReserve > 0 && isWithdraw) {
             const beforeBalance = await getBalance(tokenAddress, from);
             await bank.withdrawReserve(tokenAddress, from, totalReserve);
             const afterBalance = await getBalance(tokenAddress, from);
@@ -58,13 +59,13 @@ async function  getBankRewards(network, from) {
     }
 }
 
-async function getDexRewards(dex, from) {
+async function checkDexRewards(dex, from, isWithdraw=false) {
     setDex(dex);
     const reinvestment = await getContractInstance("Reinvestment");
     const balance = await reinvestment.userAmount(from);
     console.log(`User balance of ${dex}: ${fromWei(balance)}`);
 
-    if (balance > 0){
+    if (balance > 0 && isWithdraw) {
         await reinvestment.withdraw(balance);
         
         const afterBalance = await reinvestment.userAmount(from);
@@ -104,24 +105,28 @@ function main(callback) {
     async function fun() {
         try {
             const networkId = await web3.eth.net.getId();
+            const network = networkId2Name(networkId)
+
+            const {addressJson} = setNetwork(network, web3)
+            const accounts = await web3.eth.getAccounts();
             
-            if (networkId == 97) {
-                const network = 'bsctest';
-                const {addressJson} = setNetwork(network, web3)
-                const accounts = await web3.eth.getAccounts();
+            if (network == "bsctest") {
                 // await transferToTestAccount(accounts[0]);
                 
-                // await getBankRewards(network, accounts[0])
+                // await checkBankRewards(network, accounts[0])
                 
                 // setDex("Cake");
                 // await removeAllLiquidity(addressJson.Cake, addressJson.USDT, accounts[0]);
                 // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
                 
-                // await getDexRewards('Mdx', accounts[0]);
-                // await getDexRewards('Cake', accounts[0]);
+                // await checkDexRewards('Mdx', accounts[0]);
+                // await checkDexRewards('Cake', accounts[0]);
                 
                 // await reinvest('Mdx', network)
                 // await reinvest('Cake', network)
+            } else if (network == 'bscmain') {
+                // await checkBankRewards(network, accounts[0])
+                await checkDexRewards('Cake', accounts[0])
             }
             
         } catch(err) {
