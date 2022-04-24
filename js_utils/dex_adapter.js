@@ -13,6 +13,7 @@ const PancakeFactory = artifacts.require("PancakeFactory");
 const PancakeRouter = artifacts.require("PancakeRouter");
 const PancakePair = artifacts.require("PancakePair");
 const CakeGoblin = artifacts.require("CakeGoblin");
+const CakeGoblinWithoutDexPool = artifacts.require("CakeGoblinWithoutDexPool");
 const CakeReinvestment = artifacts.require("CakeReinvestment");
 const CakeToken = artifacts.require("CakeToken");
 const MasterChef = artifacts.require("MasterChef");
@@ -30,6 +31,7 @@ const gGetName =
         "BoardRoom": () => "BoardRoomMDX",
         "BoardRoomPoolId": () => 4,
         "Goblin": (names) => `Mdx${names[0]}${names[1]}Goblin`,
+        "GoblinWithoutDexPool": (names) => `Mdx${names[0]}${names[1]}GoblinWithoutDexPool`,
         "PoolId": (names) => `Mdx${names[0]}${names[1]}PoolId`,
         "FarmPoolId": (names) => `Mdx${names[0]}${names[1]}FarmPoolId`,
         "ProdId": (names) => `Mdx${names[0]}${names[1]}ProdId`,
@@ -46,6 +48,7 @@ const gGetName =
         "BoardRoom": () => "MasterChef",
         "BoardRoomPoolId": () => 0,
         "Goblin": (names) => `Cake${names[0]}${names[1]}Goblin`,
+        "GoblinWithoutDexPool": (names) => `Cake${names[0]}${names[1]}GoblinWithoutDexPool`,
         "PoolId": (names) => `Cake${names[0]}${names[1]}PoolId`,
         "FarmPoolId": (names) => `Cake${names[0]}${names[1]}FarmPoolId`,
         "ProdId": (names) => `Cake${names[0]}${names[1]}ProdId`,
@@ -64,6 +67,7 @@ const gContracts = {
         "Reinvestment": MdxReinvestment,
         "DexToken": MdxToken,
         "Goblin": MdxGoblin,
+        "GoblinWithoutDexPool": null,
         "BoardRoom": BoardRoomMDX,
         "StrategyAddTwoSidesOptimal": MdxStrategyAddTwoSidesOptimal,
         "StrategyWithdrawMinimizeTrading": MdxStrategyWithdrawMinimizeTrading,
@@ -76,6 +80,7 @@ const gContracts = {
         "Reinvestment": CakeReinvestment,
         "DexToken": CakeToken,
         "Goblin": CakeGoblin,
+        "GoblinWithoutDexPool": CakeGoblinWithoutDexPool,
         "BoardRoom": MasterChef,
         "StrategyAddTwoSidesOptimal": CakeStrategyAddTwoSidesOptimal,
         "StrategyWithdrawMinimizeTrading": CakeStrategyWithdrawMinimizeTrading,

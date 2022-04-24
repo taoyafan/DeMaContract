@@ -20,7 +20,7 @@ let {
 } = require('../js_utils/utils.js');
 
 // Note: set network here 
-const network = 'bscmain';
+const network = 'bsctest';
 setDex('Cake');
 const {addressJson, name2Address} = setNetwork(network, web3)
 
@@ -30,6 +30,7 @@ function bankAddPool(callback) {
         try {
 
             const networkId = await web3.eth.net.getId();
+
             if (networkId2Name(networkId) == network)
             {
                 const accounts = await web3.eth.getAccounts();
@@ -40,19 +41,27 @@ function bankAddPool(callback) {
                 console.log(`banksInfo length: ${banksInfo.length}`);
 
                 let farmId = await farm.nextPoolId();
-                console.log(`Next farm id is: ${farmId}`);
             
                 for (info of banksInfo) {
-                    await farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
-                    console.log(`Farm add pool ${farmId} success`)
+                    let tokenFarmId = farmId;
 
-                    await bank.addToken(addressJson[info.token], farmId);
+                    if (info.rewardFirstPeriod) {
+                        tokenFarmId = farmId;
+                        await farm.addPool(info.rewardFirstPeriod, 23, time.duration.days(30), 90, bank.address);
+                        console.log(`Farm add pool ${farmId} success`)
+                        ++farmId;
+                    } else {
+                        tokenFarmId = 0; // Farm pool 0 doesn't has reward.
+                    }
+
+                    console.log(`Next farm id is: ${tokenFarmId}`);
+                    await bank.addToken(addressJson[info.token], tokenFarmId);
                     console.log(`addToken for ${info.token} succeed`);
 
-                    saveToJson(`Bank${info.token}FarmPoolId`, farmId, network);
-                    ++farmId;
-                    break
-                }
+                    saveToJson(`Bank${info.token}FarmPoolId`, tokenFarmId, network);
+                    
+                } // for (info of banksInfo)
+
             } else {
                 throw new Error("Network not support");
             }

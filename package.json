@@ -36,11 +36,14 @@
     "mgoblin:test": "truffle migrate --compile-none --f 6 --to 6 --network bsctest",
     "mgoblin:bsc": "truffle migrate --compile-none --f 6 --to 6 --network bscmain",
 
+    "mgoblindema:test": "truffle migrate --compile-none --f 7 --to 7 --network bsctest",
+
     "mall:test": "truffle migrate --compile-none --network bsctest",
 
 
     "bankinit": "truffle exec ./scripts/bank_init.js",
     "bankinit:test": "truffle exec ./scripts/bank_init.js --network bsctest",
+    "bankAddPool:test": "truffle exec ./scripts/bank_add_pool.js --network bsctest",
     "dexinit:test": "truffle exec ./scripts/dex_init.js --network bsctest",
     "openpos:test": "truffle exec ./scripts/open_position.js --network bsctest",
     "price:test": "truffle exec ./scripts/get_price.js --network bsctest",
@@ -59,6 +62,7 @@
     "vbank:test": "truffle run verify Bank@0xaD468Fa401e4D6ba39d6EFddab3C440bf371B8b9 --network bsctest",
     "vbankconfig:test": "truffle run verify BankConfig@0xc9245FA6776442301BE4b42b047Ad3a4be6d3201 --network bsctest",
     "vmodel:test": "truffle run verify TripleSlopeModel@0xebb8E0051A8b42d4FD8aE27C9Dd46b840c7D8919 --network bsctest",
+    "vgoblin:test": "truffle run verify CakeGoblinWithoutDexPool@0x2E67C31b1D7eDa163fB124197010E6Afd202007A --network bsctest",
 
     "vdema:bsc": "truffle run verify DEMA@0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1 --network bscmain",
     "vup:bsc": "truffle run verify UserProfile@0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94 --network bscmain",

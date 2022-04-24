@@ -1,8 +1,9 @@
 global.artifacts = artifacts
 const Bank = artifacts.require("Bank");
+const Farm = artifacts.require("Farm");
 
 const BigNumber = require("bignumber.js");
-const { assert } = require('console');
+
 let {
     bnbAddress,
     fromWei,
@@ -100,6 +101,12 @@ async function transferToTestAccount(from) {
     }
 }
 
+async function stopFarm(network, poolId) {
+    const {addressJson} = setNetwork(network, web3);
+    const farm = await Farm.at(addressJson.Farm); 
+    await farm.stop(poolId);
+}
+
 function main(callback) {
 
     async function fun() {
@@ -113,17 +120,20 @@ function main(callback) {
             if (network == "bsctest") {
                 // await transferToTestAccount(accounts[0]);
                 
-                // await checkBankRewards(network, accounts[0])
-                
                 // setDex("Cake");
                 // await removeAllLiquidity(addressJson.Cake, addressJson.USDT, accounts[0]);
                 // await removeAllLiquidity(bnbAddress, addressJson.USDT, accounts[0]);
+                
+                // await stopFarm(network, 0);
+                
+                // await checkBankRewards(network, accounts[0])
                 
                 // await checkDexRewards('Mdx', accounts[0]);
                 // await checkDexRewards('Cake', accounts[0]);
                 
                 // await reinvest('Mdx', network)
                 // await reinvest('Cake', network)
+
             } else if (network == 'bscmain') {
                 // await checkBankRewards(network, accounts[0])
                 await checkDexRewards('Cake', accounts[0])

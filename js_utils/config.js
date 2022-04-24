@@ -28,29 +28,33 @@ function getBanksInfo(network) {
         ]
     } else if (network == "bsctest") {
         bankInfo = [
+            // {
+            //     token: "Busd",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Usdt",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Bnb",
+            //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Eth",
+            //     rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Btc",
+            //     rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
+            // },
+            // {
+            //     token: "Cake",
+            //     rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
+            // },
             {
-                token: "Busd",
-                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
-            },
-            {
-                token: "Usdt",
-                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
-            },
-            {
-                token: "Bnb",
-                rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
-            },
-            {
-                token: "Eth",
-                rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
-            },
-            {
-                token: "Btc",
-                rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
-            },
-            {
-                token: "Cake",
-                rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
+                token: "Dema",
+                rewardFirstPeriod: 0
             },
         ]
     } else if (network == "bscmain") {

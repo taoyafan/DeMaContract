@@ -26,6 +26,7 @@
   "BankEthFarmPoolId": 3,
   "BankBtcFarmPoolId": 4,
   "BankCakeFarmPoolId": 5,
+  "BankDemaFarmPoolId": 0,
   "MdxReinvestment": "0xC1f481303F95aE63e572125a112d90F8f5cfe727",
   "MdxStrategyWithdrawMinimizeTrading": "0xE569167BF5048684E1a5aDF6C79541c3C76DA5E8",
   "MdxStrategyAddTwoSidesOptimal": "0x20EDe055f13Cb1175D6215E4Adf9134ed2754Ab4",
@@ -81,6 +82,14 @@
   "CakeUsdtBnbProdId": 15,
   "CakeProd15Tokens": [
     "Bnb",
+    "Usdt"
+  ],
+  "CakeDemaUsdtGoblinWithoutDexPool": "0x7c8eF5cbfE0f512c1C7bC251FC49245409DDb1aa",
+  "CakeDemaUsdtFarmPoolId": 24,
+  "CakeDemaUsdtProdId": 19,
+  "CakeUsdtDemaProdId": 19,
+  "CakeProd19Tokens": [
+    "Dema",
     "Usdt"
   ]
 }
