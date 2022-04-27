@@ -24,12 +24,12 @@ const [gFName, gFAddress, gFContract, gFInstance] =
 
 const migrateTable = {
     allDexs: ["Cake"],
-    reinvestment:       false,
+    reinvestment:       true,
     withdrawStrategy:   false,
     addStrategy:        false,
 
     // TODO when deploy goblin, need to add dex pool id in address.json
-    goblin:             true,
+    goblin:             false,
 }
 
 module.exports = async function (deployer, network, accounts) {

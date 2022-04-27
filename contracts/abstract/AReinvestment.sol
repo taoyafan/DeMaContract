@@ -61,6 +61,21 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
 
     /* ==================================== Write ==================================== */
 
+    // Deposit method when migrating. There MUST be no reserved amount
+    function migrateDeposit(uint256 amount) external override nonReentrant {
+        if (amount > 0) {
+            require(userShares[msg.sender] == 0, 'User share must be 0');
+            
+            dexToken.safeTransferFrom(msg.sender, address(this), amount);
+            uint256 shares = amountToShare(amount, totalAmount().sub(amount));
+            
+            totalShares = totalShares.add(shares);
+            userShares[msg.sender] = userShares[msg.sender].add(shares);
+
+            emit Deposit(msg.sender, amount);
+        }
+    }
+
     // Deposit dexToken.
     function deposit(uint256 amount) external override nonReentrant {
         if (amount > 0) {
@@ -96,18 +111,12 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
                 amount = shareToAmount(shares);
             }
 
-            bool needRedeposit = false;
-
             if (dexToken.myBalance() < amount) {
                 // If balance is not enough, withdraw from board room first.
-                if (_tryToWithdraw(type(uint256).max)) {
-                    needRedeposit = true;
-                }
-
+                _tryToWithdraw(amount - dexToken.myBalance());
                 // Check again, If there don't has enough, withdraw all left.
                 if (dexToken.myBalance() < amount) {
                     amount = dexToken.myBalance();
-                    needRedeposit = false;
                 }
             }
 
@@ -116,11 +125,6 @@ abstract contract AReinvestment is Ownable, IReinvestment, ReentrancyGuard {
             // Update left shares.
             totalShares = totalShares.sub(shares);
             userShares[msg.sender] = userShares[msg.sender].sub(shares);
-
-            // If withdraw dexToken from board room, we need to redeposit.
-            if (needRedeposit && canReinvest) {
-                _dexDeposit(dexToken.myBalance());
-            }
 
             emit Withdraw(msg.sender, amount);
         }

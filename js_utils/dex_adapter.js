@@ -16,7 +16,6 @@ const CakeGoblin = artifacts.require("CakeGoblin");
 const CakeGoblinWithoutDexPool = artifacts.require("CakeGoblinWithoutDexPool");
 const CakeReinvestment = artifacts.require("CakeReinvestment");
 const CakeToken = artifacts.require("CakeToken");
-const MasterChef = artifacts.require("MasterChef");
 const CakeStrategyAddTwoSidesOptimal = artifacts.require("CakeStrategyAddTwoSidesOptimal");
 const CakeStrategyWithdrawMinimizeTrading = artifacts.require("CakeStrategyWithdrawMinimizeTrading");
 
@@ -45,7 +44,7 @@ const gGetName =
         "DexPool": () => "MasterChef",
         "Reinvestment": () => "CakeReinvestment",
         "DexToken": () => "CakeToken",
-        "BoardRoom": () => "MasterChef",
+        "BoardRoom": () => "CakePool",
         "BoardRoomPoolId": () => 0,
         "Goblin": (names) => `Cake${names[0]}${names[1]}Goblin`,
         "GoblinWithoutDexPool": (names) => `Cake${names[0]}${names[1]}GoblinWithoutDexPool`,
@@ -76,32 +75,38 @@ const gContracts = {
         "Factory": PancakeFactory,
         "Router": PancakeRouter,
         "Pair": PancakePair,
-        "DexPool": MasterChef,
+        "DexPool": null, // MasterChefV2,
         "Reinvestment": CakeReinvestment,
         "DexToken": CakeToken,
         "Goblin": CakeGoblin,
         "GoblinWithoutDexPool": CakeGoblinWithoutDexPool,
-        "BoardRoom": MasterChef,
+        "BoardRoom": null, // CakePool,
         "StrategyAddTwoSidesOptimal": CakeStrategyAddTwoSidesOptimal,
         "StrategyWithdrawMinimizeTrading": CakeStrategyWithdrawMinimizeTrading,
     },
 }
 
+function hardAssert(shouldTrue, mes) {
+    if (!shouldTrue) {
+        throw new Error(mes);
+    }
+}
+
 function getName(dex, name, param=null) {
     const specName = gGetName[dex][name](param);
-    console.assert(specName!=null, `${name} name of ${dex} not found `);
+    hardAssert(specName!=null, `${name} name of ${dex} not found `);
     return specName;
 }
 
 function getAddress(addressJson, dex, name, param=null) {
     const address = addressJson[getName(dex, name, param)];
-    console.assert(address!=null, `${name} address of ${dex} not found `);
+    hardAssert(address!=null, `${name} address of ${dex} not found `);
     return address;
 }
 
 function getInstance(addressJson, dex, contractName, param=null) {
     const contract = gContracts[dex][contractName];
-    console.assert(contract, `${contractName} contract of ${dex} not found `);
+    hardAssert(contract, `${contractName} contract of ${dex} not found `);
     
     const address = contractName == "Pair" ? param : getAddress(addressJson, dex, contractName, param);
 

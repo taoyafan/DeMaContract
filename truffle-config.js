@@ -86,6 +86,7 @@ module.exports = {
       // production: true        // Treats this network as if it was a public net. (default: false)
     },
     bscmain: {
+      // https://bsc-dataseed4.ninicoin.io/
       networkCheckTimeout: 10000000,
       provider: () => new HDWalletProvider(privateKey, "https://bsc-dataseed4.ninicoin.io/"),
       network_id: 56,
