@@ -754,6 +754,18 @@ abstract contract AGoblin is Ownable, ReentrancyGuard, IGoblin {
         liqStrategy = _liqStrategy;
     }
 
+    /**
+     * @dev Update reinvestment.
+     * @param newReinvestment The new reinvestment contract.
+     */
+    function updateReinvestment(IReinvestment newReinvestment) external onlyOwner {
+        reinvestment.withdraw(reinvestment.userAmount(address(this)));
+        newReinvestment.migrateDeposit(dexToken.myBalance());
+
+        dexToken.safeApprove(address(newReinvestment), uint256(-1));
+        reinvestment = newReinvestment;
+    }
+
     receive() external payable {}
 
 }

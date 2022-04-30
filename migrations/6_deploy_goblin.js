@@ -24,12 +24,12 @@ const [gFName, gFAddress, gFContract, gFInstance] =
 
 const migrateTable = {
     allDexs: ["Cake"],
-    reinvestment:       true,
+    reinvestment:       false,
     withdrawStrategy:   false,
     addStrategy:        false,
 
     // TODO when deploy goblin, need to add dex pool id in address.json
-    goblin:             false,
+    goblin:             true,
 }
 
 module.exports = async function (deployer, network, accounts) {
@@ -127,6 +127,10 @@ module.exports = async function (deployer, network, accounts) {
         
                 // bank add production
                 const bank = await Bank.at(addressJson.Bank);
+                prod.prodId = await bank.currentProdId();
+                saveToJson(gFName("ProdId", [prod.token0, prod.token1]), prod.prodId, network);
+                saveToJson(gFName("ProdId", [prod.token1, prod.token0]), prod.prodId, network);
+                
                 await bank.opProduction(
                     0,                                          // uint256 pid,
                     true,                                       // bool isOpen,
@@ -137,10 +141,6 @@ module.exports = async function (deployer, network, accounts) {
                     9000,                                       // uint256 openFactor,
                     6000,                                       // uint256 liquidateFactor
                 );
-
-                prod.prodId = (await bank.currentProdId()) - 1;
-                saveToJson(gFName("ProdId", [prod.token0, prod.token1]), prod.prodId, network);
-                saveToJson(gFName("ProdId", [prod.token1, prod.token0]), prod.prodId, network);
 
                 console.log(`opProduction succeed, prod id is ${prod.prodId}`);
         

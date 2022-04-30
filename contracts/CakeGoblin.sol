@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "./abstract/AGoblin.sol";
 import "./interface/Pancake/IPancakeRouter02.sol";
-import "./interface/Pancake/IMasterChef.sol";
+import "./interface/Pancake/IMasterChefV2.sol";
 import "./utils/SafeToken.sol";
 import "./utils/Math.sol";
 
@@ -37,15 +37,15 @@ contract CakeGoblin is AGoblin {
     }
 
     function _dexPoolPendingRewards() internal view override returns (uint256) {
-        return IMasterChef(dexPool).pendingCake(dexPoolId, address(this));
+        return IMasterChefV2(dexPool).pendingCake(dexPoolId, address(this));
     }
 
     function _dexPoolDeposit(uint256 amount) internal override {
-        IMasterChef(dexPool).deposit(dexPoolId, amount);
+        IMasterChefV2(dexPool).deposit(dexPoolId, amount);
     }
 
     function _dexPoolWithdraw(uint256 amount) internal override {
-        IMasterChef(dexPool).withdraw(dexPoolId, amount);
+        IMasterChefV2(dexPool).withdraw(dexPoolId, amount);
     }
 
     /**

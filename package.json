@@ -70,7 +70,7 @@
     "vbankconfig:bsc": "truffle run verify BankConfig@0x6fd136d28de7594b0322f172f67616b322997d41 --network bscmain",
     "vfarm:bsc": "truffle run verify Farm@0x48f062b77198762ab0444b9a83b1a62d5b7b9e60 --network bscmain",
     "vbank:bsc": "truffle run verify Bank@0x961f3403c02d61ab4ec400abea133d4c64689dd8 --network bscmain",
-    "vgoblin:bsc": "truffle run verify CakeGoblin@0x2a93b94AC5B88F59693d2bF31e2aE88584b2a689 --network bscmain",
+    "vgoblin:bsc": "truffle run verify CakeGoblin@0x5C74D96c59918E4544955b29A54098Fd8409C6f9 --network bscmain",
     "vreinvest:bsc": "truffle run verify CakeReinvestment@0x30b22e90f4d276bdb3053be2d45ca32b30635de2 --network bscmain",
 
     "testbank": "truffle test ./test/test_bank.js",
