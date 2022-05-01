@@ -22,12 +22,13 @@ const migrateTable = {
     withdrawStrategy:   false,
     addStrategy:        false,
     goblin:             true,
+    openNewProd:        false,
 }
 
 const prod = {
     token0: "Dema",
     token1: "Usdt",
-    rewardFirstPeriod: BigNumber(3610).multipliedBy(1e18),
+    rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18),
 }
 
 module.exports = async function (deployer, network, accounts) {
@@ -100,8 +101,18 @@ module.exports = async function (deployer, network, accounts) {
     
             // bank add production
             const bank = await Bank.at(addressJson.Bank);
+
+            if (migrateTable.openNewProd) {
+                prod.prodId = await bank.currentProdId();
+                saveToJson(gFName("ProdId", [prod.token0, prod.token1]), prod.prodId, network);
+                saveToJson(gFName("ProdId", [prod.token1, prod.token0]), prod.prodId, network);
+            } else {
+                prod.prodId = gFAddress("ProdId", [prod.token0, prod.token1]);
+            }
+            console.log(`Opening prod with id ${prod.prodId}`);
+
             await bank.opProduction(
-                0,                                          // uint256 pid,
+                migrateTable.openNewProd ? 0 : prod.prodId, // uint256 pid,
                 true,                                       // bool isOpen,
                 [false, false],                             // bool[2] calldata canBorrow,
                 [prod.token0Address, prod.token1Address],   // address[2] calldata borrowToken,
@@ -110,10 +121,6 @@ module.exports = async function (deployer, network, accounts) {
                 0,                                          // uint256 openFactor,
                 0,                                          // uint256 liquidateFactor
             );
-
-            prod.prodId = (await bank.currentProdId()) - 1;
-            saveToJson(gFName("ProdId", [prod.token0, prod.token1]), prod.prodId, network);
-            saveToJson(gFName("ProdId", [prod.token1, prod.token0]), prod.prodId, network);
 
             console.log(`opProduction succeed, prod id is ${prod.prodId}`);
     

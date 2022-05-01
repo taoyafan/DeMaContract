@@ -37,6 +37,7 @@
     "mgoblin:bsc": "truffle migrate --compile-none --f 6 --to 6 --network bscmain",
 
     "mgoblindema:test": "truffle migrate --compile-none --f 7 --to 7 --network bsctest",
+    "mgoblindema:bsc": "truffle migrate --compile-none --f 7 --to 7 --network bscmain",
 
     "mall:test": "truffle migrate --compile-none --network bsctest",
 
@@ -63,7 +64,7 @@
     "vbankconfig:test": "truffle run verify BankConfig@0xc9245FA6776442301BE4b42b047Ad3a4be6d3201 --network bsctest",
     "vmodel:test": "truffle run verify TripleSlopeModel@0xebb8E0051A8b42d4FD8aE27C9Dd46b840c7D8919 --network bsctest",
     "vgoblin:test": "truffle run verify CakeGoblinWithoutDexPool@0x2E67C31b1D7eDa163fB124197010E6Afd202007A --network bsctest",
-
+    
     "vdema:bsc": "truffle run verify DEMA@0x4C8a3e4cd7EDD0Be168bBaf39031891D84F829d1 --network bscmain",
     "vup:bsc": "truffle run verify UserProfile@0x1c1E763676e9E1557c067FAE2EfE48e8ad092e94 --network bscmain",
     "vmodel:bsc": "truffle run verify TripleSlopeModel@0x226b6767e16b4fec42e5fd8d320c999f0349ec34 --network bscmain",
@@ -71,6 +72,7 @@
     "vfarm:bsc": "truffle run verify Farm@0x48f062b77198762ab0444b9a83b1a62d5b7b9e60 --network bscmain",
     "vbank:bsc": "truffle run verify Bank@0x961f3403c02d61ab4ec400abea133d4c64689dd8 --network bscmain",
     "vgoblin:bsc": "truffle run verify CakeGoblin@0x5C74D96c59918E4544955b29A54098Fd8409C6f9 --network bscmain",
+    "vgoblindema:bsc": "truffle run verify CakeGoblinWithoutDexPool@0x95FC23FB66AaF9de4aE048be9d273c16b089F1DD --network bscmain",
     "vreinvest:bsc": "truffle run verify CakeReinvestment@0x30b22e90f4d276bdb3053be2d45ca32b30635de2 --network bscmain",
 
     "testbank": "truffle test ./test/test_bank.js",

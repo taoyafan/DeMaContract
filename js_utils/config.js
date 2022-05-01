@@ -52,10 +52,10 @@ function getBanksInfo(network) {
             //     token: "Cake",
             //     rewardFirstPeriod: BigNumber(7220).multipliedBy(1e18)
             // },
-            {
-                token: "Dema",
-                rewardFirstPeriod: 0
-            },
+            // {
+            //     token: "Dema",
+            //     rewardFirstPeriod: 0
+            // },
         ]
     } else if (network == "bscmain") {
         bankInfo = [
@@ -71,6 +71,10 @@ function getBanksInfo(network) {
             //     token: "Busd",
             //     rewardFirstPeriod: BigNumber(18050).multipliedBy(1e18)
             // },
+            {
+                token: "Dema",
+                rewardFirstPeriod: 0
+            },
         ]
     } else {
         throw new Error("Network not support");

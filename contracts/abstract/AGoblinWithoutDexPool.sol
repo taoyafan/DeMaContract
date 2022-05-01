@@ -54,7 +54,7 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
 
     /// @notice temp params
     struct TempParams {
-        uint256 beforeLPAmount;
+        uint256 beforeLPPosAmount;
         uint256 afterLPAmount;
         uint256 deltaAmount;
     }
@@ -292,15 +292,15 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
 
         TempParams memory temp;     // Just in case stack too deep.
         // 1. Convert this position back to LP tokens.
-        temp.beforeLPAmount = posLPAmount[id];
+        temp.beforeLPPosAmount = posLPAmount[id];
         _removePosition(id, account);
 
         // 2. Perform the worker strategy; sending LP tokens + borrowTokens; expecting LP tokens.
         (address strategy, bytes memory ext) = abi.decode(data, (address, bytes));
         require(strategiesOk[strategy], "unapproved work strategy");
 
-        if (lpToken.balanceOf(address(this)) > 0) {
-            lpToken.transfer(strategy, lpToken.balanceOf(address(this)));
+        if (temp.beforeLPPosAmount > 0) {
+            lpToken.transfer(strategy, temp.beforeLPPosAmount);
         }
 
         for (uint256 i = 0; i < 2; ++i) {
@@ -320,15 +320,14 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
 
         _addPosition(id, account);
 
-
         // Handle stake reward.
         temp.afterLPAmount = posLPAmount[id];
 
         // 4. Update stored info after withdraw or deposit.
 
         // If withdraw some LP.
-        if (temp.beforeLPAmount > temp.afterLPAmount) {
-            temp.deltaAmount = temp.beforeLPAmount.sub(temp.afterLPAmount);
+        if (temp.beforeLPPosAmount > temp.afterLPAmount) {
+            temp.deltaAmount = temp.beforeLPPosAmount.sub(temp.afterLPAmount);
             farm.withdraw(poolId, account, temp.deltaAmount);
 
             (/* token0 */, /* token1 */, uint256 rate, uint256 whichWantBack) =
@@ -340,10 +339,10 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
             }
         }
         // If depoist some LP.
-        else if (temp.beforeLPAmount < temp.afterLPAmount) {
-            temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPAmount);
+        else if (temp.beforeLPPosAmount < temp.afterLPAmount) {
+            temp.deltaAmount = temp.afterLPAmount.sub(temp.beforeLPPosAmount);
             farm.stake(poolId, account, temp.deltaAmount);
-            _updatePrinciple(id, false, borrowTokens, deltaN, 0);
+            _updatePrinciple(id, false, borrowTokens, deltaN, temp.deltaAmount);
         }
 
         // 5. Send tokens back.
@@ -391,8 +390,8 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
 
         // 1. Convert the position back to LP tokens and use liquidate strategy.
         farm.withdraw(poolId, account, posLPAmount[id]);
+        uint256 lpTokenAmount = posLPAmount[id];
         _removePosition(id, account);
-        uint256 lpTokenAmount = lpToken.balanceOf(address(this));
         lpToken.transfer(address(liqStrategy), lpTokenAmount);
 
         // address token0, address token1, uint256 rate, uint256 whichWantBack
@@ -474,8 +473,9 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
         uint256 id,
         bool isWithdraw,
         address[2] calldata borrowTokens,
-        uint256[2] memory deltaN,     // Only used for deposit
-        uint256 rate    // Only used for withdraw
+        uint256[2] memory deltaN,       // Only used for deposit
+        uint256 rateOrDepositAmount     // When withdraw, it is withdraw rate
+                                        // When deposit, It is deposited lp amount
     ) 
         internal 
     {
@@ -494,15 +494,15 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
             if (deltaN[0] > 0 || deltaN[1] > 0) {
                 // Decrease some principal.
                 if (N[0] > 0) {
-                    if (rate < 10000) {
-                        N[0] = N[0].mul(10000 - rate).div(10000);
+                    if (rateOrDepositAmount < 10000) {
+                        N[0] = N[0].mul(10000 - rateOrDepositAmount).div(10000);
                     } else {
                         N[0] = 1;   // Never return to 0
                     }
                 } else {
                     // N[1] >= 0
-                    if (rate < 10000) {
-                        N[1] = N[1].mul(10000 - rate).div(10000);
+                    if (rateOrDepositAmount < 10000) {
+                        N[1] = N[1].mul(10000 - rateOrDepositAmount).div(10000);
                     } else {
                         N[1] = 1;   // Never return to 0
                     }
@@ -512,6 +512,11 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
 
         // If depoist some LP.
         else {
+            uint256 lpSupply = lpToken.totalSupply();
+            uint256 na = rateOrDepositAmount.mul(ra).div(lpSupply);
+            uint256 nb = rateOrDepositAmount.mul(rb).div(lpSupply);
+            ra = ra.sub(na);
+            rb = rb.sub(nb);
 
             if (N[0] == 0 && N[1] == 0) {
                 // First time open the position, get the principal.
@@ -554,7 +559,8 @@ abstract contract AGoblinWithoutDexPool is Ownable, ReentrancyGuard, IGoblin {
     /// @dev Internal function to stake all outstanding LP tokens to the given position ID.
     function _addPosition(uint256 id, address account) internal {
         uint256 lpBalance = lpToken.balanceOf(address(this));
-        if (lpBalance > 0) {
+        if (lpBalance > globalLp) {
+            lpBalance = lpBalance - globalLp;
             posLPAmount[id] = posLPAmount[id].add(lpBalance);
             globalLp = globalLp.add(lpBalance);
             userLp[account] = userLp[account].add(lpBalance);

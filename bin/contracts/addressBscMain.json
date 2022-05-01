@@ -50,4 +50,13 @@
     "Bnb",
     "Usdt"
   ],
+  "BankDemaFarmPoolId": 0,
+  "CakeDemaUsdtGoblinWithoutDexPool": "0x95FC23FB66AaF9de4aE048be9d273c16b089F1DD",
+  "CakeDemaUsdtFarmPoolId": 9,
+  "CakeDemaUsdtProdId": "5",
+  "CakeUsdtDemaProdId": "5",
+  "CakeProd5Tokens": [
+    "Dema",
+    "Usdt"
+  ]
 }
